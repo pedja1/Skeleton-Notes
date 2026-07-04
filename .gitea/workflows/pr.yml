@@ -33,7 +33,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Build
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon assemble
 
   unit-tests:
     runs-on: linux_amd64
@@ -62,9 +62,13 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      - name: Install system image
+        run: |
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "system-images;android-36;default;x86_64"
+
       - name: Create AVD
         run: |
-          echo "no" | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/avdmanager" create avd -n test -k "system-images;android-36;google_apis;x86_64" -f
+          echo "no" | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/avdmanager" create avd -n test -k "system-images;android-36;default;x86_64" -f
 
       - name: Start emulator
         run: |
