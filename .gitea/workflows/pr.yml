@@ -37,7 +37,7 @@ jobs:
 
       - name: Start emulator
         run: |
-          "$ANDROID_SDK_ROOT/emulator/emulator" -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -memory 2048 &
+          nohup "$ANDROID_SDK_ROOT/emulator/emulator" -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -memory 2048 < /dev/null > /tmp/emulator.log 2>&1 &
           "$ANDROID_SDK_ROOT/platform-tools/adb" wait-for-device
           while [ "$("$ANDROID_SDK_ROOT/platform-tools/adb" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" != "1" ]; do
             sleep 2
