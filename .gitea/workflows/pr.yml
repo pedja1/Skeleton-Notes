@@ -18,13 +18,13 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Run lint
-        run: ./gradlew --no-daemon lint check
+        run: ./gradlew lint check
 
       - name: Build
-        run: ./gradlew --no-daemon assemble
+        run: ./gradlew assemble
 
       - name: Run unit tests
-        run: ./gradlew --no-daemon test
+        run: ./gradlew test
 
       - name: Install system image
         run: |
@@ -45,9 +45,13 @@ jobs:
           sleep 5
 
       - name: Run instrumented tests
-        run: ./gradlew --no-daemon connectedAndroidTest
+        run: ./gradlew connectedAndroidTest
 
       - name: Stop emulator
         if: always()
         run: |
           "$ANDROID_SDK_ROOT/platform-tools/adb" emu kill || true
+
+      - name: Stop Gradle daemon
+        if: always()
+        run: ./gradlew --stop

@@ -22,7 +22,7 @@ jobs:
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.keystore
 
       - name: Build signed release APK
-        run: ./gradlew --no-daemon assembleRelease
+        run: ./gradlew assembleRelease
         env:
           KEYSTORE_FILE: /tmp/release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -30,7 +30,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build debug APK
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew assembleDebug
 
       - name: Create Gitea Release
         run: |
@@ -68,3 +68,7 @@ jobs:
             "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=$(basename ${DEBUG_APK})"
 
           echo "Upload complete"
+
+      - name: Stop Gradle daemon
+        if: always()
+        run: ./gradlew --stop
