@@ -2,7 +2,7 @@ name: Pull Request Checks
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
 
 env:
   ANDROID_SDK_ROOT: /opt/android-sdk
