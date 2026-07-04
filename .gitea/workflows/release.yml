@@ -33,6 +33,26 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
+      - name: Debug CI variables
+        run: |
+          echo "=== Debug: GIT/REF Variables ==="
+          echo "GITHUB_REF: ${GITHUB_REF}"
+          echo "GITHUB_REF_NAME: ${GITHUB_REF_NAME}"
+          echo "GITHUB_REF_TYPE: ${GITHUB_REF_TYPE}"
+          echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}"
+          echo "GITHUB_SERVER_URL: ${GITHUB_SERVER_URL}"
+          echo "GITHUB_API_URL: ${GITHUB_API_URL}"
+          echo ""
+          echo "=== Debug: JSON payload preview ==="
+          echo "{\"tag_name\": \"${GITHUB_REF_NAME}\", \"name\": \"${GITHUB_REF_NAME}\", \"body\": \"Release ${GITHUB_REF_NAME}\"}"
+          echo ""
+          echo "=== Debug: Check if tag is non-empty ==="
+          if [ -z "${GITHUB_REF_NAME}" ]; then
+            echo "WARNING: GITHUB_REF_NAME is EMPTY!"
+          else
+            echo "GITHUB_REF_NAME is non-empty: [${GITHUB_REF_NAME}]"
+          fi
+
       - name: Create Gitea Release
         run: |
           RELEASE_APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
