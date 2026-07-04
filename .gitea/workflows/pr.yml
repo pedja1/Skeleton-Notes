@@ -5,7 +5,8 @@ on:
     branches: [main]
 
 jobs:
-  check:
+  pr:
+    name: Verify PR (Lint, Build, Tests)
     runs-on: linux_amd64
     steps:
       - uses: actions/checkout@v4

@@ -6,6 +6,7 @@ on:
 
 jobs:
   release:
+    name: Build & Release
     runs-on: linux_amd64
     steps:
       - uses: actions/checkout@v4
