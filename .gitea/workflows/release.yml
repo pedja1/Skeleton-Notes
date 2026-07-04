@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+env:
+  ANDROID_SDK_ROOT: /opt/android-sdk
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        run: |
+          apt-get update -qq && apt-get install -y -qq openjdk-21-jdk-headless
+
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: /opt/android-sdk
+          key: android-sdk-${{ runner.os }}-36
+
+      - name: Set up Android SDK
+        run: |
+          if [ ! -d "$ANDROID_SDK_ROOT/cmdline-tools" ]; then
+            mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+            wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip
+            unzip -q /tmp/cmdline-tools.zip -d /tmp/
+            mv /tmp/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+            rm /tmp/cmdline-tools.zip
+          fi
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.keystore
+
+      - name: Build signed release APK
+        run: ./gradlew --no-daemon assembleRelease
+        env:
+          KEYSTORE_FILE: /tmp/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: app/build/outputs/apk/release/*.apk
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: release-apk
+
+      - name: Create Gitea Release
+        run: |
+          APK_FILE=$(ls *.apk | head -1)
+          echo "Uploading ${APK_FILE} for tag ${GITHUB_REF_NAME}"
+
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"tag_name\": \"${GITHUB_REF_NAME}\", \"name\": \"${GITHUB_REF_NAME}\", \"body\": \"Release ${GITHUB_REF_NAME}\"}" \
+            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases")
+
+          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+            echo "Failed to create release: $RESPONSE"
+            exit 1
+          fi
+
+          echo "Created release ${RELEASE_ID}"
+
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary "@${APK_FILE}" \
+            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${APK_FILE}"
+
+          echo "Upload complete"

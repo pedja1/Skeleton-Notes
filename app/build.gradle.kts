@@ -20,10 +20,25 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        val keystoreFile = System.getenv("KEYSTORE_FILE")
+        if (keystoreFile != null) {
+            create("ciRelease") {
+                storeFile = file(keystoreFile)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfigs.findByName("ciRelease")?.let {
+                signingConfig = it
+            }
         }
     }
     compileOptions {
