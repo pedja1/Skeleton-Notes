@@ -19,10 +19,13 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Run lint
-        run: ./gradlew lint check
+        run: ./gradlew lint checkDependencyAllowlist
 
       - name: Build
         run: ./gradlew assemble
+
+      - name: Verify APK size
+        run: ./gradlew checkApkSize
 
       - name: Run unit tests
         run: ./gradlew test

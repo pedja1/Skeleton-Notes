@@ -5,9 +5,4 @@ plugins {
 }
 
 apply(from = "gradle/dependency-check.gradle.kts")
-
-tasks.register("check") {
-    group = "verification"
-    description = "Runs all verification tasks"
-    dependsOn("checkDependencyAllowlist")
-}
+apply(from = "gradle/apk-size-check.gradle.kts")

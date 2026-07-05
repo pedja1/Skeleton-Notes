@@ -1,22 +1,6 @@
 import org.gradle.api.artifacts.ExternalModuleDependency
 
-val allowlistFile = rootProject.rootDir.resolve("gradle/dependency-allowlist.txt")
-
-fun readAllowlist(): Pair<Set<String>, Set<String>> {
-    val deps = mutableSetOf<String>()
-    val plugins = mutableSetOf<String>()
-    if (allowlistFile.exists()) {
-        allowlistFile.forEachLine { line ->
-            val trimmed = line.trim()
-            if (trimmed.isEmpty() || trimmed.startsWith("#")) return@forEachLine
-            when {
-                trimmed.startsWith("dep:") -> deps.add(trimmed.removePrefix("dep:"))
-                trimmed.startsWith("plugin:") -> plugins.add(trimmed.removePrefix("plugin:"))
-            }
-        }
-    }
-    return deps to plugins
-}
+val allowlistFilePath = rootProject.rootDir.resolve("gradle/dependency-allowlist.txt")
 
 fun readPluginAliases(): Map<String, String> {
     val catalogFile = rootProject.rootDir.resolve("gradle/libs.versions.toml")
@@ -102,98 +86,43 @@ fun collectDirectDependencies(project: Project): Set<String> {
         .toSet()
 }
 
-tasks.register("checkDependencyAllowlist") {
-    group = "verification"
-    description = "Checks that all dependencies and plugins are in the allowlist"
-
-    notCompatibleWithConfigurationCache("Accesses project model at execution time")
-
-    doLast {
-        val (allowedDeps, allowedPlugins) = readAllowlist()
-        val aliases = readPluginAliases()
-
-        val violations = mutableListOf<String>()
-
-        rootProject.allprojects.forEach { project ->
-            if (project.name == "buildSrc") return@forEach
-
-            val deps = collectDirectDependencies(project)
-            deps.forEach { dep ->
-                if (dep !in allowedDeps) {
-                    violations.add("  ${project.path}: dependency '$dep' is NOT in allowlist")
-                }
-            }
-        }
-
-        val allBuildFiles = rootProject.allprojects
-            .filter { it.name != "buildSrc" }
-            .map { it.buildFile }
-        val settingsFile = rootProject.rootDir.resolve("settings.gradle.kts")
-
-        val foundPlugins = mutableSetOf<String>()
-        allBuildFiles.forEach { file ->
-            collectExplicitPlugins(file, aliases).forEach { foundPlugins.add(it) }
-        }
-        collectExplicitPlugins(settingsFile, aliases).forEach { foundPlugins.add(it) }
-
-        foundPlugins.forEach { plugin ->
-            if (plugin !in allowedPlugins) {
-                violations.add("  plugin '$plugin' is NOT in allowlist")
-            }
-        }
-
-        if (violations.isNotEmpty()) {
-            throw GradleException(
-                "Dependency/plugin allowlist violations found:\n" +
-                violations.joinToString("\n") +
-                "\n\nRun './gradlew generateDependencyAllowlist' to update the allowlist."
-            )
-        }
-
-        println("Dependency allowlist check passed. ${allowedDeps.size} dependencies, ${allowedPlugins.size} plugins verified.")
+fun collectAllDeps(): Set<String> {
+    val deps = mutableSetOf<String>()
+    rootProject.allprojects.forEach { project ->
+        if (project.name == "buildSrc") return@forEach
+        deps.addAll(collectDirectDependencies(project))
     }
+    return deps
 }
 
-tasks.register("generateDependencyAllowlist") {
+fun collectAllPlugins(): Set<String> {
+    val aliases = readPluginAliases()
+    val plugins = mutableSetOf<String>()
+
+    rootProject.allprojects
+        .filter { it.name != "buildSrc" }
+        .forEach { project ->
+            plugins.addAll(collectExplicitPlugins(project.buildFile, aliases))
+        }
+
+    val settingsFile = rootProject.rootDir.resolve("settings.gradle.kts")
+    plugins.addAll(collectExplicitPlugins(settingsFile, aliases))
+
+    return plugins
+}
+
+tasks.register<CheckDependencyAllowlistTask>("checkDependencyAllowlist") {
+    group = "verification"
+    description = "Checks that all dependencies and plugins are in the allowlist"
+    allowlistFile.set(allowlistFilePath)
+    declaredDependencies.set(collectAllDeps())
+    declaredPlugins.set(collectAllPlugins())
+}
+
+tasks.register<GenerateDependencyAllowlistTask>("generateDependencyAllowlist") {
     group = "verification"
     description = "Generates the dependency allowlist from current project state"
-
-    notCompatibleWithConfigurationCache("Accesses project model at execution time")
-
-    doLast {
-        val aliases = readPluginAliases()
-
-        val allDeps = mutableSetOf<String>()
-        rootProject.allprojects.forEach { project ->
-            if (project.name == "buildSrc") return@forEach
-            allDeps.addAll(collectDirectDependencies(project))
-        }
-
-        val allPlugins = mutableSetOf<String>()
-        rootProject.allprojects
-            .filter { it.name != "buildSrc" }
-            .forEach { project ->
-                allPlugins.addAll(collectExplicitPlugins(project.buildFile, aliases))
-            }
-
-        val settingsFile = rootProject.rootDir.resolve("settings.gradle.kts")
-        allPlugins.addAll(collectExplicitPlugins(settingsFile, aliases))
-
-        val content = buildString {
-            appendLine("# Dependency and plugin allowlist")
-            appendLine("# Format: dep:groupId:artifactId or plugin:plugin.id")
-            appendLine("# Auto-generated by generateDependencyAllowlist task")
-            appendLine()
-            appendLine("# Dependencies")
-            allDeps.sorted().forEach { appendLine("dep:$it") }
-            appendLine()
-            appendLine("# Plugins")
-            allPlugins.sorted().forEach { appendLine("plugin:$it") }
-        }
-
-        allowlistFile.writeText(content)
-        println("Allowlist generated at ${allowlistFile.relativeTo(rootProject.rootDir)}")
-        println("  Dependencies: ${allDeps.size}")
-        println("  Plugins: ${allPlugins.size}")
-    }
+    allowlistFile.set(allowlistFilePath)
+    declaredDependencies.set(collectAllDeps())
+    declaredPlugins.set(collectAllPlugins())
 }
