@@ -48,10 +48,12 @@ class MainActivityTest {
     }
 
     @Test
-    fun notesRecyclerViewIsDisplayed() {
+    fun noNotesTextIsDisplayedWhenNoNotes() {
         ActivityScenario.launch(MainActivity::class.java).use { _ ->
-            onView(withId(R.id.recycler_notes))
+            onView(withId(R.id.text_no_notes))
                 .check(matches(isDisplayed()))
+            onView(withId(R.id.text_no_notes))
+                .check(matches(withText(R.string.no_notes)))
         }
     }
 

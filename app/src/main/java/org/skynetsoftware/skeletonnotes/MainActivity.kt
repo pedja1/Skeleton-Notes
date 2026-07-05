@@ -2,7 +2,9 @@ package org.skynetsoftware.skeletonnotes
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -46,10 +48,16 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
+        val textNoNotes = findViewById<TextView>(R.id.text_no_notes)
+
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewMode.uiState.collect { state ->
                     adapter.submitList(state.notes)
+
+                    val isEmpty = !state.isLoading && state.notes.isEmpty()
+                    textNoNotes.visibility = if (isEmpty) View.VISIBLE else View.GONE
+                    recycler.visibility = if (isEmpty) View.GONE else View.VISIBLE
                 }
             }
         }
