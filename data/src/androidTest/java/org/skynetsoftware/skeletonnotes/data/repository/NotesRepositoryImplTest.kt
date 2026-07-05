@@ -14,16 +14,16 @@ import org.skynetsoftware.skeletonnotes.domain.model.Note
 import java.io.File
 
 @RunWith(AndroidJUnit4::class)
-class NoteRepositoryImplTest {
+class NotesRepositoryImplTest {
 
     private lateinit var notesDir: File
-    private lateinit var repository: NoteRepositoryImpl
+    private lateinit var repository: NotesRepositoryImpl
 
     @Before
     fun setUp() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         notesDir = File(context.filesDir, "notes")
-        repository = NoteRepositoryImpl(notesDir)
+        repository = NotesRepositoryImpl(notesDir)
     }
 
     @After
