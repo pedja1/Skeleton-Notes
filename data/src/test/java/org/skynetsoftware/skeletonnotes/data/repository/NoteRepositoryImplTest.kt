@@ -18,12 +18,12 @@ class NoteRepositoryImplTest {
     val tempFolder = TemporaryFolder()
 
     private lateinit var notesDir: File
-    private lateinit var repository: NoteRepositoryImpl
+    private lateinit var repository: NotesRepositoryImpl
 
     @Before
     fun setUp() {
         notesDir = tempFolder.newFolder("notes")
-        repository = NoteRepositoryImpl(notesDir)
+        repository = NotesRepositoryImpl(notesDir)
     }
 
     @Test

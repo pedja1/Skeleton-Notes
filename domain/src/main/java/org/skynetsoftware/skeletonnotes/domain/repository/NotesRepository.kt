@@ -2,7 +2,7 @@ package org.skynetsoftware.skeletonnotes.domain.repository
 
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 
-interface NoteRepository {
+interface NotesRepository {
     suspend fun getAllNotes(): List<Note>
     suspend fun getNoteById(id: Long): Note?
     suspend fun saveNote(note: Note): Long

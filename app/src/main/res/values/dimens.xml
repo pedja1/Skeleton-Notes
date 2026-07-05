@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="toolbar_height">56dp</dimen>
+    <dimen name="toolbar_padding_horizontal">16dp</dimen>
+    <dimen name="toolbar_icon_size">24dp</dimen>
+    <dimen name="toolbar_title_size">20sp</dimen>
+    <dimen name="note_card_margin">4dp</dimen>
+    <dimen name="note_card_padding">12dp</dimen>
+    <dimen name="note_card_corner_radius">8dp</dimen>
+    <dimen name="note_card_border_width">1dp</dimen>
+    <dimen name="note_title_size">16sp</dimen>
+    <dimen name="note_preview_size">14sp</dimen>
+    <dimen name="note_preview_margin_top">4dp</dimen>
+    <dimen name="note_preview_max_lines">3</dimen>
+    <dimen name="grid_spacing">8dp</dimen>
+</resources>
