@@ -1,7 +1,6 @@
 package org.skynetsoftware.skeletonnotes.markdown
 
 import android.graphics.Typeface
-import android.text.Editable
 import android.text.Spannable
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
@@ -16,17 +15,17 @@ import org.skynetsoftware.skeletonnotes.markdown.MarkdownParser.SpanType
 
 class MarkdownSpanApplier {
 
-    fun apply(editable: Editable, spans: List<SpanRange>) {
-        removeMarkdownSpans(editable)
+    fun apply(spannable: Spannable, spans: List<SpanRange>) {
+        removeMarkdownSpans(spannable)
 
         for (span in spans) {
-            applySpan(editable, span)
+            applySpan(spannable, span)
         }
     }
 
-    private fun removeMarkdownSpans(editable: Editable) {
-        val length = editable.length
-        val allSpans = editable.getSpans(0, length, Any::class.java)
+    private fun removeMarkdownSpans(spannable: Spannable) {
+        val length = spannable.length
+        val allSpans = spannable.getSpans(0, length, Any::class.java)
         for (span in allSpans) {
             when (span) {
                 is RelativeSizeSpan,
@@ -36,54 +35,54 @@ class MarkdownSpanApplier {
                 is BackgroundColorSpan,
                 is QuoteSpan,
                 is LeadingMarginSpan.Standard,
-                is ForegroundColorSpan -> editable.removeSpan(span)
+                is ForegroundColorSpan -> spannable.removeSpan(span)
             }
         }
     }
 
-    private fun applySpan(editable: Editable, range: SpanRange) {
-        val start = range.start.coerceIn(0, editable.length)
-        val end = range.end.coerceIn(0, editable.length)
+    private fun applySpan(spannable: Spannable, range: SpanRange) {
+        val start = range.start.coerceIn(0, spannable.length)
+        val end = range.end.coerceIn(0, spannable.length)
         if (start >= end) return
 
         val flag = Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
 
         when (range.type) {
-            SpanType.HEADING_1 -> applyHeading(editable, start, end, 1.6f, flag)
-            SpanType.HEADING_2 -> applyHeading(editable, start, end, 1.4f, flag)
-            SpanType.HEADING_3 -> applyHeading(editable, start, end, 1.25f, flag)
-            SpanType.HEADING_4 -> applyHeading(editable, start, end, 1.1f, flag)
-            SpanType.HEADING_5 -> applyHeading(editable, start, end, 1.0f, flag)
-            SpanType.HEADING_6 -> applyHeading(editable, start, end, 0.9f, flag)
-            SpanType.BOLD -> editable.setSpan(StyleSpan(Typeface.BOLD), start, end, flag)
-            SpanType.ITALIC -> editable.setSpan(StyleSpan(Typeface.ITALIC), start, end, flag)
-            SpanType.STRIKETHROUGH -> editable.setSpan(StrikethroughSpan(), start, end, flag)
+            SpanType.HEADING_1 -> applyHeading(spannable, start, end, 1.6f, flag)
+            SpanType.HEADING_2 -> applyHeading(spannable, start, end, 1.4f, flag)
+            SpanType.HEADING_3 -> applyHeading(spannable, start, end, 1.25f, flag)
+            SpanType.HEADING_4 -> applyHeading(spannable, start, end, 1.1f, flag)
+            SpanType.HEADING_5 -> applyHeading(spannable, start, end, 1.0f, flag)
+            SpanType.HEADING_6 -> applyHeading(spannable, start, end, 0.9f, flag)
+            SpanType.BOLD -> spannable.setSpan(StyleSpan(Typeface.BOLD), start, end, flag)
+            SpanType.ITALIC -> spannable.setSpan(StyleSpan(Typeface.ITALIC), start, end, flag)
+            SpanType.STRIKETHROUGH -> spannable.setSpan(StrikethroughSpan(), start, end, flag)
             SpanType.CODE -> {
-                editable.setSpan(TypefaceSpan("monospace"), start, end, flag)
-                editable.setSpan(BackgroundColorSpan(CODE_BG_COLOR), start, end, flag)
+                spannable.setSpan(TypefaceSpan("monospace"), start, end, flag)
+                spannable.setSpan(BackgroundColorSpan(CODE_BG_COLOR), start, end, flag)
             }
             SpanType.BLOCKQUOTE -> {
-                editable.setSpan(QuoteSpan(QUOTE_BAR_COLOR), start, end, flag)
-                editable.setSpan(ForegroundColorSpan(QUOTE_TEXT_COLOR), start, end, flag)
+                spannable.setSpan(QuoteSpan(QUOTE_BAR_COLOR), start, end, flag)
+                spannable.setSpan(ForegroundColorSpan(QUOTE_TEXT_COLOR), start, end, flag)
             }
             SpanType.BULLET_LIST -> {
-                editable.setSpan(LeadingMarginSpan.Standard(BULLET_INDENT), start, end, flag)
+                spannable.setSpan(LeadingMarginSpan.Standard(BULLET_INDENT), start, end, flag)
             }
             SpanType.ORDERED_LIST -> {
-                editable.setSpan(LeadingMarginSpan.Standard(BULLET_INDENT), start, end, flag)
+                spannable.setSpan(LeadingMarginSpan.Standard(BULLET_INDENT), start, end, flag)
             }
         }
     }
 
     private fun applyHeading(
-        editable: Editable,
+        spannable: Spannable,
         start: Int,
         end: Int,
         scale: Float,
         flag: Int
     ) {
-        editable.setSpan(RelativeSizeSpan(scale), start, end, flag)
-        editable.setSpan(StyleSpan(Typeface.BOLD), start, end, flag)
+        spannable.setSpan(RelativeSizeSpan(scale), start, end, flag)
+        spannable.setSpan(StyleSpan(Typeface.BOLD), start, end, flag)
     }
 
     companion object {

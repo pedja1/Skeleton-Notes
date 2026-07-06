@@ -7,17 +7,7 @@
     android:padding="@dimen/note_card_padding"
     android:layout_margin="@dimen/note_card_margin">
 
-    <TextView
-        android:id="@+id/note_title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="@dimen/note_title_size"
-        android:textStyle="bold"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:textColor="?android:textColorPrimary" />
-
-    <TextView
+    <org.skynetsoftware.skeletonnotes.markdown.MarkdownTextView
         android:id="@+id/note_preview"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

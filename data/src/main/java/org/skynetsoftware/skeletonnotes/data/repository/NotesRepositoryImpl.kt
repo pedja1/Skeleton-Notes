@@ -62,21 +62,10 @@ internal class NotesRepositoryImpl(private val notesDir: File) : NotesRepository
         return maxId + 1
     }
 
-    private fun extractTitle(content: String): String {
-        for (line in content.lines()) {
-            val trimmed = line.trim()
-            if (trimmed.startsWith("# ")) {
-                return trimmed.removePrefix("# ").trim()
-            }
-        }
-        return "Untitled"
-    }
-
     private fun parseNoteFromFile(file: File): Note {
         val content = file.readText()
         val id = file.nameWithoutExtension.toLong()
-        val title = extractTitle(content)
         val createdAt = file.lastModified()
-        return Note(id = id, title = title, content = content, createdAt = createdAt)
+        return Note(id = id, content = content, createdAt = createdAt)
     }
 }

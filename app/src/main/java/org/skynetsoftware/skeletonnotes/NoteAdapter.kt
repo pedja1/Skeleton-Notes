@@ -2,6 +2,7 @@ package org.skynetsoftware.skeletonnotes
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -24,12 +25,10 @@ class NoteAdapter(
     inner class ViewHolder(
         view: android.view.View
     ) : RecyclerView.ViewHolder(view) {
-        private val titleView = itemView.findViewById<android.widget.TextView>(R.id.note_title)
-        private val previewView = itemView.findViewById<android.widget.TextView>(R.id.note_preview)
+        private val previewView = itemView.findViewById<TextView>(R.id.note_preview)
 
         fun bind(note: Note) {
-            titleView.text = note.title
-            previewView.text = stripMarkdown(note.content)
+            previewView.text = note.content
             itemView.setOnClickListener { onNoteClick(note) }
         }
     }
@@ -43,22 +42,4 @@ class NoteAdapter(
             return oldItem == newItem
         }
     }
-}
-
-private fun stripMarkdown(content: String): String {
-    val sb = StringBuilder()
-    for (line in content.lines()) {
-        val trimmed = line.trimStart()
-        if (trimmed.startsWith("# ")) continue
-        if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-            sb.append(trimmed.removePrefix("- ").removePrefix("* ")).append(' ')
-        } else if (trimmed.startsWith("> ")) {
-            sb.append(trimmed.removePrefix("> ")).append(' ')
-        } else if (trimmed.matches(Regex("^\\d+\\.\\s.*"))) {
-            sb.append(trimmed.replaceFirst(Regex("^\\d+\\.\\s"), "")).append(' ')
-        } else {
-            sb.append(line.trim()).append(' ')
-        }
-    }
-    return sb.toString().trim()
 }
