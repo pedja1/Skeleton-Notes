@@ -12,5 +12,7 @@ dep:org.jetbrains.kotlinx:kotlinx-coroutines-core
 # Plugins
 plugin:com.android.application
 plugin:com.android.library
+plugin:io.gitlab.arturbosch.detekt
 plugin:org.gradle.toolchains.foojay-resolver-convention
 plugin:org.jetbrains.kotlin.jvm
+plugin:org.jlleitschuh.gradle.ktlint

@@ -2,7 +2,10 @@
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.ktlint) apply false
+    alias(libs.plugins.detekt) apply false
 }
 
 apply(from = "gradle/dependency-check.gradle.kts")
 apply(from = "gradle/apk-size-check.gradle.kts")
+apply(from = "gradle/jacoco.gradle.kts")

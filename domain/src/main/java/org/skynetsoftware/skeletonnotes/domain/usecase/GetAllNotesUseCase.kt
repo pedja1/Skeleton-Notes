@@ -7,7 +7,8 @@ import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 
 class GetAllNotesUseCase(private val notesRepository: NotesRepository) {
-    operator fun invoke(): Flow<Result<List<Note>>> = flow {
-        emit(notesRepository.getAllNotes())
-    }
+    operator fun invoke(): Flow<Result<List<Note>>> =
+        flow {
+            emit(notesRepository.getAllNotes())
+        }
 }

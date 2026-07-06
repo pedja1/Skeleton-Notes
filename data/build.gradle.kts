@@ -1,10 +1,20 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.ktlint)
+    alias(libs.plugins.detekt)
+}
+
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    setSource(
+        source.filter { file ->
+            !file.path.contains("/test/") && !file.path.contains("/androidTest/")
+        },
+    )
 }
 
 android {
     namespace = "org.skynetsoftware.skeletonnotes.data"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 24
@@ -13,6 +23,13 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    buildTypes {
+        getByName("debug") {
+            enableUnitTestCoverage = true
+            enableAndroidTestCoverage = true
+        }
     }
 }
 

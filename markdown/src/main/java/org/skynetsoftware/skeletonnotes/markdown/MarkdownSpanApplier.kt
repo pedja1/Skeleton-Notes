@@ -40,6 +40,7 @@ class MarkdownSpanApplier {
         }
     }
 
+    @Suppress("CyclomaticComplexMethod")
     private fun applySpan(spannable: Spannable, range: SpanRange) {
         val start = range.start.coerceIn(0, spannable.length)
         val end = range.end.coerceIn(0, spannable.length)

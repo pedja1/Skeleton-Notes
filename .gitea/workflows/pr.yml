@@ -18,8 +18,8 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Run lint
-        run: ./gradlew lint checkDependencyAllowlist
+      - name: Run lint (Android lint, dependency check, ktlint, detekt)
+        run: ./gradlew lint checkDependencyAllowlist ktlintCheck detekt
 
       - name: Build
         run: ./gradlew assemble
@@ -50,6 +50,15 @@ jobs:
 
       - name: Run instrumented tests
         run: ./gradlew connectedAndroidTest
+
+      - name: Run JaCoCo coverage report and verification
+        run: ./gradlew jacocoFullReport jacocoFullCoverageVerification
+
+      - name: Upload coverage report
+        uses: https://github.com/christopherHX/gitea-upload-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: "build/reports/jacoco/jacocoFullReport/jacocoFullReport.xml"
 
       - name: Stop emulator
         if: always()

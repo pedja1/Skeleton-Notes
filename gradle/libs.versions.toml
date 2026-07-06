@@ -6,6 +6,8 @@ runnerVersion = "1.5.2"
 kotlinx-coroutines = "1.11.0"
 espressoCore = "3.5.1"
 activityKtx = "1.8.0"
+ktlint = "12.2.0"
+detekt = "1.23.8"
 lifecycle = "2.11.0"
 
 [libraries]
@@ -23,4 +25,6 @@ androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-view
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 

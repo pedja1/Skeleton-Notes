@@ -1,0 +1,57 @@
+build:
+  maxIssues: 0
+
+config:
+  warningsAsErrors: true
+
+style:
+  MaxLineLength:
+    maxLineLength: 120
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludeCommentStatements: true
+  MagicNumber:
+    active: false
+  ReturnCount:
+    max: 3
+  NewLineAtEndOfFile:
+    active: true
+  WildcardImport:
+    active: true
+  ForbiddenComment:
+    active: true
+  UnusedPrivateMember:
+    active: true
+  UnusedImports:
+    active: true
+  NoTabs:
+    active: true
+
+naming:
+  PackageNaming:
+    packagePattern: '^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)*$'
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+
+complexity:
+  TooManyFunctions:
+    active: true
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 10
+  CyclomaticComplexMethod:
+    active: true
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+
+performance:
+  SpreadOperator:
+    active: true
+
+coroutines:
+  GlobalCoroutineUsage:
+    active: true
+  RedundantSuspendModifier:
+    active: true
