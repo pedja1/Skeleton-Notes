@@ -72,6 +72,7 @@ jobs:
           echo "Release APK: ${RELEASE_APK}"
           echo "Debug APK: ${DEBUG_APK}"
           echo "Uploading for tag ${GITHUB_REF_NAME}"
+          HEAD=$(git rev-parse "${GITHUB_REF_NAME}^{}")
 
           case "${GITHUB_REF_NAME}" in
             *_pre[0-9]*)
@@ -85,7 +86,7 @@ jobs:
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d "{\"tag_name\": \"${GITHUB_REF_NAME}\", \"name\": \"${GITHUB_REF_NAME}\", \"body\": \"Release ${GITHUB_REF_NAME}\"${PRERELEASE_JSON}}" \
+            -d "{\"tag_name\": \"${GITHUB_REF_NAME}\", \"name\": \"${GITHUB_REF_NAME}\", \"body\": \"Release ${GITHUB_REF_NAME}\", \"target_commitish\": \"${HEAD}\"${PRERELEASE_JSON}}" \
             "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases")
 
           RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')

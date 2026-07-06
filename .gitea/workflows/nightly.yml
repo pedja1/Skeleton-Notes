@@ -12,7 +12,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check for changes since last release
+        id: check
+        run: |
+          HEAD=$(git rev-parse HEAD)
+
+          RELEASE_COMMITS=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            | jq -r '.[].target_commitish')
+
+          if echo "$RELEASE_COMMITS" | grep -q "^${HEAD}$"; then
+            echo "HEAD (${HEAD}) already has a release, skipping build"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No release for HEAD (${HEAD}), proceeding with build"
+          fi
+
       - name: Cache Gradle
+        if: steps.check.outputs.skip != 'true'
         uses: actions/cache@v4
         with:
           path: ~/.gradle/caches
@@ -20,10 +38,12 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Decode keystore
+        if: steps.check.outputs.skip != 'true'
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.keystore
 
       - name: Build signed release APK
+        if: steps.check.outputs.skip != 'true'
         run: ./gradlew assembleRelease
         env:
           KEYSTORE_FILE: /tmp/release.keystore
@@ -32,11 +52,14 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build debug APK
+        if: steps.check.outputs.skip != 'true'
         run: ./gradlew assembleDebug
 
       - name: Create Gitea Nightly Release
+        if: steps.check.outputs.skip != 'true'
         run: |
           TIMESTAMP=$(date +'%Y%m%d%H%M')
+          HEAD=$(git rev-parse HEAD)
           echo "Nightly version: ${TIMESTAMP}"
 
           RELEASE_APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
@@ -47,7 +70,7 @@ jobs:
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d "{\"tag_name\": \"${TIMESTAMP}\", \"name\": \"Nightly ${TIMESTAMP}\", \"body\": \"Nightly build\", \"prerelease\": true}" \
+            -d "{\"tag_name\": \"${TIMESTAMP}\", \"name\": \"Nightly ${TIMESTAMP}\", \"body\": \"Nightly build\", \"prerelease\": true, \"target_commitish\": \"${HEAD}\"}" \
             "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases")
 
           RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
@@ -74,5 +97,5 @@ jobs:
           echo "Upload complete"
 
       - name: Stop Gradle daemon
-        if: always()
+        if: always() && steps.check.outputs.skip != 'true'
         run: ./gradlew --stop
