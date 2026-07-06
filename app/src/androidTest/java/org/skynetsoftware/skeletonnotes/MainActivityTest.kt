@@ -11,6 +11,7 @@ import androidx.test.espresso.intent.matcher.IntentMatchers.hasComponent
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
+import org.hamcrest.CoreMatchers.not
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.runBlocking
@@ -83,6 +84,22 @@ class MainActivityTest {
     }
 
     @Test
+    fun test7_toolbarHasAddNoteIcon() {
+        ActivityScenario.launch(MainActivity::class.java).use { _ ->
+            onView(withId(R.id.toolbar_add_note))
+                .check(matches(isDisplayed()))
+        }
+    }
+
+    @Test
+    fun test8_addNoteIconOpensNoteDetailActivity() {
+        ActivityScenario.launch(MainActivity::class.java).use { _ ->
+            onView(withId(R.id.toolbar_add_note)).perform(click())
+            intended(hasComponent(NoteDetailActivity::class.java.name))
+        }
+    }
+
+    @Test
     fun test6_showsErrorWhenDatabaseIsCorrupted() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val dbPath = context.getDatabasePath("skeleton-notes")
@@ -94,6 +111,14 @@ class MainActivityTest {
             onView(withId(R.id.text_no_notes))
                 .check(matches(isDisplayed()))
                 .check(matches(withText(R.string.notes_list_error)))
+        }
+    }
+
+    @Test
+    fun test9_backIconIsNotDisplayed() {
+        ActivityScenario.launch(MainActivity::class.java).use { _ ->
+            onView(withId(R.id.toolbar_back))
+                .check(matches(not(isDisplayed())))
         }
     }
 

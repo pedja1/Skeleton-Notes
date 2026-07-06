@@ -42,6 +42,11 @@ class MainActivity : ComponentActivity() {
         }
         gridView.adapter = adapter
 
+        val addNoteIcon = findViewById<ImageView>(R.id.toolbar_add_note)
+        addNoteIcon.setOnClickListener {
+            startActivity(Intent(this, NoteDetailActivity::class.java))
+        }
+
         val settingsIcon = findViewById<ImageView>(R.id.toolbar_settings)
         settingsIcon.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))

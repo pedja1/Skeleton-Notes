@@ -10,4 +10,8 @@
 
     <!--Settings-->
     <string name="settings_title">Settings</string>
+
+    <!--Toolbar-->
+    <string name="toolbar_add_note">Add note</string>
+    <string name="toolbar_back">Back</string>
 </resources>
