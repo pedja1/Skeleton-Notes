@@ -23,7 +23,7 @@
         android:layout_alignParentEnd="true"
         android:layout_centerVertical="true"
         android:src="@drawable/ic_settings"
-        android:contentDescription="@string/settings"
+        android:contentDescription="@string/settings_title"
         android:tint="?android:textColorPrimary"/>
 
 </RelativeLayout>

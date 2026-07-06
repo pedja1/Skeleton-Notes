@@ -19,6 +19,6 @@ class SettingsActivity : ComponentActivity() {
         }
 
         val toolbarTitle = findViewById<android.widget.TextView>(R.id.toolbar_title)
-        toolbarTitle.text = getString(R.string.settings)
+        toolbarTitle.text = getString(R.string.settings_title)
     }
 }

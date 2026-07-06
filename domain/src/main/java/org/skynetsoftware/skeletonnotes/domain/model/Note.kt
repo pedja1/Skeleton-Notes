@@ -1,9 +1,10 @@
 package org.skynetsoftware.skeletonnotes.domain.model
 
 data class Note(
-    val id: Long = 0,
-    val title: String? = null,
+    val id: Long,
+    val title: String?,
     val content: String,
-    val createdAt: Long = System.currentTimeMillis(),
-    val modifiedAt: Long = System.currentTimeMillis()
+    val createdAt: Long,
+    val modifiedAt: Long,
+    val tags: Set<String>,
 )

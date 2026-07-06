@@ -1,6 +1,5 @@
 package org.skynetsoftware.skeletonnotes
 
-import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
@@ -20,6 +19,6 @@ class NoteDetailActivity : ComponentActivity() {
         }
 
         val toolbarTitle = findViewById<android.widget.TextView>(R.id.toolbar_title)
-        toolbarTitle.text = getString(R.string.note_detail)
+        toolbarTitle.text = getString(R.string.note_detail_title)
     }
 }

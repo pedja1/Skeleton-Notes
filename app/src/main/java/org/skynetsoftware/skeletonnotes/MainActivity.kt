@@ -52,11 +52,29 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewMode.uiState.collect { state ->
-                    adapter.setNotes(state.notes)
-
-                    val isEmpty = !state.isLoading && state.notes.isEmpty()
-                    textNoNotes.visibility = if (isEmpty) View.VISIBLE else View.GONE
-                    gridView.visibility = if (isEmpty) View.GONE else View.VISIBLE
+                    when(state) {
+                        MainViewModel.UiState.Error -> {
+                            textNoNotes.visibility = View.VISIBLE
+                            textNoNotes.text = getString(R.string.notes_list_error)
+                            gridView.visibility = View.GONE
+                        }
+                        MainViewModel.UiState.Loading -> {
+                            textNoNotes.visibility = View.VISIBLE
+                            textNoNotes.text = getString(R.string.notes_list_loading)
+                            gridView.visibility = View.GONE
+                        }
+                        is MainViewModel.UiState.Notes -> {
+                            if(state.notes.isEmpty()) {
+                                textNoNotes.visibility = View.VISIBLE
+                                gridView.visibility = View.GONE
+                                textNoNotes.text = getString(R.string.notes_list_no_notes)
+                            } else {
+                                textNoNotes.visibility = View.GONE
+                                gridView.visibility = View.VISIBLE
+                            }
+                            adapter.setNotes(state.notes)
+                        }
+                    }
                 }
             }
         }
