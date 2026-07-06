@@ -43,8 +43,20 @@ jobs:
           echo "GITHUB_SERVER_URL: ${GITHUB_SERVER_URL}"
           echo "GITHUB_API_URL: ${GITHUB_API_URL}"
           echo ""
+          echo "=== Debug: Prerelease detection ==="
+          case "${GITHUB_REF_NAME}" in
+            *_pre[0-9]*)
+              echo "Pre-release tag detected (matches *_pre[0-9]*)"
+              IS_PRERELEASE=true
+              ;;
+            *)
+              echo "Regular release tag"
+              IS_PRERELEASE=false
+              ;;
+          esac
+          echo "IS_PRERELEASE: ${IS_PRERELEASE}"
           echo "=== Debug: JSON payload preview ==="
-          echo "{\"tag_name\": \"${GITHUB_REF_NAME}\", \"name\": \"${GITHUB_REF_NAME}\", \"body\": \"Release ${GITHUB_REF_NAME}\"}"
+          echo "{\"tag_name\": \"${GITHUB_REF_NAME}\", \"name\": \"${GITHUB_REF_NAME}\", \"body\": \"Release ${GITHUB_REF_NAME}\", \"prerelease\": ${IS_PRERELEASE}}"
           echo ""
           echo "=== Debug: Check if tag is non-empty ==="
           if [ -z "${GITHUB_REF_NAME}" ]; then
@@ -61,10 +73,19 @@ jobs:
           echo "Debug APK: ${DEBUG_APK}"
           echo "Uploading for tag ${GITHUB_REF_NAME}"
 
+          case "${GITHUB_REF_NAME}" in
+            *_pre[0-9]*)
+              PRERELEASE_JSON=', "prerelease": true'
+              ;;
+            *)
+              PRERELEASE_JSON=''
+              ;;
+          esac
+
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d "{\"tag_name\": \"${GITHUB_REF_NAME}\", \"name\": \"${GITHUB_REF_NAME}\", \"body\": \"Release ${GITHUB_REF_NAME}\"}" \
+            -d "{\"tag_name\": \"${GITHUB_REF_NAME}\", \"name\": \"${GITHUB_REF_NAME}\", \"body\": \"Release ${GITHUB_REF_NAME}\"${PRERELEASE_JSON}}" \
             "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases")
 
           RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
