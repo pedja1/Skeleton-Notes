@@ -3,6 +3,7 @@ package org.skynetsoftware.skeletonnotes
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.GridView
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
@@ -13,8 +14,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -34,14 +33,14 @@ class MainActivity : ComponentActivity() {
             insets
         }
 
-        val recycler = findViewById<RecyclerView>(R.id.recycler_notes)
-        recycler.layoutManager = GridLayoutManager(this, 2)
+        val gridView = findViewById<GridView>(R.id.grid_notes)
+        gridView.numColumns = 2
 
-        adapter = NoteAdapter { note ->
+        adapter = NoteAdapter(this) { note ->
             val intent = Intent(this, NoteDetailActivity::class.java)
             startActivity(intent)
         }
-        recycler.adapter = adapter
+        gridView.adapter = adapter
 
         val settingsIcon = findViewById<ImageView>(R.id.toolbar_settings)
         settingsIcon.setOnClickListener {
@@ -53,11 +52,11 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewMode.uiState.collect { state ->
-                    adapter.submitList(state.notes)
+                    adapter.setNotes(state.notes)
 
                     val isEmpty = !state.isLoading && state.notes.isEmpty()
                     textNoNotes.visibility = if (isEmpty) View.VISIBLE else View.GONE
-                    recycler.visibility = if (isEmpty) View.GONE else View.VISIBLE
+                    gridView.visibility = if (isEmpty) View.GONE else View.VISIBLE
                 }
             }
         }

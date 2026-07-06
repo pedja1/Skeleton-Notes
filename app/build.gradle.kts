@@ -53,7 +53,7 @@ dependencies {
     implementation(project(":markdown"))
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.androidx.recyclerview)
+
     implementation(libs.androidx.activity.ktx)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

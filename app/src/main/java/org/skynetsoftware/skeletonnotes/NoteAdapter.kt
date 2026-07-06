@@ -1,45 +1,68 @@
 package org.skynetsoftware.skeletonnotes
 
+import android.content.Context
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.BaseAdapter
 import android.widget.TextView
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
-import androidx.recyclerview.widget.RecyclerView
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 
+/**
+ * Adapter for displaying notes in a GridView using the ViewHolder pattern
+ * for view recycling.
+ */
 class NoteAdapter(
+    private val context: Context,
     private val onNoteClick: (Note) -> Unit
-) : ListAdapter<Note, NoteAdapter.ViewHolder>(DiffCallback) {
+) : BaseAdapter() {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_note_card, parent, false)
-        return ViewHolder(view)
+    private var notes: List<Note> = emptyList()
+
+    /**
+     * Updates the notes list and triggers a refresh.
+     */
+    fun setNotes(notes: List<Note>) {
+        this.notes = notes
+        notifyDataSetChanged()
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(getItem(position))
+    override fun getCount(): Int = notes.size
+
+    override fun getItem(position: Int): Note = notes[position]
+
+    override fun getItemId(position: Int): Long = notes[position].id.hashCode().toLong()
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+        val view: View
+        val viewHolder: ViewHolder
+
+        if (convertView == null) {
+            view = LayoutInflater.from(context)
+                .inflate(R.layout.item_note_card, parent, false)
+            viewHolder = ViewHolder(view)
+            view.tag = viewHolder
+        } else {
+            view = convertView
+            viewHolder = view.tag as ViewHolder
+        }
+
+        viewHolder.bind(getItem(position), onNoteClick)
+        return view
     }
 
-    inner class ViewHolder(
-        view: android.view.View
-    ) : RecyclerView.ViewHolder(view) {
-        private val previewView = itemView.findViewById<TextView>(R.id.note_preview)
+    /**
+     * ViewHolder for recycling note card views.
+     */
+    class ViewHolder(private val item: View) {
+        private val previewView: TextView = item.findViewById(R.id.note_preview)
 
-        fun bind(note: Note) {
+        /**
+         * Binds note data to the view and sets click listener.
+         */
+        fun bind(note: Note, onNoteClick: (Note) -> Unit) {
             previewView.text = note.content
-            itemView.setOnClickListener { onNoteClick(note) }
-        }
-    }
-
-    companion object DiffCallback : DiffUtil.ItemCallback<Note>() {
-        override fun areItemsTheSame(oldItem: Note, newItem: Note): Boolean {
-            return oldItem.id == newItem.id
-        }
-
-        override fun areContentsTheSame(oldItem: Note, newItem: Note): Boolean {
-            return oldItem == newItem
+            item.setOnClickListener { onNoteClick(note) }
         }
     }
 }

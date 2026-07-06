@@ -7,7 +7,7 @@ kotlinx-coroutines = "1.11.0"
 espressoCore = "3.5.1"
 activityKtx = "1.8.0"
 lifecycle = "2.11.0"
-recyclerview = "1.4.0"
+
 room = "2.8.4"
 ksp = "2.3.4"
 
@@ -22,7 +22,7 @@ androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", ve
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
-androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
+
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }

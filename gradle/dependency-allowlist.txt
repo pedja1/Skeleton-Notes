@@ -5,7 +5,6 @@
 # Dependencies
 dep:androidx.activity:activity-ktx
 dep:androidx.lifecycle:lifecycle-viewmodel-ktx
-dep:androidx.recyclerview:recyclerview
 dep:org.jetbrains.kotlin:kotlin-stdlib
 dep:org.jetbrains.kotlinx:kotlinx-coroutines-android
 dep:org.jetbrains.kotlinx:kotlinx-coroutines-core

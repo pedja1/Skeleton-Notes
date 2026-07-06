@@ -13,12 +13,16 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_notes"
+        <GridView
+            android:id="@+id/grid_notes"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:numColumns="2"
+            android:stretchMode="columnWidth"
             android:clipToPadding="false"
             android:padding="@dimen/grid_spacing"
+            android:horizontalSpacing="@dimen/grid_spacing"
+            android:verticalSpacing="@dimen/grid_spacing"
             android:visibility="visible" />
 
         <TextView
