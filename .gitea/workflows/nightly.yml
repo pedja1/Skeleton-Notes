@@ -1,0 +1,78 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  nightly:
+    name: Build & Release Nightly
+    runs-on: linux_amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.keystore
+
+      - name: Build signed release APK
+        run: ./gradlew assembleRelease
+        env:
+          KEYSTORE_FILE: /tmp/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Create Gitea Nightly Release
+        run: |
+          TIMESTAMP=$(date +'%Y%m%d%H%M')
+          echo "Nightly version: ${TIMESTAMP}"
+
+          RELEASE_APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          DEBUG_APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
+          echo "Release APK: ${RELEASE_APK}"
+          echo "Debug APK: ${DEBUG_APK}"
+
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"tag_name\": \"${TIMESTAMP}\", \"name\": \"Nightly ${TIMESTAMP}\", \"body\": \"Nightly build\", \"prerelease\": true}" \
+            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases")
+
+          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" = "null" ]; then
+            echo "Failed to create release: $RESPONSE"
+            exit 1
+          fi
+
+          echo "Created nightly release ${RELEASE_ID}"
+
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary "@${RELEASE_APK}" \
+            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=$(basename ${RELEASE_APK})"
+
+          curl -s -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary "@${DEBUG_APK}" \
+            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=$(basename ${DEBUG_APK})"
+
+          echo "Upload complete"
+
+      - name: Stop Gradle daemon
+        if: always()
+        run: ./gradlew --stop
