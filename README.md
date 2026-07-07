@@ -14,6 +14,9 @@
 - Import project
 - Click run (the green triangle button, you can't miss it 🫣)
 
+### Submitting issues/bugs/feature requests
+- I mean, there is literaly a tab called Issues above 🤷
+
 ### Contributing
 #### Ok, this section is serious
 - PR description is required, please describe what your PR does, PRs without description will be rejected
@@ -21,20 +24,21 @@
 - Keep the project **minimalistic, simple, and lightweight**.
 - Avoid unnecessary complexity, frameworks, or dependencies.
     - PR with new runtime dependency will be rejected unless there is a really good reason to introduce new dependency, and was discussed with maintainer beforehand
-    - Debugging/Testing depndencies, as well as plugins that dont introduce runtime dependencies are excluded
+    - Debugging/Testing depndencies, as well as plugins that don't introduce runtime dependencies are allowed
+    - Yes I have heard of Jetpack Compose, No you cannot use Compose, it is a complete overkill for this app
 - Always follow te project architecture. Project uses **clean architecture**
     - `:app` module contains UI of the app
     - `:domain` module contains bussiness logic, models, interfaces, etc
-    - `:data` model contains implentations for interfacase from domain
+    - `:data` module contains implemtations for interfacase from domain
     - Use kotlin visiblity modifier, `:app` and `:domain` can never access anything from `:data` directly, `:data` cannot access `:app`
 - MVVM pattern is used, don't skip Use Case classes, even if they are very simple
 - Always document all classes/files/functions/properties (KDoc)
 - If you modify any pipeline code, you must have a very good reason for it. Don't disable verifications, etc
 - Alwasy write/update tests
-    - Never use backticks "`", ven for unit tests.
+    - Never use backticks "`", even for unit tests.
     - Alwasy use camelCase
 - Using AI is allowed as long as all the above rules are followed
-    - Please dont Vibe Code a PR without even checking the code yourself
+    - Please don't Vibe Code a PR without even checking the code yourself
     - Repeatedly submitting AI slop (or Human slop) will get you a permanent ban from contributing (can i even do that?)
 
 ### License
