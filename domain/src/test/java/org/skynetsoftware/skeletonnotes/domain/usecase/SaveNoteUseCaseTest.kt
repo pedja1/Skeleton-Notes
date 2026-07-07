@@ -1,5 +1,7 @@
 package org.skynetsoftware.skeletonnotes.domain.usecase
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -85,9 +87,17 @@ class SaveNoteUseCaseTest {
         var saveCalled = false
         var savedNote: NoteWithAttachments? = null
 
-        override suspend fun getAllNotes(): Result<List<Note>> = Result.Success(emptyList())
+        override fun getAllNotes(): Flow<Result<List<Note>>> =
+            flow {
+                emit(Result.Success(emptyList()))
+            }
 
-        override suspend fun getNoteById(id: Long): Result<NoteWithAttachments> =
+        override fun getNoteByIdFlow(id: Long): Flow<Result<NoteWithAttachments>> =
+            flow {
+                emit(getNoteById(id))
+            }
+
+        override fun getNoteById(id: Long): Result<NoteWithAttachments> =
             Result.Success(
                 NoteWithAttachments(
                     Note(id, "Test", "Content", 1000L, 1000L, emptySet()),

@@ -1,5 +1,6 @@
 package org.skynetsoftware.skeletonnotes.domain.repository
 
+import kotlinx.coroutines.flow.Flow
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
@@ -11,12 +12,17 @@ interface NotesRepository {
     /**
      * Retrieves all notes.
      */
-    suspend fun getAllNotes(): Result<List<Note>>
+    fun getAllNotes(): Flow<Result<List<Note>>>
 
     /**
      * Retrieves a single note with its attachments by [id].
      */
-    suspend fun getNoteById(id: Long): Result<NoteWithAttachments>
+    fun getNoteByIdFlow(id: Long): Flow<Result<NoteWithAttachments>>
+
+    /**
+     * Retrieves a single note with its attachments by [id].
+     */
+    fun getNoteById(id: Long): Result<NoteWithAttachments>
 
     /**
      * Saves the given [noteWithAttachments] and returns the note's ID.

@@ -1,5 +1,8 @@
 package org.skynetsoftware.skeletonnotes.data.repository
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -64,7 +67,7 @@ class NoteRepositoryImplTest {
         val note2 = Note(id = 2, title = "B", content = "# B\nSecond", createdAt = 2000L, modifiedAt = 2000L, tags = emptySet())
         dataSource.notes = listOf(note1, note2)
 
-        val result = repository.getAllNotes()
+        val result = repository.getAllNotes().first()
 
         assertTrue(result is Result.Success)
         val notes = (result as Result.Success).data
@@ -75,7 +78,7 @@ class NoteRepositoryImplTest {
     fun getAllNotesReturnsEmptyListWhenDataSourceEmpty() = runBlocking {
         dataSource.notes = emptyList()
 
-        val result = repository.getAllNotes()
+        val result = repository.getAllNotes().first()
 
         assertTrue(result is Result.Success)
         val notes = (result as Result.Success).data
@@ -86,7 +89,7 @@ class NoteRepositoryImplTest {
     fun getAllNotesPropagatesFailure() = runBlocking {
         dataSource.shouldFail = true
 
-        val result = repository.getAllNotes()
+        val result = repository.getAllNotes().first()
 
         assertTrue(result is Result.Failure)
     }
@@ -178,12 +181,16 @@ class NoteRepositoryImplTest {
         var archivedNoteId: Long = -1L
         var shouldFail = false
 
-        override suspend fun getAllNotes(): Result<List<Note>> {
-            if (shouldFail) return Result.Failure(RuntimeException("test failure"))
-            return Result.Success(notes)
+        override fun getAllNotes(): Flow<Result<List<Note>>> = flow {
+            if (shouldFail) emit(Result.Failure(RuntimeException("test failure")))
+            else emit(Result.Success(notes))
         }
 
-        override suspend fun getNoteById(id: Long): Result<NoteWithAttachments> {
+        override fun getNoteByIdFlow(id: Long): Flow<Result<NoteWithAttachments>> = flow {
+            emit(getNoteById(id))
+        }
+
+        override fun getNoteById(id: Long): Result<NoteWithAttachments> {
             if (shouldFail) return Result.Failure(RuntimeException("test failure"))
             return Result.Success(noteById)
         }

@@ -1,6 +1,7 @@
 package org.skynetsoftware.skeletonnotes.data.repository
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import org.skynetsoftware.skeletonnotes.data.database.NotesDataSource
 import org.skynetsoftware.skeletonnotes.domain.model.Note
@@ -17,16 +18,17 @@ internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource)
     /**
      * Retrieves all notes on [Dispatchers.IO].
      */
-    override suspend fun getAllNotes(): Result<List<Note>> = withContext(Dispatchers.IO) {
-        notesDataSource.getAllNotes()
-    }
+    override fun getAllNotes(): Flow<Result<List<Note>>> = notesDataSource.getAllNotes()
 
     /**
      * Retrieves a note by [id] on [Dispatchers.IO].
      */
-    override suspend fun getNoteById(id: Long): Result<NoteWithAttachments> = withContext(Dispatchers.IO) {
-        notesDataSource.getNoteById(id)
-    }
+    override fun getNoteByIdFlow(id: Long): Flow<Result<NoteWithAttachments>> = notesDataSource.getNoteByIdFlow(id)
+
+    /**
+     * Retrieves a note by [id] on [Dispatchers.IO].
+     */
+    override fun getNoteById(id: Long): Result<NoteWithAttachments> = notesDataSource.getNoteById(id)
 
     /**
      * Saves a [noteWithAttachments] on [Dispatchers.IO].

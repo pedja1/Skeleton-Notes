@@ -4,6 +4,9 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.map
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_ID
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MODIFIED
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_NOTE_ID
@@ -27,31 +30,55 @@ internal class NotesDataSourceImpl(
         private const val TAG = "NotesDataSource"
     }
 
+    private val getNoteByIdFlows = hashMapOf<Long, MutableSharedFlow<Unit>>()
+    private val getAllNotesChangedFlow = MutableSharedFlow<Unit>(replay = 1)
+
+    init {
+        getAllNotesChangedFlow.tryEmit(Unit)
+    }
+
     /**
      * Retrieves all notes from the database ordered by modification time descending.
      */
-    override suspend fun getAllNotes(): Result<List<Note>> {
-        var cursor: Cursor? = null
-        return try {
-            val database = skeletonNotesDatabaseHelper.writableDatabase
-            cursor = database.rawQuery(
-                "SELECT * FROM $TABLE_NOTES ORDER BY $COLUMN_MODIFIED DESC", null
-            )
-            val notes = cursor.toNotes()
-            Log.d(TAG, "getAllNotes: ${notes.size}")
-            Result.Success(notes)
-        } catch (t: Throwable) {
-            Log.e(TAG, null, t)
-            Result.Failure(t)
-        } finally {
-            cursor?.close()
+    override fun getAllNotes(): Flow<Result<List<Note>>> {
+        return getAllNotesChangedFlow.map {
+            var cursor: Cursor? = null
+            try {
+                val database = skeletonNotesDatabaseHelper.writableDatabase
+                cursor = database.rawQuery(
+                    "SELECT * FROM $TABLE_NOTES ORDER BY $COLUMN_MODIFIED DESC", null
+                )
+                val notes = cursor.toNotes()
+                Log.d(TAG, "getAllNotes: ${notes.size}")
+                Result.Success(notes)
+            } catch (t: Throwable) {
+                Log.e(TAG, null, t)
+                Result.Failure(t)
+            } finally {
+                cursor?.close()
+            }
         }
     }
 
     /**
      * Retrieves a single note with all its attachments by its [id].
      */
-    override suspend fun getNoteById(id: Long): Result<NoteWithAttachments> {
+    override fun getNoteByIdFlow(id: Long): Flow<Result<NoteWithAttachments>> {
+        var flow = getNoteByIdFlows[id]
+        if (flow == null) {
+            getNoteByIdFlows[id] = MutableSharedFlow(replay = 1)
+            flow = getNoteByIdFlows[id]
+            flow?.tryEmit(Unit)
+        }
+        return flow!!.map {
+            getNoteById(id)
+        }
+    }
+
+    /**
+     * Retrieves a single note with all its attachments by its [id].
+     */
+    override fun getNoteById(id: Long): Result<NoteWithAttachments> {
         var cursor: Cursor? = null
         return try {
             val database = skeletonNotesDatabaseHelper.writableDatabase
@@ -104,6 +131,7 @@ internal class NotesDataSourceImpl(
                 )
             }
             database.setTransactionSuccessful()
+            notifyNotesChanged(id) //TODO should this be after endTransaction
             Log.d(TAG, "saveNote: id=$id")
             Result.Success(id)
         } catch (t: Throwable) {
@@ -126,6 +154,7 @@ internal class NotesDataSourceImpl(
             database.delete(TABLE_ATTACHMENTS, "$COLUMN_NOTE_ID = ?", arrayOf(id.toString()))
             database.setTransactionSuccessful()
             Log.d(TAG, "deleteNote: $id")
+            notifyNotesChanged(id)
             Result.Success(Unit)
         } catch (t: Throwable) {
             Log.e(TAG, null, t)
@@ -143,6 +172,7 @@ internal class NotesDataSourceImpl(
             }
             database.update(TABLE_NOTES, values, "$COLUMN_ID = ?", arrayOf(id.toString()))
             Log.d(TAG, "moveToTrash: $id")
+            notifyNotesChanged(id)
             Result.Success(Unit)
         } catch (t: Throwable) {
             Log.e(TAG, null, t)
@@ -158,10 +188,18 @@ internal class NotesDataSourceImpl(
             }
             database.update(TABLE_NOTES, values, "$COLUMN_ID = ?", arrayOf(id.toString()))
             Log.d(TAG, "archiveNote: $id")
+            notifyNotesChanged(id)
             Result.Success(Unit)
         } catch (t: Throwable) {
             Log.e(TAG, null, t)
             Result.Failure(t)
+        }
+    }
+
+    private suspend fun notifyNotesChanged(noteId: Long?) {
+        getAllNotesChangedFlow.emit(Unit)
+        if (noteId != null) {
+            getNoteByIdFlows[noteId]?.emit(Unit)
         }
     }
 }

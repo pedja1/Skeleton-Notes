@@ -20,6 +20,7 @@ import androidx.test.espresso.matcher.ViewMatchers.withText
 import org.hamcrest.CoreMatchers.not
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertTrue
@@ -65,7 +66,7 @@ class NoteDetailActivityTest {
         db.close()
 
         runBlocking {
-            val allNotes = DataDi.notesRepository.getAllNotes()
+            val allNotes = DataDi.notesRepository.getAllNotes().first()
             if (allNotes is Result.Success) {
                 allNotes.data.forEach { note ->
                     DataDi.notesRepository.deleteNote(note.id)
@@ -332,7 +333,7 @@ class NoteDetailActivityTest {
             onView(withId(R.id.toolbar_back)).perform(click())
         }
         Thread.sleep(1000)
-        val result = runBlocking { DataDi.notesRepository.getAllNotes() }
+        val result = runBlocking { DataDi.notesRepository.getAllNotes().first() }
         assertTrue("Should save note on back press", result is Result.Success)
         val notes = (result as Result.Success).data
         assertTrue("Should have at least one note", notes.isNotEmpty())

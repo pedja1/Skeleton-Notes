@@ -13,6 +13,7 @@ import androidx.test.espresso.matcher.ViewMatchers.withHint
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -58,7 +59,7 @@ class SearchFilterTest {
         db.close()
 
         runBlocking {
-            val allNotes = DataDi.notesRepository.getAllNotes()
+            val allNotes = DataDi.notesRepository.getAllNotes().first()
             if (allNotes is Result.Success) {
                 allNotes.data.forEach { note ->
                     DataDi.notesRepository.deleteNote(note.id)

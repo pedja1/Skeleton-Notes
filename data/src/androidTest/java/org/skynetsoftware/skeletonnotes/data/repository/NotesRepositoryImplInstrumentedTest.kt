@@ -1,7 +1,8 @@
 package org.skynetsoftware.skeletonnotes.data.repository
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -14,6 +15,7 @@ import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
+import kotlin.time.Duration.Companion.seconds
 
 @RunWith(AndroidJUnit4::class)
 class NotesRepositoryImplInstrumentedTest {
@@ -35,7 +37,7 @@ class NotesRepositoryImplInstrumentedTest {
     }
 
     @Test
-    fun saveAndRetrieveNote() = runBlocking {
+    fun saveAndRetrieveNote() = runTest(timeout = 5.seconds) {
         val note = Note(id = 0, title = "Test", content = "# Test\nContent", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet())
         val result = repository.saveNote(NoteWithAttachments(note = note, attachments = emptyList()))
 
@@ -51,7 +53,7 @@ class NotesRepositoryImplInstrumentedTest {
     }
 
     @Test
-    fun getAllNotesReturnsAllSavedNotes() = runBlocking {
+    fun getAllNotesReturnsAllSavedNotes() = runTest(timeout = 5.seconds) {
         repository.saveNote(NoteWithAttachments(
             note = Note(id = 0, title = "A", content = "# A\nFirst", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
             attachments = emptyList()
@@ -61,7 +63,7 @@ class NotesRepositoryImplInstrumentedTest {
             attachments = emptyList()
         ))
 
-        val result = repository.getAllNotes()
+        val result = repository.getAllNotes().first()
 
         assertTrue(result is Result.Success)
         val notes = (result as Result.Success).data
@@ -69,8 +71,8 @@ class NotesRepositoryImplInstrumentedTest {
     }
 
     @Test
-    fun getAllNotesReturnsEmptyListWhenNoNotes() = runBlocking {
-        val result = repository.getAllNotes()
+    fun getAllNotesReturnsEmptyListWhenNoNotes() = runTest(timeout = 5.seconds) {
+        val result = repository.getAllNotes().first()
 
         assertTrue(result is Result.Success)
         val notes = (result as Result.Success).data
@@ -78,7 +80,7 @@ class NotesRepositoryImplInstrumentedTest {
     }
 
     @Test
-    fun updateNotePersistsChanges() = runBlocking {
+    fun updateNotePersistsChanges() = runTest(timeout = 5.seconds) {
         val saveResult = repository.saveNote(NoteWithAttachments(
             note = Note(id = 0, title = "Original", content = "# Original\nOld", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
             attachments = emptyList()
@@ -97,7 +99,7 @@ class NotesRepositoryImplInstrumentedTest {
     }
 
     @Test
-    fun deleteNoteRemovesIt() = runBlocking {
+    fun deleteNoteRemovesIt() = runTest(timeout = 5.seconds) {
         val saveResult = repository.saveNote(NoteWithAttachments(
             note = Note(id = 0, title = "Del", content = "# Del\nRemove", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
             attachments = emptyList()
@@ -107,27 +109,27 @@ class NotesRepositoryImplInstrumentedTest {
         val deleteResult = repository.deleteNote(id)
         assertTrue(deleteResult is Result.Success)
 
-        val allNotes = repository.getAllNotes()
+        val allNotes = repository.getAllNotes().first()
         val notes = (allNotes as Result.Success).data
         assertTrue(notes.none { it.id == id })
     }
 
     @Test
-    fun deleteNonExistentNoteDoesNotThrow() = runBlocking {
+    fun deleteNonExistentNoteDoesNotThrow() = runTest(timeout = 5.seconds) {
         val result = repository.deleteNote(999L)
 
         assertTrue(result is Result.Success)
     }
 
     @Test
-    fun getNoteByIdForNonExistentNoteThrowsInDataSource() = runBlocking {
+    fun getNoteByIdForNonExistentNoteThrowsInDataSource() = runTest(timeout = 5.seconds) {
         val result = repository.getNoteById(999L)
 
         assertTrue(result is Result.Failure)
     }
 
     @Test
-    fun saveNoteWithAttachmentsStoresAttachments() = runBlocking {
+    fun saveNoteWithAttachmentsStoresAttachments() = runTest(timeout = 5.seconds) {
         val note = Note(id = 0, title = "With Attachments", content = "# Content", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet())
         val attachments = listOf(
             Attachment(id = 0, noteId = 0, uri = "file://photo.jpg"),
@@ -147,7 +149,7 @@ class NotesRepositoryImplInstrumentedTest {
     }
 
     @Test
-    fun notesAreSortedByModifiedAtDescending() = runBlocking {
+    fun notesAreSortedByModifiedAtDescending() = runTest(timeout = 5.seconds) {
         repository.saveNote(NoteWithAttachments(
             note = Note(id = 0, title = "Older", content = "# Older", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
             attachments = emptyList()
@@ -157,7 +159,7 @@ class NotesRepositoryImplInstrumentedTest {
             attachments = emptyList()
         ))
 
-        val result = repository.getAllNotes()
+        val result = repository.getAllNotes().first()
         val notes = (result as Result.Success).data
 
         assertEquals("Newer", notes[0].title)

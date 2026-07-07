@@ -2,6 +2,8 @@ package org.skynetsoftware.skeletonnotes
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -302,10 +304,15 @@ class NoteDetailViewModelTest {
     ) : NotesRepository {
         var savedNoteWithAttachments: NoteWithAttachments? = null
 
-        override suspend fun getAllNotes(): Result<List<Note>> =
-            Result.Success(emptyList())
+        override fun getAllNotes(): Flow<Result<List<Note>>> = flow {
+            emit(Result.Success(emptyList()))
+        }
 
-        override suspend fun getNoteById(id: Long): Result<NoteWithAttachments> {
+        override fun getNoteByIdFlow(id: Long): Flow<Result<NoteWithAttachments>> = flow {
+            emit(getNoteById(id))
+        }
+
+        override fun getNoteById(id: Long): Result<NoteWithAttachments> {
             if (shouldFailLoad) return Result.Failure(RuntimeException("Load error"))
             return Result.Success(NoteWithAttachments(note!!, attachments))
         }

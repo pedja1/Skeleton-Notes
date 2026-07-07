@@ -1,5 +1,6 @@
 package org.skynetsoftware.skeletonnotes.domain.usecase
 
+import org.skynetsoftware.skeletonnotes.domain.model.Filter
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 
@@ -13,21 +14,19 @@ class SearchAndFilterNotesUseCase {
      */
     operator fun invoke(
         notes: List<Note>,
-        query: String,
-        includeTrash: Boolean,
-        includeArchived: Boolean,
+        filter: Filter,
     ): List<Note> {
         return notes.filter { note ->
             val statusFilterMatches =
                 when (note.status) {
                     NoteStatus.ACTIVE -> true
-                    NoteStatus.TRASH -> includeTrash
-                    NoteStatus.ARCHIVE -> includeArchived
+                    NoteStatus.TRASH -> filter.showTrashed
+                    NoteStatus.ARCHIVE -> filter.showArchived
                 }
             val queryFilterMatches =
-                if (query.isNotBlank()) {
-                    val titleContainsQuery = note.title?.lowercase()?.contains(query.lowercase()) ?: false
-                    val contentContainsQuery = note.content.lowercase().contains(query.lowercase())
+                if (filter.query.isNotBlank()) {
+                    val titleContainsQuery = note.title?.lowercase()?.contains(filter.query.lowercase()) ?: false
+                    val contentContainsQuery = note.content.lowercase().contains(filter.query.lowercase())
                     titleContainsQuery || contentContainsQuery
                 } else {
                     true

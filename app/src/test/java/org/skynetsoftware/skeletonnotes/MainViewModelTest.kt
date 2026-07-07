@@ -42,7 +42,6 @@ class MainViewModelTest {
             assertTrue(state is MainViewModel.UiState.Notes)
             val notesState = state as MainViewModel.UiState.Notes
             assertEquals(2, notesState.notes.size)
-            assertEquals(2, notesState.notes.size)
 
             job.cancel()
         } finally {
@@ -163,7 +162,7 @@ class MainViewModelTest {
             assertEquals(1, state.notes.size)
             assertEquals("Active Note", state.notes[0].title)
 
-            viewModel.setShowTrash(true)
+            viewModel.setFilter(showArchived = false, showTrashed = true)
             testScheduler.advanceUntilIdle()
 
             val withTrashState = viewModel.uiState.value as MainViewModel.UiState.Notes
@@ -190,14 +189,16 @@ class MainViewModelTest {
             }
             testScheduler.advanceUntilIdle()
 
-            assertFalse(viewModel.isFilterActive())
+            val initialFilter = viewModel.filter.value
+            assertFalse(initialFilter.showTrashed || initialFilter.showArchived)
 
-            viewModel.setShowTrash(true)
-            assertTrue(viewModel.isFilterActive())
+            viewModel.setFilter(showArchived = false, showTrashed = true)
+            var filter = viewModel.filter.value
+            assertTrue(filter.showTrashed || filter.showArchived)
 
-            viewModel.setShowTrash(false)
-            viewModel.setShowArchived(true)
-            assertTrue(viewModel.isFilterActive())
+            viewModel.setFilter(showArchived = true, showTrashed = false)
+            filter = viewModel.filter.value
+            assertTrue(filter.showTrashed || filter.showArchived)
 
             job.cancel()
         } finally {

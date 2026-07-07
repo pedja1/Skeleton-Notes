@@ -69,19 +69,21 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewMode.uiState.collect { state ->
-                    when(state) {
+                    when (state) {
                         MainViewModel.UiState.Error -> {
                             textNoNotes.visibility = View.VISIBLE
                             textNoNotes.text = getString(R.string.notes_list_error)
                             gridView.visibility = View.GONE
                         }
+
                         MainViewModel.UiState.Loading -> {
                             textNoNotes.visibility = View.VISIBLE
                             textNoNotes.text = getString(R.string.notes_list_loading)
                             gridView.visibility = View.GONE
                         }
+
                         is MainViewModel.UiState.Notes -> {
-                            if(state.notes.isEmpty()) {
+                            if (state.notes.isEmpty()) {
                                 textNoNotes.visibility = View.VISIBLE
                                 gridView.visibility = View.GONE
                                 textNoNotes.text = getString(R.string.notes_list_no_notes)
@@ -106,42 +108,37 @@ class MainActivity : ComponentActivity() {
 
     private fun setupFilter() {
         val filterIcon = findViewById<ImageView>(R.id.icon_filter)
-        updateFilterIcon(filterIcon)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainViewMode.filter.collect {
+                    if (it.showTrashed || it.showArchived) {
+                        filterIcon.setColorFilter(
+                            ContextCompat.getColor(this@MainActivity, R.color.filter_active),
+                            android.graphics.PorterDuff.Mode.SRC_IN
+                        )
+                    } else {
+                        filterIcon.clearColorFilter()
+                    }
+                }
+            }
+        }
 
         filterIcon.setOnClickListener {
             val dialogView = layoutInflater.inflate(R.layout.dialog_filter, null)
             val checkboxTrash = dialogView.findViewById<CheckBox>(R.id.checkbox_show_trash)
             val checkboxArchived = dialogView.findViewById<CheckBox>(R.id.checkbox_show_archived)
 
-            checkboxTrash.isChecked = mainViewMode.isShowTrash()
-            checkboxArchived.isChecked = mainViewMode.isShowArchived()
+            checkboxTrash.isChecked = mainViewMode.filter.value.showTrashed
+            checkboxArchived.isChecked = mainViewMode.filter.value.showArchived
 
             AlertDialog.Builder(this)
                 .setTitle(R.string.filter_title)
                 .setView(dialogView)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
-                    mainViewMode.setShowTrash(checkboxTrash.isChecked)
-                    mainViewMode.setShowArchived(checkboxArchived.isChecked)
-                    updateFilterIcon(filterIcon)
+                    mainViewMode.setFilter(checkboxArchived.isChecked, checkboxTrash.isChecked)
                 }
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
         }
-    }
-
-    private fun updateFilterIcon(filterIcon: ImageView) {
-        if (mainViewMode.isFilterActive()) {
-            filterIcon.setColorFilter(
-                ContextCompat.getColor(this, R.color.filter_active),
-                android.graphics.PorterDuff.Mode.SRC_IN
-            )
-        } else {
-            filterIcon.clearColorFilter()
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        mainViewMode.refresh()
     }
 }

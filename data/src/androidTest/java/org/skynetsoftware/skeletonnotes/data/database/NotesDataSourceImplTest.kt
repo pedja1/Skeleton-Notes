@@ -4,7 +4,8 @@ import android.app.Application
 import android.database.sqlite.SQLiteDatabase
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -13,6 +14,7 @@ import org.junit.runner.RunWith
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
+import kotlin.time.Duration.Companion.seconds
 
 @RunWith(AndroidJUnit4::class)
 class NotesDataSourceImplTest {
@@ -35,15 +37,15 @@ class NotesDataSourceImplTest {
     }
 
     @Test
-    fun getAllNotesReturnsFailureWhenDatabaseCorrupted() = runBlocking {
+    fun getAllNotesReturnsFailureWhenDatabaseCorrupted() = runTest(timeout = 5.seconds) {
         database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
         val dataSource = NotesDataSourceImpl(databaseHelper)
-        val result = dataSource.getAllNotes()
+        val result = dataSource.getAllNotes().first()
         assertTrue(result is Result.Failure)
     }
 
     @Test
-    fun getNoteByIdReturnsFailureWhenDatabaseCorrupted() = runBlocking {
+    fun getNoteByIdReturnsFailureWhenDatabaseCorrupted() = runTest(timeout = 5.seconds) {
         database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
         val dataSource = NotesDataSourceImpl(databaseHelper)
         val result = dataSource.getNoteById(1L)
@@ -51,7 +53,7 @@ class NotesDataSourceImplTest {
     }
 
     @Test
-    fun saveNoteReturnsFailureWhenDatabaseCorrupted() = runBlocking {
+    fun saveNoteReturnsFailureWhenDatabaseCorrupted() = runTest(timeout = 5.seconds) {
         database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
         val dataSource = NotesDataSourceImpl(databaseHelper)
         val note = Note(id = 0, title = "Test", content = "Content", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet())
@@ -61,7 +63,7 @@ class NotesDataSourceImplTest {
     }
 
     @Test
-    fun deleteNoteReturnsFailureWhenDatabaseCorrupted() = runBlocking {
+    fun deleteNoteReturnsFailureWhenDatabaseCorrupted() = runTest(timeout = 5.seconds) {
         database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
         val dataSource = NotesDataSourceImpl(databaseHelper)
         val result = dataSource.deleteNote(1L)
