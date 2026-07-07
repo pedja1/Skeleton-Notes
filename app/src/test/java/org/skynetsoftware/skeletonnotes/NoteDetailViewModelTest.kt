@@ -330,5 +330,6 @@ class NoteDetailViewModelTest {
             if (shouldFailArchive) return Result.Failure(RuntimeException("Archive error"))
             return Result.Success(Unit)
         }
+
     }
 }

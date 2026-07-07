@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -12,12 +13,14 @@ import org.skynetsoftware.skeletonnotes.di.AppDi
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 
 /**
  * ViewModel for the main screen that retrieves and exposes the list of notes
- * via a [StateFlow] of [UiState].
+ * via a [StateFlow] of [UiState], with support for search, and filter.
  */
 class MainViewModel(
+    private val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase,
     private val getAllNotesUseCase: GetAllNotesUseCase,
 ) : ViewModel() {
 
@@ -28,6 +31,7 @@ class MainViewModel(
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 MainViewModel(
+                    searchAndFilterNotesUseCase = AppDi.searchAndFilterNotesUseCase,
                     getAllNotesUseCase = AppDi.getAllNotesUseCase,
                 )
             }
@@ -46,20 +50,69 @@ class MainViewModel(
         object Error: UiState()
     }
 
+    private var query = ""
+    private var showTrash = false
+    private var showArchived = false
+
+    private var refreshJob: Job? = null
+
     /**
-     * Refreshes the notes list by re-fetching from the repository.
+     * Refreshes the notes list by searching with the current query, and filter parameters.
      */
     fun refresh() {
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            _uiState.value = UiState.Loading
             val result = getAllNotesUseCase()
             result.collect { notesResult ->
                 _uiState.value = when (notesResult) {
                     is Result.Failure<List<Note>> -> UiState.Error
-                    is Result.Success<List<Note>> -> UiState.Notes(notesResult.data)
+                    is Result.Success<List<Note>> -> UiState.Notes(
+                        searchAndFilterNotesUseCase(notesResult.data, query, showTrash, showArchived)
+                    )
                 }
             }
         }
     }
+
+    /**
+     * Sets the search query and refreshes.
+     */
+    fun setQuery(newQuery: String) {
+        query = newQuery
+        refresh()
+    }
+
+    /**
+     * Sets whether trashed notes are visible and refreshes.
+     */
+    fun setShowTrash(visible: Boolean) {
+        showTrash = visible
+        refresh()
+    }
+
+    /**
+     * Sets whether archived notes are visible and refreshes.
+     */
+    fun setShowArchived(visible: Boolean) {
+        showArchived = visible
+        refresh()
+    }
+
+    /**
+     * Whether trashed notes are currently visible.
+     */
+    fun isShowTrash(): Boolean = showTrash
+
+    /**
+     * Whether archived notes are currently visible.
+     */
+    fun isShowArchived(): Boolean = showArchived
+
+    /**
+     * Whether any filter is active.
+     */
+    fun isFilterActive(): Boolean = showTrash || showArchived
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
     val uiState: StateFlow<UiState> = _uiState

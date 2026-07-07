@@ -211,5 +211,6 @@ class NoteRepositoryImplTest {
             archivedNoteId = id
             return Result.Success(Unit)
         }
+
     }
 }

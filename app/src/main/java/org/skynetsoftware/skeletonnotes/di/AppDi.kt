@@ -10,6 +10,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 
 /**
  * Top-level dependency injection container that initializes all layers.
@@ -61,4 +62,9 @@ object AppDi {
      * Provides the [ArchiveNoteUseCase] singleton.
      */
     val archiveNoteUseCase: ArchiveNoteUseCase get() = DomainDi.archiveNoteUseCase
+
+    /**
+     * Provides the [SearchAndFilterNotesUseCase] singleton.
+     */
+    val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase get() = DomainDi.searchAndFilterNotesUseCase
 }

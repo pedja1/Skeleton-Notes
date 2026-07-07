@@ -1,16 +1,19 @@
 package org.skynetsoftware.skeletonnotes
 
 import android.content.Context
+import android.text.Html
+import android.text.SpannableStringBuilder
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.TextView
 import org.skynetsoftware.skeletonnotes.domain.model.Note
+import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 
 /**
  * Adapter for displaying notes in a GridView using the ViewHolder pattern
- * for view recycling.
+ * for view recycling. Applies different backgrounds based on note status.
  */
 class NoteAdapter(
     private val context: Context,
@@ -67,13 +70,36 @@ class NoteAdapter(
      * ViewHolder for recycling note card views.
      */
     class ViewHolder(private val item: View) {
+        private val titleView: TextView = item.findViewById(R.id.note_tile)
         private val previewView: TextView = item.findViewById(R.id.note_preview)
 
         /**
          * Binds note data to the view and sets click listener.
          */
         fun bind(note: Note, onNoteClick: (Note) -> Unit) {
-            previewView.text = note.content
+            titleView.text = note.title
+            previewView.text = SpannableStringBuilder(
+                Html.fromHtml(
+                    note.content,
+                    Html.FROM_HTML_MODE_LEGACY,
+                    null,
+                    null
+                )
+            )
+
+            if(note.title.isNullOrBlank()) {
+                titleView.visibility = View.GONE
+            } else {
+                titleView.visibility = View.VISIBLE
+            }
+
+            val backgroundRes = when (note.status) {
+                NoteStatus.TRASH -> R.drawable.card_background_trash
+                NoteStatus.ARCHIVE -> R.drawable.card_background_archive
+                else -> R.drawable.card_background
+            }
+            item.setBackgroundResource(backgroundRes)
+
             item.setOnClickListener { onNoteClick(note) }
         }
     }

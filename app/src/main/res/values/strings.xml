@@ -43,4 +43,12 @@
     <!--Toolbar-->
     <string name="toolbar_add_note">Add note</string>
     <string name="toolbar_back">Back</string>
+
+    <!--Search & Filter-->
+    <string name="search_hint">Search notes…</string>
+    <string name="filter_title">Filter notes</string>
+    <string name="filter_show_trash">Show trash notes</string>
+    <string name="filter_show_archived">Show archived notes</string>
+    <string name="search_content_description">Search</string>
+    <string name="filter_content_description">Filter</string>
 </resources>

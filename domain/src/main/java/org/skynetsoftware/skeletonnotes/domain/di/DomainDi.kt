@@ -7,6 +7,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 
 /**
  * Dependency injection container for the domain layer.
@@ -51,4 +52,9 @@ object DomainDi {
      * Lazily provides the [ArchiveNoteUseCase] singleton.
      */
     val archiveNoteUseCase: ArchiveNoteUseCase by lazy { ArchiveNoteUseCase(notesRepository) }
+
+    /**
+     * Lazily provides the [SearchAndFilterNotesUseCase] singleton.
+     */
+    val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase by lazy { SearchAndFilterNotesUseCase() }
 }

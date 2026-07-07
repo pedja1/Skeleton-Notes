@@ -29,6 +29,14 @@ internal interface NotesDataSource {
      * Deletes the note identified by [id] along with its attachments.
      */
     suspend fun deleteNote(id: Long): Result<Unit>
+
+    /**
+     * Move note to trash. Set status to [NoteStatus.TRASH]
+     */
     suspend fun moveToTrash(id: Long): Result<Unit>
+
+    /**
+     * Archive note. Set status to [NoteStatus.ARCHIVED]
+     */
     suspend fun archiveNote(id: Long): Result<Unit>
 }

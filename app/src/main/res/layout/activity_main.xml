@@ -9,6 +9,47 @@
 
     <include layout="@layout/layout_toolbar" />
 
+    <LinearLayout
+        android:id="@+id/search_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="4dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginStart="10dp"
+        android:background="@drawable/edittext_background">
+
+        <EditText
+            android:id="@+id/search_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="@string/search_hint"
+            android:imeOptions="actionSearch"
+            android:paddingEnd="12dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:background="@android:color/transparent"
+            android:inputType="text"
+            android:maxLines="1"
+            android:textColor="?android:textColorPrimary"
+            android:textColorHint="?android:textColorSecondary"
+            android:importantForAutofill="no"/>
+
+        <ImageView
+            android:id="@+id/icon_filter"
+            android:layout_width="@dimen/toolbar_icon_size"
+            android:layout_height="@dimen/toolbar_icon_size"
+            android:layout_marginStart="4dp"
+            android:background="?android:selectableItemBackgroundBorderless"
+            android:contentDescription="@string/filter_content_description"
+            android:src="@drawable/ic_filter"
+            android:tint="?android:textColorPrimary" />
+
+    </LinearLayout>
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -23,7 +64,8 @@
             android:padding="@dimen/grid_spacing"
             android:horizontalSpacing="@dimen/grid_spacing"
             android:verticalSpacing="@dimen/grid_spacing"
-            android:visibility="visible" />
+            android:visibility="visible"
+            tools:listitem="@layout/item_note_card"/>
 
         <TextView
             android:id="@+id/text_no_notes"
