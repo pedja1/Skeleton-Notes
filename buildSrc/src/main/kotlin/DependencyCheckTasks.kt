@@ -7,6 +7,10 @@ import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 
+/**
+ * Gradle task that verifies all declared dependencies and plugins are present
+ * in the allowlist file. Throws [GradleException] if violations are found.
+ */
 abstract class CheckDependencyAllowlistTask : DefaultTask() {
 
     @get:Internal
@@ -18,6 +22,9 @@ abstract class CheckDependencyAllowlistTask : DefaultTask() {
     @get:Input
     abstract val declaredPlugins: SetProperty<String>
 
+    /**
+     * Parses the allowlist file and checks all declared dependencies and plugins against it.
+     */
     @TaskAction
     fun check() {
         val allowedDeps = mutableSetOf<String>()
@@ -64,6 +71,10 @@ abstract class CheckDependencyAllowlistTask : DefaultTask() {
     }
 }
 
+/**
+ * Gradle task that generates the dependency allowlist file from the currently
+ * declared dependencies and plugins.
+ */
 abstract class GenerateDependencyAllowlistTask : DefaultTask() {
 
     @get:OutputFile
@@ -75,6 +86,9 @@ abstract class GenerateDependencyAllowlistTask : DefaultTask() {
     @get:Input
     abstract val declaredPlugins: SetProperty<String>
 
+    /**
+     * Generates the allowlist file with sorted dependencies and plugins.
+     */
     @TaskAction
     fun generate() {
         val deps = declaredDependencies.get().sorted()

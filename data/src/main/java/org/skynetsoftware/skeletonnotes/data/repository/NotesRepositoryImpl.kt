@@ -8,20 +8,36 @@ import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 
+/**
+ * Implementation of [NotesRepository] that delegates to a [NotesDataSource]
+ * and switches to [Dispatchers.IO] for all operations.
+ */
 internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource) : NotesRepository {
 
+    /**
+     * Retrieves all notes on [Dispatchers.IO].
+     */
     override suspend fun getAllNotes(): Result<List<Note>> = withContext(Dispatchers.IO) {
         notesDataSource.getAllNotes()
     }
 
+    /**
+     * Retrieves a note by [id] on [Dispatchers.IO].
+     */
     override suspend fun getNoteById(id: Long): Result<NoteWithAttachments> = withContext(Dispatchers.IO) {
         notesDataSource.getNoteById(id)
     }
 
+    /**
+     * Saves a [noteWithAttachments] on [Dispatchers.IO].
+     */
     override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Long> = withContext(Dispatchers.IO) {
         notesDataSource.saveNote(noteWithAttachments)
     }
 
+    /**
+     * Deletes a note by [id] on [Dispatchers.IO].
+     */
     override suspend fun deleteNote(id: Long): Result<Unit> = withContext(Dispatchers.IO) {
         notesDataSource.deleteNote(id)
     }

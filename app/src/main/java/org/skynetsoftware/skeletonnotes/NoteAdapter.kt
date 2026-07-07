@@ -27,12 +27,24 @@ class NoteAdapter(
         notifyDataSetChanged()
     }
 
+    /**
+     * Returns the total number of notes in the adapter.
+     */
     override fun getCount(): Int = notes.size
 
+    /**
+     * Returns the [Note] at the given [position].
+     */
     override fun getItem(position: Int): Note = notes[position]
 
+    /**
+     * Returns a stable ID for the item at [position], derived from the note's ID.
+     */
     override fun getItemId(position: Int): Long = notes[position].id.hashCode().toLong()
 
+    /**
+     * Creates or reuses a view for the note at [position] using the ViewHolder pattern.
+     */
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         val view: View
         val viewHolder: ViewHolder

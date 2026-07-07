@@ -16,6 +16,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 
+/**
+ * Main activity that displays the grid of notes.
+ */
 class MainActivity : ComponentActivity() {
 
     private lateinit var adapter: NoteAdapter

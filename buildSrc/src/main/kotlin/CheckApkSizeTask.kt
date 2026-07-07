@@ -6,6 +6,10 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 
+/**
+ * Gradle task that checks whether the assembled APK file size
+ * exceeds a configurable maximum size limit.
+ */
 abstract class CheckApkSizeTask : DefaultTask() {
 
     @get:Internal
@@ -14,6 +18,10 @@ abstract class CheckApkSizeTask : DefaultTask() {
     @get:Input
     abstract val maxSizeKb: Property<Long>
 
+    /**
+     * Verifies that the APK file exists and its size does not exceed [maxSizeKb].
+     * Throws [GradleException] on failure.
+     */
     @TaskAction
     fun check() {
         val file = apkFile.get().asFile

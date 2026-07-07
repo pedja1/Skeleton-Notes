@@ -27,6 +27,9 @@ internal class NotesDataSourceImpl(
         private const val TAG = "NotesDataSource"
     }
 
+    /**
+     * Retrieves all notes from the database ordered by modification time descending.
+     */
     override suspend fun getAllNotes(): Result<List<Note>> {
         var cursor: Cursor? = null
         return try {
@@ -45,6 +48,9 @@ internal class NotesDataSourceImpl(
         }
     }
 
+    /**
+     * Retrieves a single note with all its attachments by its [id].
+     */
     override suspend fun getNoteById(id: Long): Result<NoteWithAttachments> {
         var cursor: Cursor? = null
         return try {
@@ -74,6 +80,10 @@ internal class NotesDataSourceImpl(
         }
     }
 
+    /**
+     * Saves a [noteWithAttachments] to the database, replacing any existing record with the same ID.
+     * Returns the ID of the saved note.
+     */
     override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Long> {
         var database: SQLiteDatabase? = null
         return try {
@@ -104,6 +114,9 @@ internal class NotesDataSourceImpl(
         }
     }
 
+    /**
+     * Deletes the note identified by [id] along with all its attachments.
+     */
     override suspend fun deleteNote(id: Long): Result<Unit> {
         var database: SQLiteDatabase? = null
         return try {

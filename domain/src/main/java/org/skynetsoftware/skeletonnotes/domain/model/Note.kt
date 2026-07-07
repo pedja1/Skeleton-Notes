@@ -1,5 +1,8 @@
 package org.skynetsoftware.skeletonnotes.domain.model
 
+/**
+ * Represents a note entity with content, metadata, and optional tags.
+ */
 data class Note(
     val id: Long,
     val title: String?,

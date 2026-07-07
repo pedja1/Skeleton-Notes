@@ -5,6 +5,10 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 
+/**
+ * SQLite database helper for the Skeleton Notes application.
+ * Manages creation and upgrades of the notes and attachments tables.
+ */
 internal class SkeletonNotesDatabaseHelper(
     application: Application
 ) : SQLiteOpenHelper(application, "skeleton-notes", null, 2) {

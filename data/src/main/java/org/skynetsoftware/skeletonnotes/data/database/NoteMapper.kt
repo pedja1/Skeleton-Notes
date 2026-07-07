@@ -17,6 +17,9 @@ import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 
+/**
+ * Converts this [Cursor] to a [Note] entity.
+ */
 fun Cursor.toNote(): Note {
     return Note(
         id = getLong(getColumnIndexOrThrow(COLUMN_ID)),
@@ -29,6 +32,10 @@ fun Cursor.toNote(): Note {
     )
 }
 
+/**
+ * Converts this [Cursor] (result of a note+attachments join query) to a [NoteWithAttachments].
+ * The cursor must be positioned before the first row.
+ */
 fun Cursor.toNoteWithAttachments(): NoteWithAttachments {
     var note: Note? = null
     val attachments = ArrayList<Attachment>()
@@ -50,6 +57,10 @@ fun Cursor.toNoteWithAttachments(): NoteWithAttachments {
     return NoteWithAttachments(note ?: error("Failed to parse note from cursor"), attachments)
 }
 
+/**
+ * Converts this [Cursor] to a list of [Note] entities.
+ * The cursor must be positioned before the first row.
+ */
 fun Cursor.toNotes(): List<Note> {
     return buildList {
         while (moveToNext()) {
@@ -58,6 +69,9 @@ fun Cursor.toNotes(): List<Note> {
     }
 }
 
+/**
+ * Converts this [Note] to a [ContentValues] map suitable for SQLite insert/update operations.
+ */
 fun Note.toContentValues(): ContentValues {
     return ContentValues().apply {
         if(id > 0 ) {
@@ -72,6 +86,9 @@ fun Note.toContentValues(): ContentValues {
     }
 }
 
+/**
+ * Converts this [Attachment] to a [ContentValues] map suitable for SQLite insert/update operations.
+ */
 fun Attachment.toContentValues(): ContentValues {
     return ContentValues().apply {
         if(id > 0) {
@@ -82,5 +99,8 @@ fun Attachment.toContentValues(): ContentValues {
     }
 }
 
+/**
+ * Returns the string value at the given column [index], or null if the column is SQL NULL.
+ */
 private fun Cursor.getStringOrNull(index: Int): String? =
     if(isNull(index)) null else getString(index)
