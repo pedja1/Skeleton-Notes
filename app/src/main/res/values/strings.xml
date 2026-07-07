@@ -7,6 +7,29 @@
 
     <!--Note Details-->
     <string name="note_detail_title">Note</string>
+    <string name="note_detail_new_note_title">New Note</string>
+    <string name="note_detail_title_hint">Title</string>
+    <string name="note_detail_content_hint">Start writing…</string>
+
+    <!--Formatting Toolbar-->
+    <string name="format_bold">Bold</string>
+    <string name="format_italic">Italic</string>
+    <string name="format_font_size">Font size</string>
+    <string name="format_attach_file">Attach file</string>
+    <string name="format_attach_image">Attach image</string>
+    <string name="format_add_tag">Add tag</string>
+    <string name="font_size_dialog_title">Choose font size</string>
+    <string name="font_size_small">Small</string>
+    <string name="font_size_normal">Normal</string>
+    <string name="font_size_large">Large</string>
+    <string name="font_size_huge">Huge</string>
+
+    <!--Delete-->
+    <string name="delete_note">Delete note</string>
+    <string name="delete_note_confirm_title">Delete note?</string>
+    <string name="delete_note_confirm_message">This action cannot be undone.</string>
+    <string name="delete_note_confirm_positive">Delete</string>
+    <string name="delete_note_confirm_negative">Cancel</string>
 
     <!--Settings-->
     <string name="settings_title">Settings</string>

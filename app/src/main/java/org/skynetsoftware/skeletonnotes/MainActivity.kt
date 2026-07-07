@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
 
         adapter = NoteAdapter(this) { note ->
             val intent = Intent(this, NoteDetailActivity::class.java)
+            intent.putExtra(NoteDetailActivity.EXTRA_NOTE_ID, note.id)
             startActivity(intent)
         }
         gridView.adapter = adapter
@@ -83,5 +84,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mainViewMode.refresh()
     }
 }

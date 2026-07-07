@@ -14,4 +14,9 @@
     <dimen name="note_preview_margin_top">4dp</dimen>
     <dimen name="note_preview_max_lines">3</dimen>
     <dimen name="grid_spacing">8dp</dimen>
+    <dimen name="formatting_toolbar_height">48dp</dimen>
+    <dimen name="formatting_button_padding">8dp</dimen>
+    <dimen name="formatting_button_touch_target">40dp</dimen>
+    <dimen name="note_detail_padding_horizontal">16dp</dimen>
+    <dimen name="note_detail_title_margin_bottom">8dp</dimen>
 </resources>
