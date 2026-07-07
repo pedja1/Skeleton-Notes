@@ -4,9 +4,11 @@ import android.app.Application
 import org.skynetsoftware.skeletonnotes.data.di.DataDi
 import org.skynetsoftware.skeletonnotes.domain.di.DomainDi
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
+import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 
 /**
@@ -49,4 +51,14 @@ object AppDi {
      * Provides the [DeleteNoteUseCase] singleton.
      */
     val deleteNoteUseCase: DeleteNoteUseCase get() = DomainDi.deleteNoteUseCase
+
+    /**
+     * Provides the [MoveToTrashUseCase] singleton.
+     */
+    val moveToTrashUseCase: MoveToTrashUseCase get() = DomainDi.moveToTrashUseCase
+
+    /**
+     * Provides the [ArchiveNoteUseCase] singleton.
+     */
+    val archiveNoteUseCase: ArchiveNoteUseCase get() = DomainDi.archiveNoteUseCase
 }

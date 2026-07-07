@@ -31,6 +31,12 @@
     <string name="delete_note_confirm_positive">Delete</string>
     <string name="delete_note_confirm_negative">Cancel</string>
 
+    <!--Trash & Archive-->
+    <string name="move_to_trash">Move to trash</string>
+    <string name="archive_note">Archive</string>
+    <string name="delete_permanently">Delete permanently</string>
+    <string name="toolbar_more">More options</string>
+
     <!--Settings-->
     <string name="settings_title">Settings</string>
 

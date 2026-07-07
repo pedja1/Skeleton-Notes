@@ -15,6 +15,7 @@ import android.util.TypedValue
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -51,7 +52,7 @@ class NoteDetailActivity : ComponentActivity() {
     private lateinit var editTitle: EditText
     private lateinit var editContent: EditText
     private lateinit var toolbarTitle: TextView
-    private lateinit var toolbarDelete: ImageView
+    private lateinit var toolbarOverflow: ImageView
     private lateinit var toolbarBack: ImageView
     private lateinit var formattingToolbar: View
 
@@ -112,12 +113,13 @@ class NoteDetailActivity : ComponentActivity() {
         editTitle = findViewById(R.id.edit_note_title)
         editContent = findViewById(R.id.edit_note_content)
         toolbarTitle = findViewById(R.id.toolbar_title)
-        toolbarDelete = findViewById(R.id.toolbar_delete)
+        toolbarOverflow = findViewById(R.id.toolbar_overflow)
         toolbarBack = findViewById(R.id.toolbar_back)
         formattingToolbar = findViewById(R.id.formatting_toolbar)
 
         findViewById<ImageView>(R.id.toolbar_settings).visibility = View.GONE
         findViewById<ImageView>(R.id.toolbar_add_note).visibility = View.GONE
+        findViewById<ImageView>(R.id.toolbar_delete).visibility = View.GONE
     }
 
     private fun setupFocusListeners() {
@@ -133,7 +135,7 @@ class NoteDetailActivity : ComponentActivity() {
         toolbarBack.visibility = View.VISIBLE
         toolbarBack.setOnClickListener { saveAndFinish() }
         toolbarTitle.setText(R.string.note_detail_title)
-        toolbarDelete.visibility = View.GONE
+        toolbarOverflow.visibility = View.GONE
     }
 
     private fun observeViewModel() {
@@ -143,12 +145,12 @@ class NoteDetailActivity : ComponentActivity() {
                     when (state) {
                         is NoteDetailViewModel.UiState.NewNote -> {
                             toolbarTitle.setText(R.string.note_detail_new_note_title)
-                            toolbarDelete.visibility = View.GONE
+                            toolbarOverflow.visibility = View.GONE
                         }
                         is NoteDetailViewModel.UiState.NoteLoaded -> {
                             toolbarTitle.setText(R.string.note_detail_title)
-                            toolbarDelete.visibility = View.VISIBLE
-                            toolbarDelete.setOnClickListener { showDeleteConfirmation() }
+                            toolbarOverflow.visibility = View.VISIBLE
+                            toolbarOverflow.setOnClickListener { showOverflowMenu() }
                             editTitle.setText(state.note.title ?: "")
                             editContent.text = SpannableStringBuilder(
                                 Html.fromHtml(
@@ -163,6 +165,8 @@ class NoteDetailActivity : ComponentActivity() {
                         }
                         NoteDetailViewModel.UiState.Saved -> finish()
                         NoteDetailViewModel.UiState.Deleted -> finish()
+                        NoteDetailViewModel.UiState.MovedToTrash -> finish()
+                        NoteDetailViewModel.UiState.Archived -> finish()
                         is NoteDetailViewModel.UiState.Error -> {
                             Toast.makeText(
                                 this@NoteDetailActivity,
@@ -199,6 +203,29 @@ class NoteDetailActivity : ComponentActivity() {
             }
             .setNegativeButton(R.string.delete_note_confirm_negative, null)
             .show()
+    }
+
+    private fun showOverflowMenu() {
+        val popupMenu = PopupMenu(this, toolbarOverflow)
+        popupMenu.menuInflater.inflate(R.menu.note_detail_overflow, popupMenu.menu)
+        popupMenu.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.action_move_to_trash -> {
+                    viewModel.moveToTrash()
+                    true
+                }
+                R.id.action_archive -> {
+                    viewModel.archiveNote()
+                    true
+                }
+                R.id.action_delete -> {
+                    showDeleteConfirmation()
+                    true
+                }
+                else -> false
+            }
+        }
+        popupMenu.show()
     }
 
     private fun setupFormattingToolbar() {

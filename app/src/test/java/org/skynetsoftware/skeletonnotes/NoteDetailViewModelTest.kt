@@ -15,8 +15,10 @@ import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
+import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -192,6 +194,90 @@ class NoteDetailViewModelTest {
         }
     }
 
+    @Test
+    fun moveToTrashEmitsMovedToTrash() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val note = Note(
+                id = 5, title = "To Trash", content = "Content",
+                createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()
+            )
+            val repository = FakeNoteDetailRepository(note = note)
+            val viewModel = createViewModel(repository)
+
+            viewModel.loadNote(5)
+            assertTrue(viewModel.uiState.value is NoteDetailViewModel.UiState.NoteLoaded)
+
+            viewModel.moveToTrash()
+            assertEquals(NoteDetailViewModel.UiState.MovedToTrash, viewModel.uiState.value)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun moveToTrashEmitsErrorOnFailure() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val note = Note(
+                id = 5, title = "To Trash", content = "Content",
+                createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()
+            )
+            val repository = FakeNoteDetailRepository(note = note, shouldFailMoveToTrash = true)
+            val viewModel = createViewModel(repository)
+
+            viewModel.loadNote(5)
+            viewModel.moveToTrash()
+
+            val state = viewModel.uiState.value
+            assertTrue(state is NoteDetailViewModel.UiState.Error)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun archiveNoteEmitsArchived() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val note = Note(
+                id = 5, title = "To Archive", content = "Content",
+                createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()
+            )
+            val repository = FakeNoteDetailRepository(note = note)
+            val viewModel = createViewModel(repository)
+
+            viewModel.loadNote(5)
+            assertTrue(viewModel.uiState.value is NoteDetailViewModel.UiState.NoteLoaded)
+
+            viewModel.archiveNote()
+            assertEquals(NoteDetailViewModel.UiState.Archived, viewModel.uiState.value)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun archiveNoteEmitsErrorOnFailure() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val note = Note(
+                id = 5, title = "To Archive", content = "Content",
+                createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()
+            )
+            val repository = FakeNoteDetailRepository(note = note, shouldFailArchive = true)
+            val viewModel = createViewModel(repository)
+
+            viewModel.loadNote(5)
+            viewModel.archiveNote()
+
+            val state = viewModel.uiState.value
+            assertTrue(state is NoteDetailViewModel.UiState.Error)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
     private fun createViewModel(
         repository: FakeNoteDetailRepository = FakeNoteDetailRepository()
     ): NoteDetailViewModel {
@@ -199,6 +285,8 @@ class NoteDetailViewModelTest {
             getNoteByIdUseCase = GetNoteByIdUseCase(repository),
             saveNoteUseCase = SaveNoteUseCase(repository),
             deleteNoteUseCase = DeleteNoteUseCase(repository),
+            moveToTrashUseCase = MoveToTrashUseCase(repository),
+            archiveNoteUseCase = ArchiveNoteUseCase(repository),
         )
     }
 
@@ -209,6 +297,8 @@ class NoteDetailViewModelTest {
         private val shouldFailLoad: Boolean = false,
         private val shouldFailSave: Boolean = false,
         private val shouldFailDelete: Boolean = false,
+        private val shouldFailMoveToTrash: Boolean = false,
+        private val shouldFailArchive: Boolean = false,
     ) : NotesRepository {
         var savedNoteWithAttachments: NoteWithAttachments? = null
 
@@ -228,6 +318,16 @@ class NoteDetailViewModelTest {
 
         override suspend fun deleteNote(id: Long): Result<Unit> {
             if (shouldFailDelete) return Result.Failure(RuntimeException("Delete error"))
+            return Result.Success(Unit)
+        }
+
+        override suspend fun moveToTrash(id: Long): Result<Unit> {
+            if (shouldFailMoveToTrash) return Result.Failure(RuntimeException("Trash error"))
+            return Result.Success(Unit)
+        }
+
+        override suspend fun archiveNote(id: Long): Result<Unit> {
+            if (shouldFailArchive) return Result.Failure(RuntimeException("Archive error"))
             return Result.Success(Unit)
         }
     }

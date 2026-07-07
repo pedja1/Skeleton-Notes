@@ -25,4 +25,12 @@ internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource)
     override suspend fun deleteNote(id: Long): Result<Unit> = withContext(Dispatchers.IO) {
         notesDataSource.deleteNote(id)
     }
+
+    override suspend fun moveToTrash(id: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        notesDataSource.moveToTrash(id)
+    }
+
+    override suspend fun archiveNote(id: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        notesDataSource.archiveNote(id)
+    }
 }

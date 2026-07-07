@@ -1,9 +1,11 @@
 package org.skynetsoftware.skeletonnotes.domain.di
 
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
+import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 
 /**
@@ -39,4 +41,14 @@ object DomainDi {
      * Lazily provides the [DeleteNoteUseCase] singleton.
      */
     val deleteNoteUseCase: DeleteNoteUseCase by lazy { DeleteNoteUseCase(notesRepository) }
+
+    /**
+     * Lazily provides the [MoveToTrashUseCase] singleton.
+     */
+    val moveToTrashUseCase: MoveToTrashUseCase by lazy { MoveToTrashUseCase(notesRepository) }
+
+    /**
+     * Lazily provides the [ArchiveNoteUseCase] singleton.
+     */
+    val archiveNoteUseCase: ArchiveNoteUseCase by lazy { ArchiveNoteUseCase(notesRepository) }
 }

@@ -131,6 +131,40 @@ class NoteRepositoryImplTest {
         assertTrue(result is Result.Failure)
     }
 
+    @Test
+    fun moveToTrashSucceeds() = runBlocking {
+        val result = repository.moveToTrash(1L)
+
+        assertTrue(result is Result.Success)
+        assertEquals(1L, dataSource.trashedNoteId)
+    }
+
+    @Test
+    fun moveToTrashPropagatesFailure() = runBlocking {
+        dataSource.shouldFail = true
+
+        val result = repository.moveToTrash(1L)
+
+        assertTrue(result is Result.Failure)
+    }
+
+    @Test
+    fun archiveNoteSucceeds() = runBlocking {
+        val result = repository.archiveNote(1L)
+
+        assertTrue(result is Result.Success)
+        assertEquals(1L, dataSource.archivedNoteId)
+    }
+
+    @Test
+    fun archiveNotePropagatesFailure() = runBlocking {
+        dataSource.shouldFail = true
+
+        val result = repository.archiveNote(1L)
+
+        assertTrue(result is Result.Failure)
+    }
+
     private class FakeNotesDataSource : NotesDataSource {
 
         var notes: List<Note> = emptyList()
@@ -140,6 +174,8 @@ class NoteRepositoryImplTest {
         )
         val savedNotes = mutableListOf<NoteWithAttachments>()
         var deletedNoteId: Long = -1L
+        var trashedNoteId: Long = -1L
+        var archivedNoteId: Long = -1L
         var shouldFail = false
 
         override suspend fun getAllNotes(): Result<List<Note>> {
@@ -161,6 +197,18 @@ class NoteRepositoryImplTest {
         override suspend fun deleteNote(id: Long): Result<Unit> {
             if (shouldFail) return Result.Failure(RuntimeException("test failure"))
             deletedNoteId = id
+            return Result.Success(Unit)
+        }
+
+        override suspend fun moveToTrash(id: Long): Result<Unit> {
+            if (shouldFail) return Result.Failure(RuntimeException("test failure"))
+            trashedNoteId = id
+            return Result.Success(Unit)
+        }
+
+        override suspend fun archiveNote(id: Long): Result<Unit> {
+            if (shouldFail) return Result.Failure(RuntimeException("test failure"))
+            archivedNoteId = id
             return Result.Success(Unit)
         }
     }

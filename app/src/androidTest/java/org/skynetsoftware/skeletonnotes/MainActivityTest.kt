@@ -48,6 +48,7 @@ class MainActivityTest {
                 created INTEGER NOT NULL,
                 modified INTEGER NOT NULL,
                 tags TEXT,
+                status INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(id)
             )
         """.trimIndent())
@@ -59,9 +60,16 @@ class MainActivityTest {
                 PRIMARY KEY(id)
             )
         """.trimIndent())
-        db.execSQL("DELETE FROM attachments")
-        db.execSQL("DELETE FROM notes")
         db.close()
+
+        runBlocking {
+            val allNotes = DataDi.notesRepository.getAllNotes()
+            if (allNotes is Result.Success) {
+                allNotes.data.forEach { note ->
+                    DataDi.notesRepository.deleteNote(note.id)
+                }
+            }
+        }
     }
 
     @After
@@ -97,9 +105,8 @@ class MainActivityTest {
     @Test
     fun test4_showsNoNotesTextWhenDatabaseIsEmpty() {
         ActivityScenario.launch(MainActivity::class.java).use { _ ->
-            onView(withId(R.id.text_no_notes))
+            onView(withText(R.string.notes_list_no_notes))
                 .check(matches(isDisplayed()))
-                .check(matches(withText(R.string.notes_list_no_notes)))
         }
     }
 
@@ -138,9 +145,8 @@ class MainActivityTest {
         db.close()
 
         ActivityScenario.launch(MainActivity::class.java).use { _ ->
-            onView(withId(R.id.text_no_notes))
+            onView(withText(R.string.notes_list_error))
                 .check(matches(isDisplayed()))
-                .check(matches(withText(R.string.notes_list_error)))
         }
     }
 

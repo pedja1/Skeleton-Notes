@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/toolbar"
     android:layout_width="match_parent"
     android:layout_height="@dimen/toolbar_height"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
     android:paddingStart="@dimen/toolbar_padding_horizontal"
     android:paddingEnd="@dimen/toolbar_padding_horizontal">
 
@@ -11,67 +13,67 @@
         android:id="@+id/toolbar_back"
         android:layout_width="@dimen/toolbar_icon_size"
         android:layout_height="@dimen/toolbar_icon_size"
-        android:layout_alignParentStart="true"
-        android:layout_centerVertical="true"
-        android:src="@drawable/ic_arrow_back"
-        android:contentDescription="@string/toolbar_back"
-        android:tint="?android:textColorPrimary"
+        android:layout_marginEnd="@dimen/toolbar_icon_margin"
         android:background="?android:selectableItemBackgroundBorderless"
+        android:contentDescription="@string/toolbar_back"
+        android:src="@drawable/ic_arrow_back"
+        android:tint="?android:textColorPrimary"
         android:visibility="gone"
-        tools:visibility="visible"
-        android:layout_marginEnd="@dimen/toolbar_icon_margin"/>
+        tools:visibility="visible" />
 
     <TextView
         android:id="@+id/toolbar_title"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
-        android:layout_toEndOf="@id/toolbar_back"
-        android:layout_toStartOf="@id/toolbar_add_note"
         android:layout_marginEnd="@dimen/toolbar_icon_margin"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:lines="1"
         android:text="@string/app_name"
+        android:textColor="?android:textColorPrimary"
         android:textSize="@dimen/toolbar_title_size"
         android:textStyle="bold"
-        android:textColor="?android:textColorPrimary"
-        android:lines="1"
-        android:ellipsize="end"
-        tools:text="Very long title blab bla bla bl bal bal lba"/>
+        tools:text="Very long title asda dasd asd ad adad" />
 
     <ImageView
         android:id="@+id/toolbar_delete"
         android:layout_width="@dimen/toolbar_icon_size"
         android:layout_height="@dimen/toolbar_icon_size"
-        android:layout_alignParentEnd="true"
-        android:layout_centerVertical="true"
-        android:src="@drawable/ic_delete"
-        android:contentDescription="@string/delete_note"
-        android:tint="?android:textColorPrimary"
+        android:layout_marginEnd="@dimen/toolbar_icon_margin"
         android:background="?android:selectableItemBackgroundBorderless"
+        android:contentDescription="@string/delete_note"
+        android:src="@drawable/ic_delete"
+        android:tint="?android:textColorPrimary"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/toolbar_overflow"
+        android:layout_width="@dimen/toolbar_icon_size"
+        android:layout_height="@dimen/toolbar_icon_size"
+        android:background="?android:selectableItemBackgroundBorderless"
+        android:contentDescription="@string/toolbar_more"
+        android:src="@drawable/ic_more_vert"
+        android:tint="?android:textColorPrimary"
         android:visibility="gone" />
 
     <ImageView
         android:id="@+id/toolbar_add_note"
         android:layout_width="@dimen/toolbar_icon_size"
         android:layout_height="@dimen/toolbar_icon_size"
-        android:layout_toStartOf="@id/toolbar_settings"
-        android:layout_centerVertical="true"
         android:layout_marginEnd="@dimen/toolbar_icon_margin"
-        android:src="@drawable/ic_add_note"
+        android:background="?android:selectableItemBackgroundBorderless"
         android:contentDescription="@string/toolbar_add_note"
-        android:tint="?android:textColorPrimary"
-        android:background="?android:selectableItemBackgroundBorderless"/>
+        android:src="@drawable/ic_add_note"
+        android:tint="?android:textColorPrimary" />
 
     <ImageView
         android:id="@+id/toolbar_settings"
         android:layout_width="@dimen/toolbar_icon_size"
         android:layout_height="@dimen/toolbar_icon_size"
-        android:layout_alignParentEnd="true"
-        android:layout_toStartOf="@id/toolbar_delete"
-        android:layout_centerVertical="true"
         android:layout_marginEnd="@dimen/toolbar_icon_margin"
-        android:src="@drawable/ic_settings"
+        android:background="?android:selectableItemBackgroundBorderless"
         android:contentDescription="@string/settings_title"
-        android:tint="?android:textColorPrimary"
-        android:background="?android:selectableItemBackgroundBorderless"/>
+        android:src="@drawable/ic_settings"
+        android:tint="?android:textColorPrimary" />
 
-</RelativeLayout>
+</LinearLayout>

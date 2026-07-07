@@ -13,8 +13,10 @@ import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
+import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.util.TagExtractor
 
@@ -25,6 +27,8 @@ class NoteDetailViewModel(
     private val getNoteByIdUseCase: GetNoteByIdUseCase,
     private val saveNoteUseCase: SaveNoteUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
+    private val moveToTrashUseCase: MoveToTrashUseCase,
+    private val archiveNoteUseCase: ArchiveNoteUseCase,
 ) : ViewModel() {
 
     companion object {
@@ -39,6 +43,8 @@ class NoteDetailViewModel(
                     getNoteByIdUseCase = AppDi.getNoteByIdUseCase,
                     saveNoteUseCase = AppDi.saveNoteUseCase,
                     deleteNoteUseCase = AppDi.deleteNoteUseCase,
+                    moveToTrashUseCase = AppDi.moveToTrashUseCase,
+                    archiveNoteUseCase = AppDi.archiveNoteUseCase,
                 )
             }
         }
@@ -62,6 +68,12 @@ class NoteDetailViewModel(
 
         /** The note has been deleted. */
         object Deleted : UiState()
+
+        /** The note has been moved to trash. */
+        object MovedToTrash : UiState()
+
+        /** The note has been archived. */
+        object Archived : UiState()
 
         /** An error occurred. */
         data class Error(val throwable: Throwable) : UiState()
@@ -140,6 +152,42 @@ class NoteDetailViewModel(
             when (val result = deleteNoteUseCase(noteId)) {
                 is Result.Success -> {
                     _uiState.value = UiState.Deleted
+                }
+                is Result.Failure -> {
+                    _uiState.value = UiState.Error(result.throwable)
+                }
+            }
+        }
+    }
+
+    /**
+     * Moves the currently loaded note to trash. On success emits [UiState.MovedToTrash],
+     * on failure emits [UiState.Error].
+     */
+    fun moveToTrash() {
+        _uiState.value = UiState.Saving
+        viewModelScope.launch {
+            when (val result = moveToTrashUseCase(noteId)) {
+                is Result.Success -> {
+                    _uiState.value = UiState.MovedToTrash
+                }
+                is Result.Failure -> {
+                    _uiState.value = UiState.Error(result.throwable)
+                }
+            }
+        }
+    }
+
+    /**
+     * Archives the currently loaded note. On success emits [UiState.Archived],
+     * on failure emits [UiState.Error].
+     */
+    fun archiveNote() {
+        _uiState.value = UiState.Saving
+        viewModelScope.launch {
+            when (val result = archiveNoteUseCase(noteId)) {
+                is Result.Success -> {
+                    _uiState.value = UiState.Archived
                 }
                 is Result.Failure -> {
                     _uiState.value = UiState.Error(result.throwable)

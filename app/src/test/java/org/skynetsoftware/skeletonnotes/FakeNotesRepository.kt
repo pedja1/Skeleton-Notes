@@ -12,4 +12,6 @@ class FakeNotesRepository(private val notes: List<Note>) : NotesRepository {
     override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Long> =
         Result.Success(noteWithAttachments.note.id)
     override suspend fun deleteNote(id: Long): Result<Unit> = Result.Success(Unit)
+    override suspend fun moveToTrash(id: Long): Result<Unit> = Result.Success(Unit)
+    override suspend fun archiveNote(id: Long): Result<Unit> = Result.Success(Unit)
 }

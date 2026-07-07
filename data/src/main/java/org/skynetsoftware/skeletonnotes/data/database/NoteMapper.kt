@@ -7,12 +7,14 @@ import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelpe
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_ID
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MODIFIED
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_NOTE_ID
+import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_STATUS
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_TAGS
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_TITLE
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_URI
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.TABLE_ATTACHMENTS
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
+import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 
 fun Cursor.toNote(): Note {
@@ -23,6 +25,7 @@ fun Cursor.toNote(): Note {
         createdAt = getLong(getColumnIndexOrThrow(COLUMN_CREATED)),
         modifiedAt = getLong(getColumnIndexOrThrow(COLUMN_MODIFIED)),
         tags = getStringOrNull(getColumnIndexOrThrow(COLUMN_TAGS))?.splitToSequence(",").orEmpty().toSet(),
+        status = NoteStatus.fromValue(getInt(getColumnIndexOrThrow(COLUMN_STATUS))),
     )
 }
 
@@ -65,6 +68,7 @@ fun Note.toContentValues(): ContentValues {
         put(COLUMN_CREATED, createdAt)
         put(COLUMN_MODIFIED, modifiedAt)
         put(COLUMN_TAGS, tags.joinToString(","))
+        put(COLUMN_STATUS, status.value)
     }
 }
 

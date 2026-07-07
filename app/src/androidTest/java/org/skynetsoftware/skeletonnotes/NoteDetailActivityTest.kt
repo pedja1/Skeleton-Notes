@@ -49,7 +49,8 @@ class NoteDetailActivityTest {
                 content TEXT NOT NULL, 
                 created INTEGER NOT NULL, 
                 modified INTEGER NOT NULL, 
-                tags TEXT, 
+                tags TEXT,
+                status INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(id)
             )
         """.trimIndent())
@@ -61,9 +62,16 @@ class NoteDetailActivityTest {
                 PRIMARY KEY(id)
             )
         """.trimIndent())
-        db.execSQL("DELETE FROM attachments")
-        db.execSQL("DELETE FROM notes")
         db.close()
+
+        runBlocking {
+            val allNotes = DataDi.notesRepository.getAllNotes()
+            if (allNotes is Result.Success) {
+                allNotes.data.forEach { note ->
+                    DataDi.notesRepository.deleteNote(note.id)
+                }
+            }
+        }
     }
 
     @After
@@ -89,9 +97,9 @@ class NoteDetailActivityTest {
     }
 
     @Test
-    fun test3_deleteIconIsNotDisplayedWhenCreating() {
+    fun test3_overflowIconIsNotDisplayedWhenCreating() {
         ActivityScenario.launch(NoteDetailActivity::class.java).use { _ ->
-            onView(withId(R.id.toolbar_delete))
+            onView(withId(R.id.toolbar_overflow))
                 .check(matches(not(isDisplayed())))
         }
     }
@@ -157,7 +165,7 @@ class NoteDetailActivityTest {
     }
 
     @Test
-    fun test10_deleteIconIsDisplayedWhenEditing() {
+    fun test10_overflowIconIsDisplayedWhenEditing() {
         val noteId = prePopulateNote()
         val intent = Intent().apply {
             setClassName(
@@ -168,7 +176,7 @@ class NoteDetailActivityTest {
         }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
-            onView(withId(R.id.toolbar_delete))
+            onView(withId(R.id.toolbar_overflow))
                 .check(matches(isDisplayed()))
         }
     }
@@ -323,6 +331,7 @@ class NoteDetailActivityTest {
                 .perform(typeText("Saved Content"), closeSoftKeyboard())
             onView(withId(R.id.toolbar_back)).perform(click())
         }
+        Thread.sleep(1000)
         val result = runBlocking { DataDi.notesRepository.getAllNotes() }
         assertTrue("Should save note on back press", result is Result.Success)
         val notes = (result as Result.Success).data
@@ -339,7 +348,7 @@ class NoteDetailActivityTest {
     }
 
     @Test
-    fun test22_deleteIconShowsConfirmationDialogWhenEditing() {
+    fun test22_overflowMenuShowsDeleteConfirmationDialogWhenEditing() {
         val noteId = prePopulateNote()
         val intent = Intent().apply {
             setClassName(
@@ -350,7 +359,8 @@ class NoteDetailActivityTest {
         }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
-            onView(withId(R.id.toolbar_delete)).perform(click())
+            onView(withId(R.id.toolbar_overflow)).perform(click())
+            onView(withText(R.string.delete_permanently)).perform(click())
             onView(withText(R.string.delete_note_confirm_title))
                 .check(matches(isDisplayed()))
             onView(withText(R.string.delete_note_confirm_message))
@@ -374,7 +384,8 @@ class NoteDetailActivityTest {
         }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
-            onView(withId(R.id.toolbar_delete)).perform(click())
+            onView(withId(R.id.toolbar_overflow)).perform(click())
+            onView(withText(R.string.delete_permanently)).perform(click())
             onView(withText(R.string.delete_note_confirm_positive)).perform(click())
         }
 

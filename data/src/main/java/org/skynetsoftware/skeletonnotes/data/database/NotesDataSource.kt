@@ -13,4 +13,6 @@ internal interface NotesDataSource {
     suspend fun getNoteById(id: Long): Result<NoteWithAttachments>
     suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Long>
     suspend fun deleteNote(id: Long): Result<Unit>
+    suspend fun moveToTrash(id: Long): Result<Unit>
+    suspend fun archiveNote(id: Long): Result<Unit>
 }

@@ -82,5 +82,9 @@ class GetNoteByIdUseCaseTest {
         override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Long> = Result.Success(1L)
 
         override suspend fun deleteNote(id: Long): Result<Unit> = Result.Success(Unit)
+
+        override suspend fun moveToTrash(id: Long): Result<Unit> = Result.Success(Unit)
+
+        override suspend fun archiveNote(id: Long): Result<Unit> = Result.Success(Unit)
     }
 }

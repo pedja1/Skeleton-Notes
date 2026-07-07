@@ -7,4 +7,5 @@ data class Note(
     val createdAt: Long,
     val modifiedAt: Long,
     val tags: Set<String>,
+    val status: NoteStatus = NoteStatus.ACTIVE,
 )

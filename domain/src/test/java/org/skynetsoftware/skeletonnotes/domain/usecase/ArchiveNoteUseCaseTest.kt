@@ -8,12 +8,12 @@ import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 
-class DeleteNoteUseCaseTest {
+class ArchiveNoteUseCaseTest {
     @Test
-    fun deletesNoteSuccessfully() =
+    fun archivesSuccessfully() =
         runTest {
-            val repository = FakeDeleteRepository()
-            val useCase = DeleteNoteUseCase(repository)
+            val repository = FakeArchiveRepository()
+            val useCase = ArchiveNoteUseCase(repository)
 
             val result = useCase(5)
             assertTrue(result is Result.Success)
@@ -22,18 +22,18 @@ class DeleteNoteUseCaseTest {
     @Test
     fun returnsErrorWhenRepositoryFails() =
         runTest {
-            val repository = FakeDeleteRepository(shouldFail = true)
-            val useCase = DeleteNoteUseCase(repository)
+            val repository = FakeArchiveRepository(shouldFail = true)
+            val useCase = ArchiveNoteUseCase(repository)
 
             val result = useCase(5)
             assertTrue(result is Result.Failure)
         }
 
     @Test
-    fun deletesAndCanBeCalledMultipleTimes() =
+    fun archivesAndCanBeCalledMultipleTimes() =
         runTest {
-            val repository = FakeDeleteRepository()
-            val useCase = DeleteNoteUseCase(repository)
+            val repository = FakeArchiveRepository()
+            val useCase = ArchiveNoteUseCase(repository)
 
             val result1 = useCase(1)
             val result2 = useCase(2)
@@ -41,7 +41,7 @@ class DeleteNoteUseCaseTest {
             assertTrue(result2 is Result.Success)
         }
 
-    private class FakeDeleteRepository(
+    private class FakeArchiveRepository(
         private val shouldFail: Boolean = false,
     ) : NotesRepository {
         override suspend fun getAllNotes(): Result<List<Note>> = Result.Success(emptyList())
@@ -56,13 +56,13 @@ class DeleteNoteUseCaseTest {
 
         override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Long> = Result.Success(1L)
 
-        override suspend fun deleteNote(id: Long): Result<Unit> {
-            if (shouldFail) return Result.Failure(RuntimeException("Delete error"))
-            return Result.Success(Unit)
-        }
+        override suspend fun deleteNote(id: Long): Result<Unit> = Result.Success(Unit)
 
         override suspend fun moveToTrash(id: Long): Result<Unit> = Result.Success(Unit)
 
-        override suspend fun archiveNote(id: Long): Result<Unit> = Result.Success(Unit)
+        override suspend fun archiveNote(id: Long): Result<Unit> {
+            if (shouldFail) return Result.Failure(RuntimeException("Archive error"))
+            return Result.Success(Unit)
+        }
     }
 }

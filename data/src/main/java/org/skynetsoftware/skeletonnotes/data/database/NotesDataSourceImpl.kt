@@ -1,15 +1,18 @@
 package org.skynetsoftware.skeletonnotes.data.database
 
+import android.content.ContentValues
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_ID
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MODIFIED
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_NOTE_ID
+import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_STATUS
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_URI
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.TABLE_ATTACHMENTS
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.TABLE_NOTES
 import org.skynetsoftware.skeletonnotes.domain.model.Note
+import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 
@@ -48,12 +51,12 @@ internal class NotesDataSourceImpl(
             val database = skeletonNotesDatabaseHelper.writableDatabase
             cursor = database.rawQuery(
                 """
-                SELECT 
-                    $TABLE_NOTES.*, 
+                SELECT
+                    $TABLE_NOTES.*,
                     $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
                     $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
                     $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI
-                FROM $TABLE_NOTES 
+                FROM $TABLE_NOTES
                 LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
                 WHERE $TABLE_NOTES.$COLUMN_ID = ?
                 ORDER BY $TABLE_NOTES.$COLUMN_MODIFIED DESC
@@ -116,6 +119,36 @@ internal class NotesDataSourceImpl(
             Result.Failure(t)
         } finally {
             database?.endTransaction()
+        }
+    }
+
+    override suspend fun moveToTrash(id: Long): Result<Unit> {
+        return try {
+            val database = skeletonNotesDatabaseHelper.writableDatabase
+            val values = ContentValues().apply {
+                put(COLUMN_STATUS, NoteStatus.TRASH.value)
+            }
+            database.update(TABLE_NOTES, values, "$COLUMN_ID = ?", arrayOf(id.toString()))
+            Log.d(TAG, "moveToTrash: $id")
+            Result.Success(Unit)
+        } catch (t: Throwable) {
+            Log.e(TAG, null, t)
+            Result.Failure(t)
+        }
+    }
+
+    override suspend fun archiveNote(id: Long): Result<Unit> {
+        return try {
+            val database = skeletonNotesDatabaseHelper.writableDatabase
+            val values = ContentValues().apply {
+                put(COLUMN_STATUS, NoteStatus.ARCHIVE.value)
+            }
+            database.update(TABLE_NOTES, values, "$COLUMN_ID = ?", arrayOf(id.toString()))
+            Log.d(TAG, "archiveNote: $id")
+            Result.Success(Unit)
+        } catch (t: Throwable) {
+            Log.e(TAG, null, t)
+            Result.Failure(t)
         }
     }
 }
