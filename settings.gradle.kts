@@ -26,4 +26,3 @@ rootProject.name = "Skeleton Notes"
 include(":app")
 include(":domain")
 include(":data")
-include(":markdown")

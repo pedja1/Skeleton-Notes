@@ -24,7 +24,6 @@
             <option value="$PROJECT_DIR$/buildSrc" />
             <option value="$PROJECT_DIR$/data" />
             <option value="$PROJECT_DIR$/domain" />
-            <option value="$PROJECT_DIR$/markdown" />
           </set>
         </option>
       </GradleProjectSettings>
