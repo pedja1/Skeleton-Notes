@@ -17,6 +17,13 @@
 ### Submitting issues/bugs/feature requests
 - I mean, there is literaly a tab called Issues above 🤷
 
+### Technology Stack
+- Latest android technologies and tools are used
+- XML for UI
+- SQLiteOpenHelper with Curosor and ContentValues for database
+- Activity for every screen
+- [r/Pretend2010Internet ](https://www.reddit.com/r/Pretend2010Internet/)
+
 ### Contributing
 #### Ok, this section is serious
 - PR description is required, please describe what your PR does, PRs without description will be rejected
