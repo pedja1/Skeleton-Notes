@@ -1,4 +1,4 @@
-# 💀 Skeleton Notes
+# 💀 Skeleton Notes 
 ## Dead simple note taking app ⚰️
 
 ### Feature
