@@ -21,6 +21,7 @@ import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Concrete [NotesDataSource] implementation backed by [SkeletonNotesDatabaseHelper].
@@ -33,7 +34,7 @@ internal class NotesDataSourceImpl(
         private const val TAG = "NotesDataSource"
     }
 
-    private val getNoteByIdFlows = hashMapOf<String, MutableSharedFlow<Unit>>()
+    private val getNoteByIdFlows = ConcurrentHashMap<String, MutableSharedFlow<Unit>>()
     private val getAllNotesChangedFlow = MutableSharedFlow<Unit>(replay = 1)
 
     init {
@@ -78,13 +79,10 @@ internal class NotesDataSourceImpl(
      * @see NotesDataSource.getNoteByIdFlow
      */
     override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> {
-        var flow = getNoteByIdFlows[id]
-        if (flow == null) {
-            getNoteByIdFlows[id] = MutableSharedFlow(replay = 1)
-            flow = getNoteByIdFlows[id]
-            flow?.tryEmit(Unit)
+        val flow = getNoteByIdFlows.getOrPut(id) {
+            MutableSharedFlow<Unit>(replay = 1).apply { tryEmit(Unit) }
         }
-        return flow!!.map {
+        return flow.map {
             getNoteById(id)
         }
     }

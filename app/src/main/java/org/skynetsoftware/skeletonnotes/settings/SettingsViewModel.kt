@@ -29,6 +29,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncResult
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * ViewModel for the Settings screen, managing Nextcloud connection
@@ -100,16 +101,17 @@ class SettingsViewModel(
      * the login page in a Custom Tab and starts polling for completion.
      */
     fun initiateNextcloudLogin(nextcloudServerUrl: String) {
-        if (nextcloudServerUrl.isBlank()) {
+        val normalizedUrl = normalizeServerUrl(nextcloudServerUrl)
+        if (normalizedUrl == null) {
             nextcloudLoginError.value = AppDi.application.getString(R.string.nextcloud_server_url_invalid)
             _nextcloudLoginState.value = NextcloudLoginState.LoginError
             return
         }
         pollingJob?.cancel()
-        _nextcloudServerUrl.value = nextcloudServerUrl
+        _nextcloudServerUrl.value = normalizedUrl
         _nextcloudLoginState.value = NextcloudLoginState.InitiatingLogin
         viewModelScope.launch {
-            when (val result = initiateNextcloudLogin.invoke(nextcloudServerUrl)) {
+            when (val result = initiateNextcloudLogin.invoke(normalizedUrl)) {
                 is Result.Success -> {
                     val data = result.data
                     _nextcloudLoginState.value = NextcloudLoginState.WaitingForLogin
@@ -133,13 +135,13 @@ class SettingsViewModel(
     private fun startPolling(token: String, endpoint: String) {
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
-            val authenticated = withTimeoutOrNull(POLL_TIMEOUT_MS) {
+            val authenticated = withTimeoutOrNull(POLL_TIMEOUT_MS.milliseconds) {
                 while (isActive) {
                     val status = pollNextcloudLogin.invoke(token, endpoint)
                     if (status is NextcloudPollStatus.Authenticated) {
                         return@withTimeoutOrNull status.info
                     }
-                    delay(POLL_INTERVAL_MS)
+                    delay(POLL_INTERVAL_MS.milliseconds)
                 }
                 null
             }
@@ -150,6 +152,21 @@ class SettingsViewModel(
                 _nextcloudLoginState.value = NextcloudLoginState.LoginError
             }
         }
+    }
+
+    /**
+     * Validates and normalizes a user-entered server URL. A missing scheme defaults to `https://`;
+     * any non-HTTPS scheme (including cleartext `http://`) is rejected so credentials are never sent
+     * over an insecure connection. Returns the normalized URL, or `null` if invalid.
+     */
+    private fun normalizeServerUrl(input: String): String? {
+        val trimmed = input.trim()
+        if (trimmed.isBlank()) return null
+        val withScheme = if (trimmed.contains("://")) trimmed else "https://$trimmed"
+        if (!withScheme.startsWith("https://", ignoreCase = true)) return null
+        val host = withScheme.removePrefix("https://").substringBefore('/')
+        if (host.isBlank()) return null
+        return withScheme.trimEnd('/')
     }
 
     /**

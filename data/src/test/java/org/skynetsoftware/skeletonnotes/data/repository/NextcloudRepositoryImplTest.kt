@@ -6,13 +6,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
-import org.skynetsoftware.skeletonnotes.data.mapper.jsonToNextcloudNote
 import org.skynetsoftware.skeletonnotes.data.mapper.nextcloudNoteToJson
 import org.skynetsoftware.skeletonnotes.data.network.NextcloudApi
 import org.skynetsoftware.skeletonnotes.domain.model.Result
@@ -178,6 +178,18 @@ class NextcloudRepositoryImplTest {
     }
 
     @Test
+    fun uploadAttachmentReturnsFailureWhenCreateDirectoryFails() = runBlocking {
+        api.createDirectoryResult = Result.Failure(Exception("mkcol failed"))
+        api.uploadFileResult = Result.Success(Unit)
+
+        val result = repository.uploadAttachment("note1", "att1", "file.png", byteArrayOf(1))
+
+        assertTrue(result is Result.Failure)
+        // Upload must not be attempted when the directory could not be created.
+        assertNull(api.lastUploadFilePath)
+    }
+
+    @Test
     fun downloadAttachmentDelegatesToApi() = runBlocking {
         val expected = byteArrayOf(4, 5, 6)
         api.downloadFileResult = Result.Success(expected)
@@ -187,6 +199,18 @@ class NextcloudRepositoryImplTest {
         assertEquals("note1/att1_file.png", api.lastDownloadFilePath)
         assertTrue(result is Result.Success)
         assertEquals(expected, (result as Result.Success).data)
+    }
+
+    @Test
+    fun downloadAttachmentSanitizesPathTraversalFilename() = runBlocking {
+        api.downloadFileResult = Result.Success(byteArrayOf(1))
+
+        repository.downloadAttachment("note1", "att1", "../../../etc/passwd")
+
+        val path = api.lastDownloadFilePath
+        assertNotNull(path)
+        assertFalse(path!!.contains(".."))
+        assertEquals("note1/att1_passwd", path)
     }
 
     @Test
@@ -208,6 +232,15 @@ class NextcloudRepositoryImplTest {
         assertTrue(api.deletedFilePaths.contains("note1/"))
         assertTrue(api.deletedFilePaths.contains("note1.json"))
         assertTrue(result is Result.Success)
+    }
+
+    @Test
+    fun deleteRemoteNoteDirectoryReturnsFailureWhenDirectoryDeleteFails() = runBlocking {
+        api.deleteFileResult = Result.Failure(Exception("delete failed"))
+
+        val result = repository.deleteRemoteNoteDirectory("note1")
+
+        assertTrue(result is Result.Failure)
     }
 
     private class FakeNextcloudApi : NextcloudApi {

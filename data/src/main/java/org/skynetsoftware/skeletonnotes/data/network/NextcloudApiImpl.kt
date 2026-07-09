@@ -4,6 +4,7 @@ import android.util.Base64
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -20,6 +21,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
+import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
 
 /**
@@ -30,8 +32,10 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
     companion object {
         private const val TAG = "NextcloudApi"
         private const val SYNC_FOLDER = ".skeleton_notes"
-        private val JSON_MEDIA_TYPE = "application/json".toMediaType()
-        private val FORM_MEDIA_TYPE = "application/x-www-form-urlencoded".toMediaType()
+        private const val FEATURE_DISALLOW_DOCTYPE = "http://apache.org/xml/features/disallow-doctype-decl"
+        private const val FEATURE_EXTERNAL_GENERAL_ENTITIES = "http://xml.org/sax/features/external-general-entities"
+        private const val FEATURE_EXTERNAL_PARAMETER_ENTITIES =
+            "http://xml.org/sax/features/external-parameter-entities"
     }
 
     private val httpClient = OkHttpClient.Builder()
@@ -113,7 +117,7 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
         endpoint: String,
     ): NextcloudPollStatus = withContext(Dispatchers.IO) {
         try {
-            val body = "token=$token".toRequestBody(FORM_MEDIA_TYPE)
+            val body = FormBody.Builder().add("token", token).build()
             val request = Request.Builder()
                 .url(endpoint)
                 .post(body)
@@ -239,7 +243,8 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
 
             val response = httpClient.newCall(request).execute()
             response.use { resp ->
-                if (resp.code in 200..204) {
+                // 404 means the resource is already gone; treat delete as idempotent success.
+                if (resp.code in 200..204 || resp.code == 404) {
                     Result.Success(Unit)
                 } else {
                     Log.e(TAG, "deleteFile failed: ${resp.code} ${resp.body?.string()}")
@@ -309,9 +314,7 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
      */
     private fun parsePropfindResponse(xml: String, basePath: String): Result<List<RemoteFileInfo>> {
         return try {
-            val factory = DocumentBuilderFactory.newInstance()
-            factory.isNamespaceAware = true
-            val builder = factory.newDocumentBuilder()
+            val builder = newSecureDocumentBuilder()
             val doc = builder.parse(xml.byteInputStream())
 
             val responses = doc.getElementsByTagNameNS("DAV:", "response")
@@ -326,6 +329,22 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
             Log.e(TAG, "parsePropfindResponse error", t)
             Result.Failure(t)
         }
+    }
+
+    /**
+     * Creates a [DocumentBuilder] hardened against XML External Entity (XXE) attacks by disabling
+     * DOCTYPE declarations and external entity resolution, so a malicious or compromised server
+     * response cannot trigger local-file disclosure or SSRF.
+     */
+    private fun newSecureDocumentBuilder(): DocumentBuilder {
+        val factory = DocumentBuilderFactory.newInstance()
+        factory.setFeature(FEATURE_DISALLOW_DOCTYPE, true)
+        factory.setFeature(FEATURE_EXTERNAL_GENERAL_ENTITIES, false)
+        factory.setFeature(FEATURE_EXTERNAL_PARAMETER_ENTITIES, false)
+        factory.setXIncludeAware(false)
+        factory.isExpandEntityReferences = false
+        factory.isNamespaceAware = true
+        return factory.newDocumentBuilder()
     }
 
     /**
@@ -370,6 +389,12 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
                     timeZone = TimeZone.getTimeZone("GMT")
                 },
                 SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("GMT")
+                },
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("GMT")
+                },
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).apply {
                     timeZone = TimeZone.getTimeZone("GMT")
                 },
             )

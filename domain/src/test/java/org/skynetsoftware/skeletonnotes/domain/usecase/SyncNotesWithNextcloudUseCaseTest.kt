@@ -478,6 +478,37 @@ class SyncNotesWithNextcloudUseCaseTest {
             assertTrue(notesRepo.trashedNoteIds.contains("note1"))
         }
 
+    @Test
+    fun syncReturnsErrorAndKeepsTimestampWhenUploadFails() =
+        runTest {
+            val notesRepo =
+                FakeNotesRepo(
+                    notes =
+                        listOf(
+                            Note(
+                                id = "note1",
+                                title = "Local",
+                                content = "content",
+                                createdAt = 1000L,
+                                modifiedAt = 3000L,
+                                tags = emptySet(),
+                                remoteLastModified = 0L,
+                            ),
+                        ),
+                )
+            val ncRepo = FakeNextcloudRepo(remoteFiles = emptyList(), uploadNoteFails = true)
+            val settingsRepository = FakeSettingsRepository()
+            val useCase =
+                SyncNotesWithNextcloudUseCase(notesRepo, ncRepo, FakeAttachmentFileStorage(), settingsRepository)
+
+            val result = useCase()
+
+            assertTrue(result is Result.Success)
+            assertTrue((result as Result.Success).data is SyncResult.Error)
+            // The last-sync timestamp must not advance so the failed push is retried next time.
+            assertEquals(0L, (settingsRepository.nextcloudLastSyncTimestamp as MutableStateFlow).value)
+        }
+
     private fun createUseCase(
         notesRepo: FakeNotesRepo,
         ncRepo: FakeNextcloudRepo,
@@ -532,6 +563,7 @@ class SyncNotesWithNextcloudUseCaseTest {
         private val afterUploadFiles: List<RemoteFileInfo> = emptyList(),
         private val listFails: Boolean = false,
         private val attachmentDownloadFails: Boolean = false,
+        private val uploadNoteFails: Boolean = false,
     ) : NextcloudRepository {
         val uploadedNotes = mutableListOf<NextcloudNote>()
         val uploadedAttachments = mutableListOf<Triple<String, String, String>>()
@@ -567,7 +599,7 @@ class SyncNotesWithNextcloudUseCaseTest {
         override suspend fun uploadNote(note: NextcloudNote): Result<Unit> {
             uploadedNotes.add(note)
             uploadCalled = true
-            return Result.Success(Unit)
+            return if (uploadNoteFails) Result.Failure(Exception("upload failed")) else Result.Success(Unit)
         }
 
         override suspend fun deleteRemoteNote(uuid: String) = Result.Success(Unit)

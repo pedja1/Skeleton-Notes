@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import org.skynetsoftware.skeletonnotes.di.AppDi
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
+import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
@@ -91,6 +92,12 @@ class NoteDetailViewModel(
     private var currentAttachments: List<Attachment> = emptyList()
     private var isInitialized = false
 
+    /**
+     * The note as loaded from the repository, retained so that a save preserves original metadata
+     * (creation timestamp, status, remote sync marker) that the edit screen does not expose.
+     */
+    private var loadedNote: Note? = null
+
     init {
         if (isNewNote) {
             isInitialized = true
@@ -100,6 +107,7 @@ class NoteDetailViewModel(
                     is Result.Success -> {
                         val data = result.data
                         currentAttachments = data.attachments
+                        loadedNote = data.note
                         _uiState.value = UiState.NoteLoaded(data.note, data.attachments)
                     }
                     is Result.Failure -> {
@@ -123,13 +131,16 @@ class NoteDetailViewModel(
         viewModelScope.launch {
             val tags = TagExtractor.extractTags(content)
             val now = System.currentTimeMillis()
+            val existing = loadedNote
             val note = Note(
                 id = noteId,
                 title = title,
                 content = content,
-                createdAt = now,
+                createdAt = existing?.createdAt ?: now,
                 modifiedAt = now,
                 tags = tags,
+                status = existing?.status ?: NoteStatus.ACTIVE,
+                remoteLastModified = existing?.remoteLastModified ?: 0L,
             )
             val attachmentsWithNoteId = attachments.map { it.copy(noteId = noteId) }
             when (val result = saveNoteUseCase(NoteWithAttachments(note, attachmentsWithNoteId))) {

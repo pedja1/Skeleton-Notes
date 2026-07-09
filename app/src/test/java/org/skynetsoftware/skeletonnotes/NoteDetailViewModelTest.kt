@@ -12,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
+import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
@@ -206,6 +207,31 @@ class NoteDetailViewModelTest {
             viewModel.saveNote("Updated", "Updated content", emptyList())
             assertEquals(NoteDetailViewModel.UiState.Saved, viewModel.uiState.value)
             assertEquals("10", viewModel.noteId)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun savePreservesOriginalMetadataWhenEditingExistingNote() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val note = Note(
+                id = "10", title = "Existing", content = "Content",
+                createdAt = 1000L, modifiedAt = 2000L, tags = emptySet(),
+                status = NoteStatus.ARCHIVE, remoteLastModified = 1500L,
+            )
+            val repository = FakeNoteDetailRepository(note = note)
+            val viewModel = createViewModel("10", repository)
+
+            viewModel.saveNote("Updated", "Updated content", emptyList())
+
+            val saved = repository.savedNoteWithAttachments?.note
+            assertEquals(1000L, saved?.createdAt)
+            assertEquals(NoteStatus.ARCHIVE, saved?.status)
+            assertEquals(1500L, saved?.remoteLastModified)
+            assertTrue((saved?.modifiedAt ?: 0L) > 2000L)
         } finally {
             Dispatchers.resetMain()
         }

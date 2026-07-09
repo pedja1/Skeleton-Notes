@@ -89,9 +89,10 @@ internal class NextcloudRepositoryImpl(
         filename: String,
         bytes: ByteArray,
     ): Result<Unit> {
-        nextcloudApi.createDirectory("$noteId/")
+        val dirResult = nextcloudApi.createDirectory("$noteId/")
+        if (dirResult is Result.Failure) return dirResult
         return nextcloudApi.uploadFile(
-            "$noteId/${attachmentId}_$filename",
+            "$noteId/${attachmentId}_${sanitizeSegment(filename)}",
             bytes,
             "application/octet-stream",
         )
@@ -105,7 +106,7 @@ internal class NextcloudRepositoryImpl(
         attachmentId: String,
         filename: String,
     ): Result<ByteArray> {
-        return nextcloudApi.downloadFile("$noteId/${attachmentId}_$filename")
+        return nextcloudApi.downloadFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}")
     }
 
     /**
@@ -116,14 +117,26 @@ internal class NextcloudRepositoryImpl(
         attachmentId: String,
         filename: String,
     ): Result<Unit> {
-        return nextcloudApi.deleteFile("$noteId/${attachmentId}_$filename")
+        return nextcloudApi.deleteFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}")
+    }
+
+    /**
+     * Reduces a filename to a single safe path segment, stripping any directory components and
+     * parent-directory references so a server-supplied filename cannot traverse outside the note's
+     * folder when building a WebDAV path.
+     */
+    private fun sanitizeSegment(filename: String): String {
+        val base = filename.substringAfterLast('/').substringAfterLast('\\')
+        val cleaned = base.replace("..", "")
+        return cleaned.ifBlank { "file" }
     }
 
     /**
      * Deletes the entire note directory including all attachment files and the JSON file.
      */
     override suspend fun deleteRemoteNoteDirectory(uuid: String): Result<Unit> {
-        nextcloudApi.deleteFile("$uuid/")
+        val dirResult = nextcloudApi.deleteFile("$uuid/")
+        if (dirResult is Result.Failure) return dirResult
         return nextcloudApi.deleteFile("$uuid.json")
     }
 }

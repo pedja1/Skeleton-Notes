@@ -15,6 +15,7 @@ import org.junit.Test
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
+import java.io.File
 
 class NextcloudApiImplTest {
 
@@ -262,6 +263,32 @@ class NextcloudApiImplTest {
     }
 
     @Test
+    fun listDirectoryRejectsXxeExternalEntityPayload(): Unit = runBlocking {
+        val secretFile = File.createTempFile("xxe-secret", ".txt")
+        secretFile.writeText("TOP_SECRET_CONTENTS")
+        try {
+            configureAuthUser()
+            enqueueSyncFolderSuccess()
+            mockWebServer.enqueue(
+                MockResponse()
+                    .setResponseCode(207)
+                    .setBody(generatePropfindResponseWithXxe(secretFile.absolutePath))
+                    .setHeader("Content-Type", "application/xml; charset=utf-8")
+            )
+
+            val result = api.listDirectory("")
+
+            // The DOCTYPE must be rejected outright so the external entity is never resolved.
+            assertTrue(result is Result.Failure)
+            val leaked = (result as? Result.Success)?.data.orEmpty()
+                .any { it.filename.contains("TOP_SECRET_CONTENTS") }
+            assertTrue("XXE payload must not leak local file contents", !leaked)
+        } finally {
+            secretFile.delete()
+        }
+    }
+
+    @Test
     fun listDirectoryReturnsFailureOnServerError(): Unit = runBlocking {
         configureAuthUser()
         enqueueSyncFolderSuccess()
@@ -381,6 +408,16 @@ class NextcloudApiImplTest {
         mockWebServer.enqueue(MockResponse().setResponseCode(200))
 
         val result = api.deleteFile("notes/old.md")
+
+        assertTrue(result is Result.Success)
+    }
+
+    @Test
+    fun deleteFileReturnsSuccessOn404AlreadyGone(): Unit = runBlocking {
+        configureAuthUser()
+        mockWebServer.enqueue(MockResponse().setResponseCode(404))
+
+        val result = api.deleteFile("notes/missing.md")
 
         assertTrue(result is Result.Success)
     }
@@ -518,6 +555,24 @@ class NextcloudApiImplTest {
                 <d:propstat>
                   <d:prop>
                     <d:resourcetype><d:collection/></d:resourcetype>
+                  </d:prop>
+                  <d:status>HTTP/1.1 200 OK</d:status>
+                </d:propstat>
+              </d:response>
+            </d:multistatus>
+        """.trimIndent()
+    }
+
+    private fun generatePropfindResponseWithXxe(secretFilePath: String): String {
+        return """
+            <?xml version="1.0" encoding="utf-8"?>
+            <!DOCTYPE multistatus [ <!ENTITY xxe SYSTEM "file://$secretFilePath"> ]>
+            <d:multistatus xmlns:d="DAV:">
+              <d:response>
+                <d:href>/remote.php/dav/files/testuser/.skeleton_notes/&xxe;.md</d:href>
+                <d:propstat>
+                  <d:prop>
+                    <d:getlastmodified>Mon, 01 Jan 2024 12:00:00 GMT</d:getlastmodified>
                   </d:prop>
                   <d:status>HTTP/1.1 200 OK</d:status>
                 </d:propstat>

@@ -47,19 +47,26 @@ open class SyncNotesWithNextcloudUseCase(
             val localNoteMap = localNotes.associateBy { it.id }
             val conflicts = mutableListOf<NoteConflict>()
             val pushedNotes = mutableListOf<Note>()
+            val errors = mutableListOf<Throwable>()
 
             for (localNote in localNotes) {
-                reconcileLocalNote(localNote, remoteFileMap[localNote.id], conflicts, pushedNotes)
+                reconcileLocalNote(localNote, remoteFileMap[localNote.id], conflicts, pushedNotes, errors)
             }
 
             for ((uuid, remoteFile) in remoteFileMap) {
                 if (uuid !in localNoteMap) {
-                    pullNote(uuid, remoteFile.lastModified)
+                    pullNote(uuid, remoteFile.lastModified, errors)
                 }
             }
 
-            trashRemotelyDeletedNotes(localNoteMap, remoteFileMap)
-            updatePushedNotesRemoteMtime(pushedNotes)
+            trashRemotelyDeletedNotes(localNoteMap, remoteFileMap, errors)
+            updatePushedNotesRemoteMtime(pushedNotes, errors)
+
+            if (errors.isNotEmpty()) {
+                // At least one note-level operation failed. Do not advance the last-sync timestamp
+                // and do not report success, so the failed changes are retried on the next sync.
+                return Result.Success(SyncResult.Error(aggregateError(errors)))
+            }
 
             val result =
                 if (conflicts.isNotEmpty()) {
@@ -72,6 +79,15 @@ open class SyncNotesWithNextcloudUseCase(
         } catch (t: Throwable) {
             Result.Success(SyncResult.Error(t))
         }
+    }
+
+    /**
+     * Combines multiple per-operation failures into a single throwable, keeping the first as the
+     * cause so the original stack trace is preserved.
+     */
+    private fun aggregateError(errors: List<Throwable>): Throwable {
+        if (errors.size == 1) return errors.first()
+        return Exception("Sync completed with ${errors.size} failed operation(s)", errors.first())
     }
 
     /**
@@ -94,9 +110,10 @@ open class SyncNotesWithNextcloudUseCase(
         remoteFile: RemoteFileInfo?,
         conflicts: MutableList<NoteConflict>,
         pushedNotes: MutableList<Note>,
+        errors: MutableList<Throwable>,
     ) {
         if (localNote.status == NoteStatus.TRASH) {
-            nextcloudRepository.deleteRemoteNoteDirectory(localNote.id)
+            recordFailure(nextcloudRepository.deleteRemoteNoteDirectory(localNote.id), errors)
             return
         }
 
@@ -105,7 +122,7 @@ open class SyncNotesWithNextcloudUseCase(
             // a previously-synced note that vanished remotely is a remote deletion and is
             // handled by trashRemotelyDeletedNotes, so it must not be re-uploaded here.
             if (localNote.remoteLastModified == 0L) {
-                pushNote(localNote)
+                pushNote(localNote, errors)
                 pushedNotes.add(localNote)
             }
             return
@@ -117,12 +134,23 @@ open class SyncNotesWithNextcloudUseCase(
         when {
             localChanged && remoteChanged ->
                 conflicts.add(NoteConflict(localNote = localNote, remoteNoteId = localNote.id))
-            remoteChanged -> pullNote(localNote.id, remoteFile.lastModified)
+            remoteChanged -> pullNote(localNote.id, remoteFile.lastModified, errors)
             localChanged -> {
-                pushNote(localNote)
+                pushNote(localNote, errors)
                 pushedNotes.add(localNote)
             }
         }
+    }
+
+    /**
+     * Records the throwable of a failed [Result] into [errors] so the overall sync can report
+     * failure. Successful results are ignored.
+     */
+    private fun recordFailure(
+        result: Result<Unit>,
+        errors: MutableList<Throwable>,
+    ) {
+        if (result is Result.Failure) errors.add(result.throwable)
     }
 
     /**
@@ -133,13 +161,14 @@ open class SyncNotesWithNextcloudUseCase(
     private suspend fun trashRemotelyDeletedNotes(
         localNoteMap: Map<String, Note>,
         remoteFileMap: Map<String, RemoteFileInfo>,
+        errors: MutableList<Throwable>,
     ) {
         val remoteDeletedIds =
             localNoteMap
                 .filterValues { it.remoteLastModified > 0L }
                 .keys - remoteFileMap.keys
         for (deletedId in remoteDeletedIds) {
-            notesRepository.moveToTrash(deletedId)
+            recordFailure(notesRepository.moveToTrash(deletedId), errors)
         }
     }
 
@@ -147,13 +176,19 @@ open class SyncNotesWithNextcloudUseCase(
      * Re-lists the remote folder once and records the server's post-upload mtime for each pushed note,
      * so the next sync does not see the just-pushed note as remotely changed (which would cause a spurious conflict).
      */
-    private suspend fun updatePushedNotesRemoteMtime(pushedNotes: List<Note>) {
+    private suspend fun updatePushedNotesRemoteMtime(
+        pushedNotes: List<Note>,
+        errors: MutableList<Throwable>,
+    ) {
         if (pushedNotes.isEmpty()) return
 
         val refreshed =
             when (val result = loadRemoteFileMap()) {
                 is Result.Success -> result.data
-                is Result.Failure -> return
+                is Result.Failure -> {
+                    errors.add(result.throwable)
+                    return
+                }
             }
 
         for (note in pushedNotes) {
@@ -163,11 +198,14 @@ open class SyncNotesWithNextcloudUseCase(
                     is Result.Success -> result.data
                     else -> NoteWithAttachments(note, emptyList())
                 }
-            notesRepository.saveNote(
-                NoteWithAttachments(
-                    current.note.copy(remoteLastModified = mtime),
-                    current.attachments,
+            recordFailure(
+                notesRepository.saveNote(
+                    NoteWithAttachments(
+                        current.note.copy(remoteLastModified = mtime),
+                        current.attachments,
+                    ),
                 ),
+                errors,
             )
         }
     }
@@ -181,11 +219,15 @@ open class SyncNotesWithNextcloudUseCase(
     private suspend fun pullNote(
         uuid: String,
         remoteLastModified: Long,
+        errors: MutableList<Throwable>,
     ) {
         val remoteNote =
             when (val result = nextcloudRepository.downloadNote(uuid)) {
                 is Result.Success -> result.data
-                else -> return
+                is Result.Failure -> {
+                    errors.add(result.throwable)
+                    return
+                }
             }
 
         val existing =
@@ -196,7 +238,6 @@ open class SyncNotesWithNextcloudUseCase(
 
         val note = remoteNote.toNote(uuid, remoteLastModified)
 
-        val remoteAttachmentIds = remoteNote.attachments.map { it.id }.toSet()
         val existingAttachments = existing?.attachments ?: emptyList()
         val existingAttachmentMap = existingAttachments.associateBy { it.id }
 
@@ -227,7 +268,7 @@ open class SyncNotesWithNextcloudUseCase(
             }
         }
 
-        notesRepository.saveNote(NoteWithAttachments(note, mergedAttachments))
+        recordFailure(notesRepository.saveNote(NoteWithAttachments(note, mergedAttachments)), errors)
     }
 
     /**
@@ -236,8 +277,12 @@ open class SyncNotesWithNextcloudUseCase(
      * once the server's post-upload mtime is known.
      *
      * @param note the local note to push
+     * @param errors accumulator for failed upload operations
      */
-    private suspend fun pushNote(note: Note) {
+    private suspend fun pushNote(
+        note: Note,
+        errors: MutableList<Throwable>,
+    ) {
         val localNoteWithAttachments =
             when (val result = notesRepository.getNoteById(note.id)) {
                 is Result.Success -> result.data
@@ -255,17 +300,20 @@ open class SyncNotesWithNextcloudUseCase(
             )
             val file = attachmentFileStorage.getFile(attachment.id)
             if (file.exists()) {
-                nextcloudRepository.uploadAttachment(
-                    noteId = note.id,
-                    attachmentId = attachment.id,
-                    filename = filename,
-                    bytes = file.readBytes(),
+                recordFailure(
+                    nextcloudRepository.uploadAttachment(
+                        noteId = note.id,
+                        attachmentId = attachment.id,
+                        filename = filename,
+                        bytes = file.readBytes(),
+                    ),
+                    errors,
                 )
             }
         }
 
         val remoteNote = note.toNextcloudNote(nextcloudAttachments)
-        nextcloudRepository.uploadNote(remoteNote)
+        recordFailure(nextcloudRepository.uploadNote(remoteNote), errors)
     }
 
     companion object {

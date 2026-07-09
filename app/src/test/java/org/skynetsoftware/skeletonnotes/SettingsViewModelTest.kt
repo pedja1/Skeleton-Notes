@@ -107,6 +107,28 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun initiateLoginNormalizesSchemelessUrlToHttps() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val ncRepo = FakeNextcloudRepoForSettings(
+                initiateLoginResult = Result.Success(NextcloudInitiateLoginResult("t", "e", "url")),
+                pollLoginResult = NextcloudPollStatus.Pending,
+            )
+            val viewModel = createViewModel(nextcloudRepo = ncRepo)
+
+            viewModel.initiateNextcloudLogin("cloud.example.com")
+
+            assertEquals(NextcloudLoginState.WaitingForLogin, viewModel.nextcloudLoginState.value)
+            assertEquals("https://cloud.example.com", viewModel.nextcloudServerUrl.value)
+
+            testScheduler.advanceUntilIdle()
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
     fun pollingSuccessTransitionsToConnected() = runTest {
         val testDispatcher = UnconfinedTestDispatcher(testScheduler)
         Dispatchers.setMain(testDispatcher)
@@ -243,7 +265,7 @@ class SettingsViewModelTest {
     }
 
     private class FakeSettingsRepo(
-        private val periodicSync: Boolean = false,
+        periodicSync: Boolean = false,
     ) : SettingsRepository {
         override val nextcloudPeriodicSync = flowOf(periodicSync)
         override val nextcloudLastSyncTimestamp = flowOf(0L)
