@@ -37,7 +37,7 @@ jobs:
         with:
           api-level: 36
           target: default
-          arch: x86_64
+          arch: arm64-v8a
           script: ./gradlew connectedAndroidTest
 
       - name: Run JaCoCo coverage report and verification
