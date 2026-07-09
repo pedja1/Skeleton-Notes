@@ -1,0 +1,84 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  nightly:
+    name: Build & Release Nightly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for changes since last release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          HEAD=$(git rev-parse HEAD)
+
+          RELEASE_COMMITS=$(gh api "repos/${GITHUB_REPOSITORY}/releases" \
+            --paginate --jq '.[].target_commitish')
+
+          if echo "$RELEASE_COMMITS" | grep -q "^${HEAD}$"; then
+            echo "HEAD (${HEAD}) already has a release, skipping build"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No release for HEAD (${HEAD}), proceeding with build"
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.check.outputs.skip != 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+        if: steps.check.outputs.skip != 'true'
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.check.outputs.skip != 'true'
+
+      - name: Decode keystore
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.keystore
+
+      - name: Build signed release APK
+        if: steps.check.outputs.skip != 'true'
+        run: ./gradlew assembleRelease
+        env:
+          KEYSTORE_FILE: /tmp/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Build debug APK
+        if: steps.check.outputs.skip != 'true'
+        run: ./gradlew assembleDebug
+
+      - name: Compute nightly version
+        id: version
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          TIMESTAMP=$(date -u +'%Y%m%d%H%M')
+          echo "Nightly version: ${TIMESTAMP}"
+          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Nightly Release
+        if: steps.check.outputs.skip != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.timestamp }}
+          name: Nightly ${{ steps.version.outputs.timestamp }}
+          body: Nightly build
+          prerelease: true
+          target_commitish: ${{ github.sha }}
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
