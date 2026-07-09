@@ -45,6 +45,10 @@
     <string name="toolbar_add_note">Add note</string>
     <string name="toolbar_back">Back</string>
 
+    <!--Note Card-->
+    <string name="note_last_edited_yesterday">Yesterday</string>
+    <string name="note_last_edited_last_week">Last Week</string>
+
     <!--Search & Filter-->
     <string name="search_hint">Search notes…</string>
     <string name="filter_title">Filter notes</string>

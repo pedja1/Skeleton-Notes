@@ -86,6 +86,11 @@ class NoteAdapter(
                 binding.notePreview.visibility = View.VISIBLE
             }
 
+            binding.noteLastEdited.text = NoteTimeFormatter.format(
+                note.modifiedAt,
+                binding.root.context
+            )
+
             val backgroundRes = when (note.status) {
                 NoteStatus.TRASH -> R.drawable.card_background_trash
                 NoteStatus.ARCHIVE -> R.drawable.card_background_archive
