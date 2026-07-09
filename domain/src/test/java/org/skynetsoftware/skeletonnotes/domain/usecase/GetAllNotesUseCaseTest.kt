@@ -7,10 +7,10 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.skynetsoftware.skeletonnotes.domain.BaseFakeNotesRepository
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
-import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 
 class GetAllNotesUseCaseTest {
     @Test
@@ -19,7 +19,7 @@ class GetAllNotesUseCaseTest {
             val notes =
                 listOf(
                     Note(
-                        id = 1,
+                        id = "1",
                         title = "First",
                         content = "# First\nContent",
                         createdAt = 1000L,
@@ -27,7 +27,7 @@ class GetAllNotesUseCaseTest {
                         tags = emptySet(),
                     ),
                     Note(
-                        id = 2,
+                        id = "2",
                         title = "Second",
                         content = "# Second\nContent",
                         createdAt = 2000L,
@@ -58,27 +58,18 @@ class GetAllNotesUseCaseTest {
             assertTrue(notesList.isEmpty())
         }
 
-    private class FakeNotesRepository(private val notes: List<Note>) : NotesRepository {
-        override fun getAllNotes(): Flow<Result<List<Note>>> =
+    private class FakeNotesRepository(private val notes: List<Note>) : BaseFakeNotesRepository() {
+        override fun getAllNotesFlow(): Flow<Result<List<Note>>> =
             flow {
                 emit(Result.Success(notes))
             }
 
-        override fun getNoteByIdFlow(id: Long): Flow<Result<NoteWithAttachments>> =
+        override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> =
             flow {
                 emit(getNoteById(id))
             }
 
-        override fun getNoteById(id: Long): Result<NoteWithAttachments> =
+        override fun getNoteById(id: String): Result<NoteWithAttachments> =
             Result.Success(NoteWithAttachments(note = notes.first { it.id == id }, attachments = emptyList()))
-
-        override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Long> =
-            Result.Success(noteWithAttachments.note.id)
-
-        override suspend fun deleteNote(id: Long): Result<Unit> = Result.Success(Unit)
-
-        override suspend fun moveToTrash(id: Long): Result<Unit> = Result.Success(Unit)
-
-        override suspend fun archiveNote(id: Long): Result<Unit> = Result.Success(Unit)
     }
 }

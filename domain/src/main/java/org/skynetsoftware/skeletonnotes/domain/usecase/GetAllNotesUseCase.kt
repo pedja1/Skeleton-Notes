@@ -12,5 +12,5 @@ class GetAllNotesUseCase(private val notesRepository: NotesRepository) {
     /**
      * Invokes the use case and returns a [Flow] emitting the result of fetching all notes.
      */
-    operator fun invoke(): Flow<Result<List<Note>>> = notesRepository.getAllNotes()
+    operator fun invoke(): Flow<Result<List<Note>>> = notesRepository.getAllNotesFlow()
 }

@@ -5,7 +5,8 @@
     android:orientation="vertical"
     android:id="@+id/root">
 
-    <include layout="@layout/layout_toolbar" />
+    <include layout="@layout/layout_toolbar"
+        android:id="@+id/toolbar"/>
 
     <EditText
         android:id="@+id/edit_note_title"
@@ -19,7 +20,6 @@
         android:textSize="@dimen/toolbar_title_size"
         android:textStyle="bold"
         android:textColor="?android:textColorPrimary"
-        android:textColorHint="?android:textColorSecondary"
         android:background="@null"
         android:inputType="textCapSentences"
         android:maxLines="1"
@@ -38,12 +38,12 @@
         android:paddingEnd="@dimen/note_detail_padding_horizontal"
         android:textSize="@dimen/note_preview_size"
         android:textColor="?android:textColorPrimary"
-        android:textColorHint="?android:textColorSecondary"
         android:scrollbars="vertical"
         android:fadeScrollbars="false"
         android:background="@null"
         android:importantForAutofill="no"/>
 
-    <include layout="@layout/formatting_toolbar" />
+    <include layout="@layout/formatting_toolbar"
+        android:id="@+id/formatting_toolbar"/>
 
 </LinearLayout>

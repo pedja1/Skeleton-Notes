@@ -1,14 +1,10 @@
-package org.skynetsoftware.skeletonnotes
+package org.skynetsoftware.skeletonnotes.home
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.PorterDuff
 import android.os.Bundle
 import android.view.View
-import android.widget.CheckBox
-import android.widget.EditText
-import android.widget.GridView
-import android.widget.ImageView
-import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -20,6 +16,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
+import org.skynetsoftware.skeletonnotes.R
+import org.skynetsoftware.skeletonnotes.databinding.ActivityMainBinding
+import org.skynetsoftware.skeletonnotes.databinding.DialogFilterBinding
+import org.skynetsoftware.skeletonnotes.note.NoteDetailActivity
+import org.skynetsoftware.skeletonnotes.settings.SettingsActivity
 
 /**
  * Main activity that displays the grid of notes with search, and filter controls.
@@ -29,19 +30,21 @@ class MainActivity : ComponentActivity() {
     private lateinit var adapter: NoteAdapter
 
     private val mainViewMode by viewModels<MainViewModel>(factoryProducer = { MainViewModel.Factory })
+    private lateinit var binding: ActivityMainBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        ViewCompat.setOnApplyWindowInsetsListener(binding.main) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
 
-        val gridView = findViewById<GridView>(R.id.grid_notes)
+        val gridView = binding.gridNotes
         gridView.numColumns = 2
 
         adapter = NoteAdapter(this) { note ->
@@ -51,20 +54,18 @@ class MainActivity : ComponentActivity() {
         }
         gridView.adapter = adapter
 
-        val addNoteIcon = findViewById<ImageView>(R.id.toolbar_add_note)
-        addNoteIcon.setOnClickListener {
+        binding.toolbar.toolbarAddNote.setOnClickListener {
             startActivity(Intent(this, NoteDetailActivity::class.java))
         }
 
-        val settingsIcon = findViewById<ImageView>(R.id.toolbar_settings)
-        settingsIcon.setOnClickListener {
+        binding.toolbar.toolbarSettings.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
         setupSearch()
         setupFilter()
 
-        val textNoNotes = findViewById<TextView>(R.id.text_no_notes)
+        val textNoNotes = binding.textNoNotes
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -100,21 +101,20 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setupSearch() {
-        val searchInput = findViewById<EditText>(R.id.search_input)
-        searchInput.doOnTextChanged { text, _, _, _ ->
+        binding.searchInput.doOnTextChanged { text, _, _, _ ->
             mainViewMode.setQuery(text.toString())
         }
     }
 
     private fun setupFilter() {
-        val filterIcon = findViewById<ImageView>(R.id.icon_filter)
+        val filterIcon = binding.iconFilter
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewMode.filter.collect {
                     if (it.showTrashed || it.showArchived) {
                         filterIcon.setColorFilter(
                             ContextCompat.getColor(this@MainActivity, R.color.filter_active),
-                            android.graphics.PorterDuff.Mode.SRC_IN
+                            PorterDuff.Mode.SRC_IN
                         )
                     } else {
                         filterIcon.clearColorFilter()
@@ -124,16 +124,16 @@ class MainActivity : ComponentActivity() {
         }
 
         filterIcon.setOnClickListener {
-            val dialogView = layoutInflater.inflate(R.layout.dialog_filter, null)
-            val checkboxTrash = dialogView.findViewById<CheckBox>(R.id.checkbox_show_trash)
-            val checkboxArchived = dialogView.findViewById<CheckBox>(R.id.checkbox_show_archived)
+            val dialogBinding = DialogFilterBinding.inflate(layoutInflater)
+            val checkboxTrash = dialogBinding.checkboxShowTrash
+            val checkboxArchived = dialogBinding.checkboxShowArchived
 
             checkboxTrash.isChecked = mainViewMode.filter.value.showTrashed
             checkboxArchived.isChecked = mainViewMode.filter.value.showArchived
 
             AlertDialog.Builder(this)
                 .setTitle(R.string.filter_title)
-                .setView(dialogView)
+                .setView(dialogBinding.root)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     mainViewMode.setFilter(checkboxArchived.isChecked, checkboxTrash.isChecked)
                 }

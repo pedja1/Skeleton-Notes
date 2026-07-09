@@ -40,6 +40,16 @@
 - Using AI is allowed as long as all the above rules are followed
     - Please don't Vibe Code a PR without even checking the code yourself
     - Repeatedly submitting AI slop (or Human slop) will get you a permanent ban from contributing (can i even do that?)
+- If you add `@Suppress` for detekt issues, you must have a very good reason for it
+
+## Reason for used dependencies
+- androidx.activity:activity-ktx - I don't remember, too lazy to search now 🥱
+- androidx.lifecycle:lifecycle-viewmodel-ktx - MVVM architecture
+- org.jetbrains.kotlin:kotlin-stdlib - Java sucks
+- org.jetbrains.kotlinx:kotlinx-coroutines - I could have used AsyncTask instead, i guess... 🤪
+- androidx.databinding:viewbinding - alternative is `findViewById`, I am not a masochist 🤕
+- com.squareup.okhttp3:okhttp - Nextcloud uses WebDav for file access, which uses `PROPFIND` and `MKCOL` http methods which aren't supported in `HttpUrlConnection`
+- androidx.browser:browser - Nextcloud Flow V2 login
 
 ### License
     Copyright (C) 2026  pedja

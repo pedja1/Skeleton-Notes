@@ -2,6 +2,7 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.SkeletonNotes" parent="@android:style/Theme.DeviceDefault">
         <item name="android:windowNoTitle">true</item>
+        <item name="android:textColorHint">@color/hint_color</item>
     </style>
 
     <style name="Theme.SkeletonNotes" parent="Base.Theme.SkeletonNotes" />

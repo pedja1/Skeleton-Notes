@@ -1,4 +1,4 @@
-package org.skynetsoftware.skeletonnotes
+package org.skynetsoftware.skeletonnotes.note
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -19,11 +19,14 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.util.TagExtractor
+import java.util.UUID
 
 /**
  * ViewModel for the note detail screen that handles loading, saving, and deleting notes.
  */
 class NoteDetailViewModel(
+    val noteId: String,
+    private val isNewNote: Boolean,
     private val getNoteByIdUseCase: GetNoteByIdUseCase,
     private val saveNoteUseCase: SaveNoteUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
@@ -32,14 +35,17 @@ class NoteDetailViewModel(
 ) : ViewModel() {
 
     companion object {
-        const val NEW_NOTE_ID = -1L
 
         /**
          * Factory for creating [NoteDetailViewModel] instances with the required dependencies.
+         * When [noteId] is null, a new UUID is generated and the ViewModel starts in
+         * [UiState.NewNote] without querying the repository.
          */
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
+        fun Factory(noteId: String?): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 NoteDetailViewModel(
+                    noteId = noteId ?: UUID.randomUUID().toString(),
+                    isNewNote = noteId == null,
                     getNoteByIdUseCase = AppDi.getNoteByIdUseCase,
                     saveNoteUseCase = AppDi.saveNoteUseCase,
                     deleteNoteUseCase = AppDi.deleteNoteUseCase,
@@ -82,24 +88,25 @@ class NoteDetailViewModel(
     private val _uiState = MutableStateFlow<UiState>(UiState.NewNote)
     val uiState: StateFlow<UiState> = _uiState
 
-    private var noteId: Long = NEW_NOTE_ID
     private var currentAttachments: List<Attachment> = emptyList()
+    private var isInitialized = false
 
-    /**
-     * Loads the note with the given [id] from the repository and emits [UiState.NoteLoaded]
-     * on success or [UiState.Error] on failure.
-     */
-    fun loadNote(id: Long) {
-        noteId = id
-        viewModelScope.launch {
-            when (val result = getNoteByIdUseCase(id)) {
-                is Result.Success -> {
-                    currentAttachments = result.data.attachments
-                    _uiState.value = UiState.NoteLoaded(result.data.note, result.data.attachments)
+    init {
+        if (isNewNote) {
+            isInitialized = true
+        } else {
+            viewModelScope.launch {
+                when (val result = getNoteByIdUseCase(noteId)) {
+                    is Result.Success -> {
+                        val data = result.data
+                        currentAttachments = data.attachments
+                        _uiState.value = UiState.NoteLoaded(data.note, data.attachments)
+                    }
+                    is Result.Failure -> {
+                        _uiState.value = UiState.Error(result.throwable)
+                    }
                 }
-                is Result.Failure -> {
-                    _uiState.value = UiState.Error(result.throwable)
-                }
+                isInitialized = true
             }
         }
     }
@@ -110,29 +117,23 @@ class NoteDetailViewModel(
      * On success emits [UiState.Saved], on failure emits [UiState.Error].
      */
     fun saveNote(title: String?, content: String, attachments: List<Attachment>) {
+        if (uiState.value is UiState.Error) return
         _uiState.value = UiState.Saving
         currentAttachments = attachments
         viewModelScope.launch {
             val tags = TagExtractor.extractTags(content)
             val now = System.currentTimeMillis()
             val note = Note(
-                id = if (noteId == NEW_NOTE_ID) 0L else noteId,
+                id = noteId,
                 title = title,
                 content = content,
                 createdAt = now,
                 modifiedAt = now,
                 tags = tags,
             )
-            val attachmentsWithNoteId = if (noteId != NEW_NOTE_ID) {
-                attachments.map { it.copy(noteId = noteId) }
-            } else {
-                attachments
-            }
+            val attachmentsWithNoteId = attachments.map { it.copy(noteId = noteId) }
             when (val result = saveNoteUseCase(NoteWithAttachments(note, attachmentsWithNoteId))) {
                 is Result.Success -> {
-                    if (noteId == NEW_NOTE_ID) {
-                        noteId = result.data
-                    }
                     _uiState.value = UiState.Saved
                 }
                 is Result.Failure -> {
@@ -197,12 +198,7 @@ class NoteDetailViewModel(
     }
 
     /**
-     * Returns the current note ID, or [NEW_NOTE_ID] for new notes.
-     */
-    fun getNoteId(): Long = noteId
-
-    /**
      * Returns `true` if this is a new note (not yet saved to the repository).
      */
-    fun isNewNote(): Boolean = noteId == NEW_NOTE_ID
+    fun isNewNote(): Boolean = isNewNote
 }

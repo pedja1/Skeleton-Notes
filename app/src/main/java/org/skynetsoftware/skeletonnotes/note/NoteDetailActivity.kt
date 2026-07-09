@@ -1,4 +1,4 @@
-package org.skynetsoftware.skeletonnotes
+package org.skynetsoftware.skeletonnotes.note
 
 import android.app.AlertDialog
 import android.content.Intent
@@ -13,10 +13,7 @@ import android.text.style.AbsoluteSizeSpan
 import android.text.style.StyleSpan
 import android.util.TypedValue
 import android.view.View
-import android.widget.EditText
-import android.widget.ImageView
 import android.widget.PopupMenu
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -31,7 +28,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
+import org.skynetsoftware.skeletonnotes.R
+import org.skynetsoftware.skeletonnotes.data.attachment.AttachmentStorageManager
+import org.skynetsoftware.skeletonnotes.databinding.ActivityNoteDetailBinding
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
+import java.io.File
+import java.util.UUID
 
 /**
  * Activity for viewing and editing a single note. Supports both creating new notes
@@ -39,24 +41,23 @@ import org.skynetsoftware.skeletonnotes.domain.model.Attachment
  * [Html.fromHtml]. The formatting toolbar provides bold, italic, font size,
  * file/image attachment, and tag insertion.
  */
-@Suppress("TooManyFunctions")
 class NoteDetailActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_NOTE_ID = "extra_note_id"
-        private const val NEW_NOTE_ID = NoteDetailViewModel.NEW_NOTE_ID
     }
 
-    private val viewModel by viewModels<NoteDetailViewModel>(factoryProducer = { NoteDetailViewModel.Factory })
+    private val viewModel by viewModels<NoteDetailViewModel>(factoryProducer = {
+        NoteDetailViewModel.Factory(
+            intent.getStringExtra(
+                EXTRA_NOTE_ID
+            )
+        )
+    })
 
-    private lateinit var editTitle: EditText
-    private lateinit var editContent: EditText
-    private lateinit var toolbarTitle: TextView
-    private lateinit var toolbarOverflow: ImageView
-    private lateinit var toolbarBack: ImageView
-    private lateinit var formattingToolbar: View
+    private lateinit var binding: ActivityNoteDetailBinding
+    private lateinit var attachmentStorageManager: AttachmentStorageManager
 
-    private var noteId: Long = NEW_NOTE_ID
     private val attachments = mutableListOf<Attachment>()
 
     private val pickFileLauncher = registerForActivityResult(
@@ -74,9 +75,12 @@ class NoteDetailActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_note_detail)
+        binding = ActivityNoteDetailBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { v, insets ->
+        attachmentStorageManager = AttachmentStorageManager(this)
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             v.setPadding(
@@ -88,19 +92,11 @@ class NoteDetailActivity : ComponentActivity() {
             insets
         }
 
-        noteId = intent.getLongExtra(EXTRA_NOTE_ID, NEW_NOTE_ID)
-
         setupViews()
         setupToolbar()
         setupFocusListeners()
         setupFormattingToolbar()
         observeViewModel()
-
-        if (noteId != NEW_NOTE_ID) {
-            viewModel.loadNote(noteId)
-        } else {
-            toolbarTitle.setText(R.string.note_detail_new_note_title)
-        }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -110,32 +106,25 @@ class NoteDetailActivity : ComponentActivity() {
     }
 
     private fun setupViews() {
-        editTitle = findViewById(R.id.edit_note_title)
-        editContent = findViewById(R.id.edit_note_content)
-        toolbarTitle = findViewById(R.id.toolbar_title)
-        toolbarOverflow = findViewById(R.id.toolbar_overflow)
-        toolbarBack = findViewById(R.id.toolbar_back)
-        formattingToolbar = findViewById(R.id.formatting_toolbar)
-
-        findViewById<ImageView>(R.id.toolbar_settings).visibility = View.GONE
-        findViewById<ImageView>(R.id.toolbar_add_note).visibility = View.GONE
-        findViewById<ImageView>(R.id.toolbar_delete).visibility = View.GONE
+        binding.toolbar.toolbarSettings.visibility = View.GONE
+        binding.toolbar.toolbarAddNote.visibility = View.GONE
+        binding.toolbar.toolbarDelete.visibility = View.GONE
     }
 
     private fun setupFocusListeners() {
-        editTitle.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) formattingToolbar.visibility = View.GONE
+        binding.editNoteTitle.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) binding.formattingToolbar.root.visibility = View.GONE
         }
-        editContent.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) formattingToolbar.visibility = View.VISIBLE
+        binding.editNoteContent.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) binding.formattingToolbar.root.visibility = View.VISIBLE
         }
     }
 
     private fun setupToolbar() {
-        toolbarBack.visibility = View.VISIBLE
-        toolbarBack.setOnClickListener { saveAndFinish() }
-        toolbarTitle.setText(R.string.note_detail_title)
-        toolbarOverflow.visibility = View.GONE
+        binding.toolbar.toolbarBack.visibility = View.VISIBLE
+        binding.toolbar.toolbarBack.setOnClickListener { saveAndFinish() }
+        binding.toolbar.toolbarTitle.setText(R.string.note_detail_title)
+        binding.toolbar.toolbarOverflow.visibility = View.GONE
     }
 
     private fun observeViewModel() {
@@ -144,15 +133,16 @@ class NoteDetailActivity : ComponentActivity() {
                 viewModel.uiState.collect { state ->
                     when (state) {
                         is NoteDetailViewModel.UiState.NewNote -> {
-                            toolbarTitle.setText(R.string.note_detail_new_note_title)
-                            toolbarOverflow.visibility = View.GONE
+                            binding.toolbar.toolbarTitle.setText(R.string.note_detail_new_note_title)
+                            binding.toolbar.toolbarOverflow.visibility = View.GONE
                         }
+
                         is NoteDetailViewModel.UiState.NoteLoaded -> {
-                            toolbarTitle.setText(R.string.note_detail_title)
-                            toolbarOverflow.visibility = View.VISIBLE
-                            toolbarOverflow.setOnClickListener { showOverflowMenu() }
-                            editTitle.setText(state.note.title ?: "")
-                            editContent.text = SpannableStringBuilder(
+                            binding.toolbar.toolbarTitle.setText(R.string.note_detail_title)
+                            binding.toolbar.toolbarOverflow.visibility = View.VISIBLE
+                            binding.toolbar.toolbarOverflow.setOnClickListener { showOverflowMenu() }
+                            binding.editNoteTitle.setText(state.note.title ?: "")
+                            binding.editNoteContent.text = SpannableStringBuilder(
                                 Html.fromHtml(
                                     state.note.content,
                                     Html.FROM_HTML_MODE_LEGACY,
@@ -163,6 +153,7 @@ class NoteDetailActivity : ComponentActivity() {
                             attachments.clear()
                             attachments.addAll(state.attachments)
                         }
+
                         NoteDetailViewModel.UiState.Saved -> finish()
                         NoteDetailViewModel.UiState.Deleted -> finish()
                         NoteDetailViewModel.UiState.MovedToTrash -> finish()
@@ -174,6 +165,7 @@ class NoteDetailActivity : ComponentActivity() {
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
+
                         NoteDetailViewModel.UiState.Saving -> {}
                     }
                 }
@@ -183,8 +175,8 @@ class NoteDetailActivity : ComponentActivity() {
 
     @Suppress("DEPRECATION")
     private fun saveAndFinish() {
-        val title = editTitle.text?.toString()?.trim()?.ifEmpty { null }
-        val content = editContent.text?.let {
+        val title = binding.editNoteTitle.text?.toString()?.trim()?.ifEmpty { null }
+        val content = binding.editNoteContent.text?.let {
             Html.toHtml(it)
         } ?: ""
         if (viewModel.isNewNote() && title == null && content.isBlank()) {
@@ -206,7 +198,7 @@ class NoteDetailActivity : ComponentActivity() {
     }
 
     private fun showOverflowMenu() {
-        val popupMenu = PopupMenu(this, toolbarOverflow)
+        val popupMenu = PopupMenu(this, binding.toolbar.toolbarOverflow)
         popupMenu.menuInflater.inflate(R.menu.note_detail_overflow, popupMenu.menu)
         popupMenu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -214,14 +206,17 @@ class NoteDetailActivity : ComponentActivity() {
                     viewModel.moveToTrash()
                     true
                 }
+
                 R.id.action_archive -> {
                     viewModel.archiveNote()
                     true
                 }
+
                 R.id.action_delete -> {
                     showDeleteConfirmation()
                     true
                 }
+
                 else -> false
             }
         }
@@ -229,12 +224,12 @@ class NoteDetailActivity : ComponentActivity() {
     }
 
     private fun setupFormattingToolbar() {
-        findViewById<ImageView>(R.id.format_bold).setOnClickListener { toggleBold() }
-        findViewById<ImageView>(R.id.format_italic).setOnClickListener { toggleItalic() }
-        findViewById<ImageView>(R.id.format_font_size).setOnClickListener { showFontSizeDialog() }
-        findViewById<ImageView>(R.id.format_attach_file).setOnClickListener { pickFile() }
-        findViewById<ImageView>(R.id.format_attach_image).setOnClickListener { pickImage() }
-        findViewById<ImageView>(R.id.format_add_tag).setOnClickListener { insertTag() }
+        binding.formattingToolbar.formatBold.setOnClickListener { toggleBold() }
+        binding.formattingToolbar.formatItalic.setOnClickListener { toggleItalic() }
+        binding.formattingToolbar.formatFontSize.setOnClickListener { showFontSizeDialog() }
+        binding.formattingToolbar.formatAttachFile.setOnClickListener { pickFile() }
+        binding.formattingToolbar.formatAttachImage.setOnClickListener { pickImage() }
+        binding.formattingToolbar.formatAddTag.setOnClickListener { insertTag() }
     }
 
     private fun toggleBold() {
@@ -246,9 +241,9 @@ class NoteDetailActivity : ComponentActivity() {
     }
 
     private fun toggleSpan(span: StyleSpan) {
-        val editable = editContent.text
-        val selectionStart = editContent.selectionStart
-        val selectionEnd = editContent.selectionEnd
+        val editable = binding.editNoteContent.text
+        val selectionStart = binding.editNoteContent.selectionStart
+        val selectionEnd = binding.editNoteContent.selectionEnd
         val spannable = editable as Spannable
         val existingSpans = spannable.getSpans(selectionStart, selectionEnd, span.javaClass)
         if (existingSpans.isNotEmpty()) {
@@ -280,9 +275,9 @@ class NoteDetailActivity : ComponentActivity() {
     }
 
     private fun applyFontSize(sizeSp: Int) {
-        val editable = editContent.text
-        val selectionStart = editContent.selectionStart
-        val selectionEnd = editContent.selectionEnd
+        val editable = binding.editNoteContent.text
+        val selectionStart = binding.editNoteContent.selectionStart
+        val selectionEnd = binding.editNoteContent.selectionEnd
         if (selectionStart == selectionEnd) return
         val spannable = editable as Spannable
         val existingSpans = spannable.getSpans(
@@ -311,23 +306,32 @@ class NoteDetailActivity : ComponentActivity() {
     }
 
     private fun insertTag() {
-        val editable = editContent.text
-        val cursorPos = editContent.selectionStart
+        val editable = binding.editNoteContent.text
+        val cursorPos = binding.editNoteContent.selectionStart
         editable.insert(cursorPos, "#")
     }
 
     private fun onAttachmentPicked(uri: Uri?, isImage: Boolean) {
         if (uri == null) return
 
-        val attachment = Attachment(id = 0, noteId = viewModel.getNoteId(), uri = uri.toString())
+        val attachmentId = UUID.randomUUID().toString()
+        val filename = uri.lastPathSegment ?: "file"
+        val localPath = attachmentStorageManager.copyToStorage(uri, attachmentId, filename)
+
+        val attachment = Attachment(
+            id = attachmentId,
+            noteId = viewModel.noteId,
+            uri = localPath
+        )
         attachments.add(attachment)
 
         if (isImage) {
-            val editable = editContent.text
-            val cursorPos = editContent.selectionStart
-            val imgTag = "<img src=\"$uri\">"
+            val editable = binding.editNoteContent.text
+            val cursorPos = binding.editNoteContent.selectionStart
+            val imgTag = "<img src=\"$localPath\">"
             editable.insert(cursorPos, imgTag)
         } else {
+            //TODO translate
             Toast.makeText(this, "File attached", Toast.LENGTH_SHORT).show()
         }
 
@@ -340,12 +344,19 @@ class NoteDetailActivity : ComponentActivity() {
     private fun resolveImageGetter(): Html.ImageGetter {
         return Html.ImageGetter { source ->
             try {
-                val uri = Uri.parse(source)
-                val inputStream = contentResolver.openInputStream(uri)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
+                val file = File(source)
+                val bitmap = if (file.exists()) {
+                    BitmapFactory.decodeFile(source)
+                } else {
+                    val uri = Uri.parse(source)
+                    val inputStream = contentResolver.openInputStream(uri)
+                    val bmp = BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
+                    bmp
+                }
                 if (bitmap != null) {
-                    val maxWidth = resources.displayMetrics.widthPixels - (2 * 16 * resources.displayMetrics.density).toInt()
+                    val maxWidth =
+                        resources.displayMetrics.widthPixels - (2 * 16 * resources.displayMetrics.density).toInt()
                     val scaledBitmap = if (bitmap.width > maxWidth) {
                         val scale = maxWidth.toFloat() / bitmap.width
                         bitmap.scale(maxWidth, (bitmap.height * scale).toInt())

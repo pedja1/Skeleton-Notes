@@ -1,4 +1,4 @@
-package org.skynetsoftware.skeletonnotes
+package org.skynetsoftware.skeletonnotes.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

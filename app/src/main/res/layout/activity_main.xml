@@ -5,9 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context=".MainActivity">
+    tools:context=".home.MainActivity">
 
-    <include layout="@layout/layout_toolbar" />
+    <include layout="@layout/layout_toolbar"
+        android:id="@+id/toolbar"/>
 
     <LinearLayout
         android:id="@+id/search_bar"
@@ -35,7 +36,6 @@
             android:inputType="text"
             android:maxLines="1"
             android:textColor="?android:textColorPrimary"
-            android:textColorHint="?android:textColorSecondary"
             android:importantForAutofill="no"/>
 
         <ImageView

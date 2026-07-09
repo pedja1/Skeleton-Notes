@@ -39,6 +39,7 @@
 
     <!--Settings-->
     <string name="settings_title">Settings</string>
+    <string name="settings_arrow">Navigate</string>
 
     <!--Toolbar-->
     <string name="toolbar_add_note">Add note</string>
@@ -51,4 +52,43 @@
     <string name="filter_show_archived">Show archived notes</string>
     <string name="search_content_description">Search</string>
     <string name="filter_content_description">Filter</string>
+
+    <!--Nextcloud Sync-->
+    <string name="sync_title">Nextcloud Sync</string>
+    <string name="sync_server_url_hint">https://cloud.example.com</string>
+    <string name="sync_connect_button">Connect</string>
+    <string name="sync_disconnect_button">Disconnect</string>
+    <string name="sync_now_button">Sync now</string>
+    <string name="sync_connecting">Connecting to Nextcloud…</string>
+    <string name="sync_in_progress">Syncing…</string>
+    <string name="sync_success">Sync complete</string>
+    <string name="sync_error">Sync failed</string>
+    <string name="sync_not_configured">Not connected to Nextcloud</string>
+    <string name="sync_connected">Connected as %1$s</string>
+    <string name="sync_toolbar_button">Sync</string>
+    <string name="sync_connect_error">Connection error: %1$s</string>
+    <string name="settings_section_nextcloud_sync">Nextcloud Sync</string>
+    <string name="settings_item_status">Status</string>
+    <string name="settings_item_periodic_sync_title">Periodic Sync</string>
+    <string name="settings_item_periodic_sync_subtitle">Periodically sync notes with NextCloud</string>
+    <string name="settings_item_sync_now_title">Sync Now</string>
+    <string name="settings_section_data">Data</string>
+    <string name="settings_item_import_tile">Import Notes</string>
+    <string name="settings_item_import_subtile">Import Notes from file</string>
+    <string name="settings_item_export_tile">Export Notes</string>
+    <string name="settings_item_export_subtile">Export Notes to file</string>
+    <string name="settings_item_connect_to_nextcloud_title">Connect</string>
+    <string name="settings_item_connect_to_nextcloud_subtitle">Connect to NextCloud to enable Notes Sync</string>
+    <string name="settings_item_nextcloud_connected_title">Connected</string>
+    <string name="settings_item_nextcloud_connected_subtitle">user: %s, Server: %s</string>
+    <string name="settings_item_nextcloud_last_sync">Last Sync: %s</string>
+    <string name="settings_item_nextcloud_last_sync_never">Never</string>
+    <string name="settings_item_nextcloud_connecting_title">Connecting</string>
+    <string name="settings_item_nextcloud_connecting_subtitle">Initiating Login</string>
+    <string name="settings_item_nextcloud_logging_in_subtitle">Loggin In</string>
+    <string name="settings_item_nextcloud_connect_error_subtitle">Error connecting to NextCloud</string>
+    <string name="nextcloud_server_url_hint">https://nextcloud.server.tld</string>
+    <string name="nextcloud_server_url_title">Nextcloud Server URL</string>
+    <string name="nextcloud_server_url_invalid">NextCloud server url is not valid</string>
+    <string name="nextcloud_no_browser">No browser installed to complete login</string>
 </resources>

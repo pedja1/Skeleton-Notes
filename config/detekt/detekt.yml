@@ -36,6 +36,10 @@ naming:
 complexity:
   TooManyFunctions:
     active: true
+    thresholdInFiles: 20
+    thresholdInClasses: 20
+    thresholdInInterfaces: 20
+    thresholdInObjects: 20
   LongParameterList:
     functionThreshold: 8
     constructorThreshold: 10

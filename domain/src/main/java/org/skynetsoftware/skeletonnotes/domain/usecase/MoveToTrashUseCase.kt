@@ -13,5 +13,5 @@ class MoveToTrashUseCase(private val notesRepository: NotesRepository) {
      * @param id the ID of the note to move to trash
      * @return [Result.Success] on success, or [Result.Failure] on error
      */
-    suspend operator fun invoke(id: Long): Result<Unit> = notesRepository.moveToTrash(id)
+    suspend operator fun invoke(id: String): Result<Unit> = notesRepository.moveToTrash(id)
 }

@@ -14,6 +14,6 @@ class SaveNoteUseCase(private val notesRepository: NotesRepository) {
      * @param noteWithAttachments the note and its attachments to save
      * @return [Result.Success] with the saved note ID, or [Result.Failure] on error
      */
-    suspend operator fun invoke(noteWithAttachments: NoteWithAttachments): Result<Long> =
+    suspend operator fun invoke(noteWithAttachments: NoteWithAttachments): Result<Unit> =
         notesRepository.saveNote(noteWithAttachments)
 }

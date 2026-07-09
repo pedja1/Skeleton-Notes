@@ -1,16 +1,14 @@
 package org.skynetsoftware.skeletonnotes.domain.usecase
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.skynetsoftware.skeletonnotes.domain.BaseFakeNotesRepository
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
-import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 
 class GetNoteByIdUseCaseTest {
     @Test
@@ -18,21 +16,21 @@ class GetNoteByIdUseCaseTest {
         runTest {
             val expectedNote =
                 Note(
-                    id = 5,
+                    id = "5",
                     title = "Test",
                     content = "Content",
                     createdAt = 1000L,
                     modifiedAt = 1000L,
                     tags = setOf("tag"),
                 )
-            val expectedAttachments = listOf(Attachment(1, 5, "file://test.txt"))
+            val expectedAttachments = listOf(Attachment("1", "5", "file://test.txt"))
             val repository = FakeGetByIdRepository(expectedNote, expectedAttachments)
             val useCase = GetNoteByIdUseCase(repository)
 
-            val result = useCase(5)
+            val result = useCase("5")
             assertTrue(result is Result.Success)
             val data = (result as Result.Success).data
-            assertEquals(5, data.note.id)
+            assertEquals("5", data.note.id)
             assertEquals("Test", data.note.title)
             assertEquals(setOf("tag"), data.note.tags)
             assertEquals(1, data.attachments.size)
@@ -44,7 +42,7 @@ class GetNoteByIdUseCaseTest {
             val repository = FakeGetByIdRepository(null, emptyList(), shouldFail = true)
             val useCase = GetNoteByIdUseCase(repository)
 
-            val result = useCase(999)
+            val result = useCase("999")
             assertTrue(result is Result.Failure)
         }
 
@@ -53,7 +51,7 @@ class GetNoteByIdUseCaseTest {
         runTest {
             val note =
                 Note(
-                    id = 1,
+                    id = "1",
                     title = "Solo",
                     content = "Just content",
                     createdAt = 1000L,
@@ -63,7 +61,7 @@ class GetNoteByIdUseCaseTest {
             val repository = FakeGetByIdRepository(note, emptyList())
             val useCase = GetNoteByIdUseCase(repository)
 
-            val result = useCase(1)
+            val result = useCase("1")
             assertTrue(result is Result.Success)
             val data = (result as Result.Success).data
             assertTrue(data.attachments.isEmpty())
@@ -73,28 +71,10 @@ class GetNoteByIdUseCaseTest {
         private val note: Note?,
         private val attachments: List<Attachment>,
         private val shouldFail: Boolean = false,
-    ) : NotesRepository {
-        override fun getAllNotes(): Flow<Result<List<Note>>> =
-            flow {
-                emit(Result.Success(emptyList()))
-            }
-
-        override fun getNoteByIdFlow(id: Long): Flow<Result<NoteWithAttachments>> =
-            flow {
-                emit(getNoteById(id))
-            }
-
-        override fun getNoteById(id: Long): Result<NoteWithAttachments> {
+    ) : BaseFakeNotesRepository() {
+        override fun getNoteById(id: String): Result<NoteWithAttachments> {
             if (shouldFail) return Result.Failure(RuntimeException("Not found"))
             return Result.Success(NoteWithAttachments(note!!, attachments))
         }
-
-        override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Long> = Result.Success(1L)
-
-        override suspend fun deleteNote(id: Long): Result<Unit> = Result.Success(Unit)
-
-        override suspend fun moveToTrash(id: Long): Result<Unit> = Result.Success(Unit)
-
-        override suspend fun archiveNote(id: Long): Result<Unit> = Result.Success(Unit)
     }
 }

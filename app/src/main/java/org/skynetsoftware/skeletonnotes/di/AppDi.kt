@@ -1,70 +1,70 @@
 package org.skynetsoftware.skeletonnotes.di
 
 import android.app.Application
-import org.skynetsoftware.skeletonnotes.data.di.DataDi
-import org.skynetsoftware.skeletonnotes.domain.di.DomainDi
-import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
+import androidx.annotation.VisibleForTesting
+import org.skynetsoftware.skeletonnotes.di.AppDi.init
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
 
 /**
- * Top-level dependency injection container that initializes all layers.
- * Must be initialized via [init] before accessing any dependencies.
+ * Top-level dependency injection container. Delegates to a swappable [AppGraph] so tests can
+ * substitute the object graph. Must be initialized via [init] (production) or [install]
+ * (tests) before accessing any dependencies.
  */
 object AppDi {
-    private lateinit var application: Application
+    private lateinit var graph: AppGraph
 
     /**
-     * Initializes the data and domain layers with the given [application].
+     * Initializes the container with a [ProductionAppGraph] for the given [application].
+     *
+     * @param inMemoryDatabase when `true` the data layer uses an in-memory database.
      */
-    fun init(application: Application) {
-        this.application = application
-        DataDi.init(application)
-        DomainDi.init(notesRepository)
+    fun init(application: Application, inMemoryDatabase: Boolean = false) {
+        install(ProductionAppGraph(application, inMemoryDatabase))
     }
 
     /**
-     * Provides the [NotesRepository] singleton.
+     * Installs the given [graph], replacing any previously installed one. Intended as the
+     * seam for instrumented tests to inject an alternative object graph.
      */
-    val notesRepository: NotesRepository get() = DataDi.notesRepository
+    @VisibleForTesting
+    fun install(graph: AppGraph) {
+        this.graph = graph
+    }
 
-    /**
-     * Provides the [GetAllNotesUseCase] singleton.
-     */
-    val getAllNotesUseCase: GetAllNotesUseCase get() = DomainDi.getAllNotesUseCase
+    val application: Application get() = graph.application
 
-    /**
-     * Provides the [GetNoteByIdUseCase] singleton.
-     */
-    val getNoteByIdUseCase: GetNoteByIdUseCase get() = DomainDi.getNoteByIdUseCase
+    val getAllNotesUseCase: GetAllNotesUseCase get() = graph.getAllNotesUseCase
 
-    /**
-     * Provides the [SaveNoteUseCase] singleton.
-     */
-    val saveNoteUseCase: SaveNoteUseCase get() = DomainDi.saveNoteUseCase
+    val getNoteByIdUseCase: GetNoteByIdUseCase get() = graph.getNoteByIdUseCase
 
-    /**
-     * Provides the [DeleteNoteUseCase] singleton.
-     */
-    val deleteNoteUseCase: DeleteNoteUseCase get() = DomainDi.deleteNoteUseCase
+    val saveNoteUseCase: SaveNoteUseCase get() = graph.saveNoteUseCase
 
-    /**
-     * Provides the [MoveToTrashUseCase] singleton.
-     */
-    val moveToTrashUseCase: MoveToTrashUseCase get() = DomainDi.moveToTrashUseCase
+    val deleteNoteUseCase: DeleteNoteUseCase get() = graph.deleteNoteUseCase
 
-    /**
-     * Provides the [ArchiveNoteUseCase] singleton.
-     */
-    val archiveNoteUseCase: ArchiveNoteUseCase get() = DomainDi.archiveNoteUseCase
+    val moveToTrashUseCase: MoveToTrashUseCase get() = graph.moveToTrashUseCase
 
-    /**
-     * Provides the [SearchAndFilterNotesUseCase] singleton.
-     */
-    val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase get() = DomainDi.searchAndFilterNotesUseCase
+    val archiveNoteUseCase: ArchiveNoteUseCase get() = graph.archiveNoteUseCase
+
+    val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase get() = graph.searchAndFilterNotesUseCase
+
+    val syncNotesWithNextcloudUseCase: SyncNotesWithNextcloudUseCase get() = graph.syncNotesWithNextcloudUseCase
+
+    val getSettingsUseCase: GetSettingsUseCase get() = graph.getSettingsUseCase
+
+    val setPeriodicSyncEnabledUseCase: SetPeriodicSyncEnabledUseCase get() = graph.setPeriodicSyncEnabledUseCase
+
+    val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase get() = graph.initiateNextcloudLoginUseCase
+
+    val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase get() = graph.pollNextcloudLoginUseCase
 }

@@ -1,0 +1,131 @@
+package org.skynetsoftware.skeletonnotes
+
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import org.skynetsoftware.skeletonnotes.di.AppGraph
+import org.skynetsoftware.skeletonnotes.domain.model.Result
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudConnectionInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiateLoginResult
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
+import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
+import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
+import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
+import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
+
+/**
+ * [SettingsRepository] implementation for instrumented tests that allows
+ * controlling the settings flows and tracking write operations.
+ */
+class FakeSettingsRepository(
+    periodicSync: Boolean = false,
+    lastSyncTimestamp: Long = 0L,
+) : SettingsRepository {
+    private val periodicSyncFlow = MutableStateFlow(periodicSync)
+    private val lastSyncTimestampFlow = MutableStateFlow(lastSyncTimestamp)
+
+    override val nextcloudPeriodicSync: Flow<Boolean> = periodicSyncFlow
+
+    override val nextcloudLastSyncTimestamp: Flow<Long> = lastSyncTimestampFlow
+
+    var periodicSyncEnabled: Boolean = periodicSync
+        private set
+
+    var nextcloudLastSyncTimestampValue: Long = lastSyncTimestamp
+        private set
+
+    override fun setPeriodicSyncEnabled(enabled: Boolean) {
+        periodicSyncEnabled = enabled
+    }
+
+    override fun setNextcloudLastSyncTimestamp(timestamp: Long) {
+        nextcloudLastSyncTimestampValue = timestamp
+    }
+}
+
+/**
+ * [NextcloudRepository] implementation for instrumented tests that allows
+ * controlling login flow results and connection state. An optional
+ * [suspendBlocker] can be used to suspend [initiateLogin] indefinitely,
+ * allowing tests to observe intermediate login states.
+ */
+class FakeSettingsNextcloudRepository(
+    private val connection: NextcloudConnectionInfo? = null,
+    private val initiateResult: Result<NextcloudInitiateLoginResult> = Result.Success(
+        NextcloudInitiateLoginResult("", "", "")
+    ),
+    private val pollResult: NextcloudPollStatus = NextcloudPollStatus.Authenticated(
+        NextcloudConnectionInfo("", "")
+    ),
+    var suspendBlocker: CompletableDeferred<Unit>? = null,
+) : NextcloudRepository {
+    private val connectionFlow = MutableStateFlow(connection)
+
+    override fun connectionInfo(): Flow<NextcloudConnectionInfo?> = connectionFlow
+
+    override suspend fun initiateLogin(serverUrl: String): Result<NextcloudInitiateLoginResult> {
+        suspendBlocker?.await()
+        return initiateResult
+    }
+
+    override suspend fun pollLogin(token: String, endpoint: String): NextcloudPollStatus = pollResult
+
+    override fun logout() {}
+
+    override suspend fun listRemoteFiles(): Result<List<RemoteFileInfo>> = Result.Success(emptyList())
+
+    override suspend fun downloadNote(uuid: String): Result<NextcloudNote> =
+        Result.Failure(Exception("Not implemented"))
+
+    override suspend fun uploadNote(note: NextcloudNote) = Result.Success(Unit)
+
+    override suspend fun deleteRemoteNote(uuid: String) = Result.Success(Unit)
+
+    override suspend fun uploadAttachment(
+        noteId: String,
+        attachmentId: String,
+        filename: String,
+        bytes: ByteArray,
+    ) = Result.Success(Unit)
+
+    override suspend fun downloadAttachment(
+        noteId: String,
+        attachmentId: String,
+        filename: String,
+    ): Result<ByteArray> = Result.Success(ByteArray(0))
+
+    override suspend fun deleteRemoteAttachment(
+        noteId: String,
+        attachmentId: String,
+        filename: String,
+    ) = Result.Success(Unit)
+
+    override suspend fun deleteRemoteNoteDirectory(uuid: String) = Result.Success(Unit)
+}
+
+/**
+ * Test [AppGraph] that delegates all use cases to a real [delegate] graph
+ * except settings-related ones, which are backed by controllable
+ * [FakeSettingsRepository] and [FakeSettingsNextcloudRepository] instances.
+ */
+class FakeSettingsAppGraph(
+    val delegate: AppGraph,
+    val settingsRepository: FakeSettingsRepository = FakeSettingsRepository(),
+    val nextcloudRepository: FakeSettingsNextcloudRepository = FakeSettingsNextcloudRepository(),
+) : AppGraph by delegate {
+    override val getSettingsUseCase: GetSettingsUseCase =
+        GetSettingsUseCase(settingsRepository, nextcloudRepository)
+
+    override val setPeriodicSyncEnabledUseCase: SetPeriodicSyncEnabledUseCase =
+        SetPeriodicSyncEnabledUseCase(settingsRepository)
+
+    override val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase =
+        InitiateNextcloudLoginUseCase(nextcloudRepository)
+
+    override val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase =
+        PollNextcloudLoginUseCase(nextcloudRepository)
+}

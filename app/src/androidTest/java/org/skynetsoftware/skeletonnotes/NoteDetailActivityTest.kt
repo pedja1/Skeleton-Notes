@@ -1,6 +1,5 @@
 package org.skynetsoftware.skeletonnotes
 
-import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
 import android.text.Spannable
@@ -19,7 +18,6 @@ import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import org.hamcrest.CoreMatchers.not
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -33,6 +31,8 @@ import org.skynetsoftware.skeletonnotes.data.di.DataDi
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
+import org.skynetsoftware.skeletonnotes.note.NoteDetailActivity
+import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
@@ -41,32 +41,11 @@ class NoteDetailActivityTest {
     @Before
     fun setUp() {
         Intents.init()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val db = context.openOrCreateDatabase("skeleton-notes", Context.MODE_PRIVATE, null, null)
-        db.execSQL("""
-            CREATE TABLE IF NOT EXISTS notes (
-                id INTEGER NOT NULL, 
-                title TEXT, 
-                content TEXT NOT NULL, 
-                created INTEGER NOT NULL, 
-                modified INTEGER NOT NULL, 
-                tags TEXT,
-                status INTEGER NOT NULL DEFAULT 0,
-                PRIMARY KEY(id)
-            )
-        """.trimIndent())
-        db.execSQL("""
-            CREATE TABLE IF NOT EXISTS attachments (
-                id INTEGER NOT NULL,
-                noteId INTEGER NOT NULL,
-                uri TEXT NOT NULL,
-                PRIMARY KEY(id)
-            )
-        """.trimIndent())
-        db.close()
-
+        // The schema is owned by SkeletonNotesDatabaseHelper.onCreate; instrumented tests run
+        // against an in-memory database (see SkeletonNotesTestRunner). Only clear leftover
+        // notes so tests within the same process are isolated.
         runBlocking {
-            val allNotes = DataDi.notesRepository.getAllNotes().first()
+            val allNotes = DataDi.notesRepository.getAllNotesFlow().first()
             if (allNotes is Result.Success) {
                 allNotes.data.forEach { note ->
                     DataDi.notesRepository.deleteNote(note.id)
@@ -153,7 +132,7 @@ class NoteDetailActivityTest {
         val intent = Intent().apply {
             setClassName(
                 "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.NoteDetailActivity"
+                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
             )
             putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
         }
@@ -171,7 +150,7 @@ class NoteDetailActivityTest {
         val intent = Intent().apply {
             setClassName(
                 "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.NoteDetailActivity"
+                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
             )
             putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
         }
@@ -188,7 +167,7 @@ class NoteDetailActivityTest {
         val intent = Intent().apply {
             setClassName(
                 "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.NoteDetailActivity"
+                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
             )
             putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
         }
@@ -206,7 +185,7 @@ class NoteDetailActivityTest {
         val intent = Intent().apply {
             setClassName(
                 "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.NoteDetailActivity"
+                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
             )
             putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
         }
@@ -333,7 +312,7 @@ class NoteDetailActivityTest {
             onView(withId(R.id.toolbar_back)).perform(click())
         }
         Thread.sleep(1000)
-        val result = runBlocking { DataDi.notesRepository.getAllNotes().first() }
+        val result = runBlocking { DataDi.notesRepository.getAllNotesFlow().first() }
         assertTrue("Should save note on back press", result is Result.Success)
         val notes = (result as Result.Success).data
         assertTrue("Should have at least one note", notes.isNotEmpty())
@@ -354,7 +333,7 @@ class NoteDetailActivityTest {
         val intent = Intent().apply {
             setClassName(
                 "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.NoteDetailActivity"
+                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
             )
             putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
         }
@@ -379,7 +358,7 @@ class NoteDetailActivityTest {
         val intent = Intent().apply {
             setClassName(
                 "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.NoteDetailActivity"
+                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
             )
             putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
         }
@@ -394,11 +373,12 @@ class NoteDetailActivityTest {
         assertTrue(result is Result.Failure)
     }
 
-    private fun prePopulateNote(): Long {
+    private fun prePopulateNote(): String {
         return runBlocking {
+            val noteId = UUID.randomUUID().toString()
             val note = NoteWithAttachments(
                 note = Note(
-                    id = 0,
+                    id = noteId,
                     title = "Test Note",
                     content = "Content",
                     createdAt = System.currentTimeMillis(),
@@ -409,9 +389,9 @@ class NoteDetailActivityTest {
             )
             val result = DataDi.notesRepository.saveNote(note)
             require(result is Result.Success) {
-                "Failed to save note: ${(result as Result.Failure).throwable}"
+                "Failed to save note"
             }
-            result.data
+            noteId
         }
     }
 }

@@ -28,7 +28,7 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "org.skynetsoftware.skeletonnotes.SkeletonNotesTestRunner"
     }
 
     signingConfigs {
@@ -60,6 +60,18 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    buildFeatures {
+        viewBinding = true
+    }
+    packaging {
+        resources {
+            excludes +=
+                setOf(
+                    "META-INF/**/LICENSE*",
+                    "META-INF/**/NOTICE*",
+                )
+        }
+    }
 }
 
 dependencies {
@@ -69,6 +81,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.browser)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.espresso.core)

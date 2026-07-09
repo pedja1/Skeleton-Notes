@@ -18,6 +18,8 @@ android {
 
     defaultConfig {
         minSdk = 24
+
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
 
     compileOptions {
@@ -31,14 +33,20 @@ android {
             enableAndroidTestCoverage = true
         }
     }
+
+    testOptions {
+    }
 }
 
 dependencies {
     implementation(project(":domain"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.okhttp)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.json)
+    testImplementation(libs.mockwebserver)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlinx.coroutines.test)

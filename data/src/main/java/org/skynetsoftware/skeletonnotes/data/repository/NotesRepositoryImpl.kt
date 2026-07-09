@@ -16,45 +16,58 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource) : NotesRepository {
 
     /**
-     * Retrieves all notes on [Dispatchers.IO].
+     * @see NotesRepository.getNoteByIdFlow
+     * @see NotesDataSource.getAllNotesFlow
      */
-    override fun getAllNotes(): Flow<Result<List<Note>>> = notesDataSource.getAllNotes()
+    override fun getAllNotesFlow(): Flow<Result<List<Note>>> = notesDataSource.getAllNotesFlow()
 
     /**
-     * Retrieves a note by [id] on [Dispatchers.IO].
+     * @see NotesRepository.getAllNotes
+     * @see NotesDataSource.getAllNotes
      */
-    override fun getNoteByIdFlow(id: Long): Flow<Result<NoteWithAttachments>> = notesDataSource.getNoteByIdFlow(id)
+    override fun getAllNotes(): Result<List<Note>> = notesDataSource.getAllNotes()
 
     /**
-     * Retrieves a note by [id] on [Dispatchers.IO].
+     * @see NotesRepository.getNoteByIdFlow
+     * @see NotesDataSource.getNoteByIdFlow
      */
-    override fun getNoteById(id: Long): Result<NoteWithAttachments> = notesDataSource.getNoteById(id)
+    override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> = notesDataSource.getNoteByIdFlow(id)
 
     /**
-     * Saves a [noteWithAttachments] on [Dispatchers.IO].
+     * @see NotesRepository.getNoteById
+     * @see NotesDataSource.getNoteById
      */
-    override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Long> = withContext(Dispatchers.IO) {
+    override fun getNoteById(id: String): Result<NoteWithAttachments> = notesDataSource.getNoteById(id)
+
+    /**
+     * @see NotesRepository.saveNote
+     * @see NotesDataSource.saveNote
+     */
+    override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit> = withContext(Dispatchers.IO) {
         notesDataSource.saveNote(noteWithAttachments)
     }
 
     /**
-     * Deletes a note by [id] on [Dispatchers.IO].
+     * @see NotesRepository.deleteNote
+     * @see NotesDataSource.deleteNote
      */
-    override suspend fun deleteNote(id: Long): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun deleteNote(id: String): Result<Unit> = withContext(Dispatchers.IO) {
         notesDataSource.deleteNote(id)
     }
 
     /**
-     * @see [NotesRepository.moveToTrash]
+     * @see NotesRepository.moveToTrash
+     * @see NotesDataSource.moveToTrash
      */
-    override suspend fun moveToTrash(id: Long): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun moveToTrash(id: String): Result<Unit> = withContext(Dispatchers.IO) {
         notesDataSource.moveToTrash(id)
     }
 
     /**
-     * @see [NotesRepository.archiveNote]
+     * @see NotesRepository.archiveNote
+     * @see NotesDataSource.archiveNote
      */
-    override suspend fun archiveNote(id: Long): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun archiveNote(id: String): Result<Unit> = withContext(Dispatchers.IO) {
         notesDataSource.archiveNote(id)
     }
 }

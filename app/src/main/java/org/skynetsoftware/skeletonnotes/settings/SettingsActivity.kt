@@ -1,0 +1,284 @@
+package org.skynetsoftware.skeletonnotes.settings
+
+import android.app.AlertDialog
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.os.Bundle
+import android.view.View
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.browser.customtabs.CustomTabsClient
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.net.toUri
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
+import org.skynetsoftware.skeletonnotes.R
+import org.skynetsoftware.skeletonnotes.databinding.ActivitySettingsBinding
+import org.skynetsoftware.skeletonnotes.databinding.DialogNextcloudServerUrlBinding
+import org.skynetsoftware.skeletonnotes.domain.model.Settings
+import java.text.SimpleDateFormat
+
+/**
+ * Activity for managing application settings using a ListView
+ * with dynamically populated items of different types.
+ */
+class SettingsActivity : ComponentActivity() {
+
+    companion object {
+        private val LAST_SYNC_FORMAT = SimpleDateFormat.getDateTimeInstance()
+    }
+
+    private val settingsViewModel by viewModels<SettingsViewModel>(factoryProducer = { SettingsViewModel.Factory })
+    private lateinit var binding: ActivitySettingsBinding
+
+    private var showNextcloudServerUrlDialog: AlertDialog? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        binding = ActivitySettingsBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
+        }
+
+        binding.toolbar.toolbarTitle.text = getString(R.string.settings_title)
+
+        binding.toolbar.toolbarSettings.visibility = View.GONE
+        binding.toolbar.toolbarAddNote.visibility = View.GONE
+
+        binding.toolbar.toolbarBack.apply {
+            visibility = View.VISIBLE
+            setOnClickListener { finish() }
+        }
+
+        setupNextcloudSection()
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    settingsViewModel.settings.collect { settings ->
+                        updateNextcloudSync(settings)
+                    }
+                }
+                launch {
+                    settingsViewModel.nextcloudLoginState.collect { nextcloudLoginState ->
+                        updateNextcloudConnectionState(nextcloudLoginState)
+                    }
+                }
+                launch {
+                    settingsViewModel.authEvents.collect { event ->
+                        handleAuthEvent(event)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleAuthEvent(event: NextcloudAuthEvent) {
+        when (event) {
+            is NextcloudAuthEvent.LaunchAuthUrl -> launchLogin(event.url.toUri())
+
+            NextcloudAuthEvent.LoginSucceeded -> {
+                // Bring this activity to the front, which dismisses the Custom Tab
+                // that is stacked on top of it within the same task.
+                startActivity(
+                    Intent(this, SettingsActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                )
+            }
+        }
+    }
+
+    /**
+     * Opens the login [url] in a Custom Tab when a Custom Tabs-capable browser is
+     * available, so the tab can be auto-dismissed on success. Otherwise (or if the
+     * detected browser cannot actually service the intent) falls back to the user's
+     * default browser via [Intent.ACTION_VIEW].
+     */
+    private fun launchLogin(url: Uri) {
+        val customTabsPackage = CustomTabsClient.getPackageName(this, null)
+        if (customTabsPackage != null) {
+            try {
+                val customTabsIntent = CustomTabsIntent.Builder().build()
+                customTabsIntent.intent.setPackage(customTabsPackage)
+                customTabsIntent.launchUrl(this, url)
+                return
+            } catch (_: ActivityNotFoundException) {
+                // A browser advertised the Custom Tabs service but cannot launch it;
+                // fall through to the plain browser below.
+            }
+        }
+        launchExternalBrowser(url)
+    }
+
+    private fun launchExternalBrowser(url: Uri) {
+        val intent = Intent(Intent.ACTION_VIEW, url).apply {
+            addCategory(Intent.CATEGORY_BROWSABLE)
+        }
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
+        } else {
+            Toast.makeText(this, R.string.nextcloud_no_browser, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setupNextcloudSection() {
+        // nextcloud sync section
+        binding.sectionNextcloudSync.sectionTitle.text = getString(R.string.settings_section_nextcloud_sync)
+
+        binding.itemNextcloudConnect.itemSubtitle.visibility = View.VISIBLE
+        binding.itemNextcloudConnect.root.setOnClickListener {
+            showNextcloudServerUrlDialog(settingsViewModel.nextcloudServerUrl.value)
+        }
+
+        binding.itemNextcloudPeriodicSync.itemTitle.text = getString(R.string.settings_item_periodic_sync_title)
+        binding.itemNextcloudPeriodicSync.itemSubtitle.text = getString(R.string.settings_item_periodic_sync_subtitle)
+        binding.itemNextcloudPeriodicSync.itemSubtitle.visibility = View.VISIBLE
+        binding.itemNextcloudPeriodicSync.itemSwitch.setOnCheckedChangeListener { _, checked ->
+            settingsViewModel.setPeriodicSyncEnabled(checked)
+        }
+
+        binding.itemNextcloudSyncNow.itemTitle.text = getString(R.string.settings_item_sync_now_title)
+        binding.itemNextcloudSyncNow.itemSubtitle.visibility = View.VISIBLE
+        binding.itemNextcloudSyncNow.root.setOnClickListener {
+            settingsViewModel.syncNow()
+        }
+
+        // data section
+        binding.sectionData.sectionTitle.text = getString(R.string.settings_section_data)
+
+        binding.itemImport.itemTitle.text = getString(R.string.settings_item_import_tile)
+        binding.itemImport.itemSubtitle.text = getString(R.string.settings_item_import_subtile)
+        binding.itemImport.itemSubtitle.visibility = View.VISIBLE
+        binding.itemImport.root.setOnClickListener {
+
+        }
+
+        binding.itemExport.itemTitle.text = getString(R.string.settings_item_export_tile)
+        binding.itemExport.itemSubtitle.text = getString(R.string.settings_item_export_subtile)
+        binding.itemExport.itemSubtitle.visibility = View.VISIBLE
+        binding.itemExport.root.setOnClickListener {
+
+        }
+    }
+
+    private fun updateNextcloudSync(settings: Settings) {
+        val nextcloudConnectionInfo = settings.nextcloudConnectionInfo
+
+        if (nextcloudConnectionInfo == null) {
+            binding.itemNextcloudConnect.itemTitle.text = getString(R.string.settings_item_connect_to_nextcloud_title)
+            binding.itemNextcloudConnect.itemSubtitle.text =
+                getString(R.string.settings_item_connect_to_nextcloud_subtitle)
+        } else {
+            binding.itemNextcloudConnect.itemTitle.text = getString(R.string.settings_item_nextcloud_connected_title)
+            binding.itemNextcloudConnect.itemSubtitle.text = getString(
+                R.string.settings_item_nextcloud_connected_subtitle,
+                nextcloudConnectionInfo.username,
+                nextcloudConnectionInfo.serverUrl
+            )
+        }
+        if (settings.nextcloudLastSyncTimestamp <= 0L) {
+            binding.itemNextcloudSyncNow.itemSubtitle.text = getString(
+                R.string.settings_item_nextcloud_last_sync,
+                getString(R.string.settings_item_nextcloud_last_sync_never)
+            )
+        } else {
+            binding.itemNextcloudSyncNow.itemSubtitle.text = getString(
+                R.string.settings_item_nextcloud_last_sync,
+                LAST_SYNC_FORMAT.format(settings.nextcloudLastSyncTimestamp)
+            )
+        }
+        binding.itemNextcloudPeriodicSync.itemSwitch.isChecked = settings.nextcloudPeriodicSyncEnabled
+    }
+
+    private fun updateNextcloudConnectionState(nextcloudLoginState: NextcloudLoginState) {
+        when (nextcloudLoginState) {
+            is NextcloudLoginState.Connected -> {
+                binding.itemNextcloudConnect.itemTitle.text =
+                    getString(R.string.settings_item_nextcloud_connected_title)
+                binding.itemNextcloudConnect.itemSubtitle.text = getString(
+                    R.string.settings_item_nextcloud_connected_subtitle,
+                    nextcloudLoginState.nextcloudConnectionInfo.username,
+                    nextcloudLoginState.nextcloudConnectionInfo.serverUrl
+                )
+                binding.itemNextcloudConnect.progressBar.visibility = View.GONE
+                binding.itemNextcloudConnect.itemArrow.visibility = View.VISIBLE
+                binding.itemNextcloudConnect.root.isEnabled = true
+            }
+
+            NextcloudLoginState.InitiatingLogin -> {
+                binding.itemNextcloudConnect.itemTitle.text =
+                    getString(R.string.settings_item_nextcloud_connecting_title)
+                binding.itemNextcloudConnect.itemSubtitle.text =
+                    getString(R.string.settings_item_nextcloud_connecting_subtitle)
+                binding.itemNextcloudConnect.progressBar.visibility = View.VISIBLE
+                binding.itemNextcloudConnect.itemArrow.visibility = View.GONE
+                binding.itemNextcloudConnect.root.isEnabled = false
+            }
+
+            NextcloudLoginState.NotConnected -> {
+                binding.itemNextcloudConnect.itemTitle.text =
+                    getString(R.string.settings_item_connect_to_nextcloud_title)
+                binding.itemNextcloudConnect.itemSubtitle.text =
+                    getString(R.string.settings_item_connect_to_nextcloud_subtitle)
+                binding.itemNextcloudConnect.progressBar.visibility = View.GONE
+                binding.itemNextcloudConnect.itemArrow.visibility = View.VISIBLE
+                binding.itemNextcloudConnect.root.isEnabled = true
+            }
+
+            NextcloudLoginState.WaitingForLogin -> {
+                binding.itemNextcloudConnect.itemTitle.text =
+                    getString(R.string.settings_item_nextcloud_connecting_title)
+                binding.itemNextcloudConnect.itemSubtitle.text =
+                    getString(R.string.settings_item_nextcloud_logging_in_subtitle)
+                binding.itemNextcloudConnect.progressBar.visibility = View.VISIBLE
+                binding.itemNextcloudConnect.itemArrow.visibility = View.GONE
+                binding.itemNextcloudConnect.root.isEnabled = false
+            }
+
+            NextcloudLoginState.LoginError -> {
+                binding.itemNextcloudConnect.itemTitle.text =
+                    getString(R.string.settings_item_connect_to_nextcloud_title)
+                binding.itemNextcloudConnect.itemSubtitle.text =
+                    getString(R.string.settings_item_nextcloud_connect_error_subtitle)
+                binding.itemNextcloudConnect.progressBar.visibility = View.GONE
+                binding.itemNextcloudConnect.itemArrow.visibility = View.VISIBLE
+                binding.itemNextcloudConnect.root.isEnabled = true
+            }
+        }
+    }
+
+    private fun showNextcloudServerUrlDialog(nextcloudServerUrl: String?) {
+        if(showNextcloudServerUrlDialog?.isShowing == true) {
+            return
+        }
+        val dialogBinding = DialogNextcloudServerUrlBinding.inflate(layoutInflater)
+        val nextcloudServerUrlEditText = dialogBinding.nextcloudServerUrl
+
+        nextcloudServerUrl?.let { nextcloudServerUrlEditText.setText(it) }
+
+        showNextcloudServerUrlDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.nextcloud_server_url_title)
+            .setView(dialogBinding.root)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                settingsViewModel.initiateNextcloudLogin(nextcloudServerUrlEditText.text.toString())
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .setOnDismissListener {
+                showNextcloudServerUrlDialog = null
+            }
+            .show()
+    }
+
+}

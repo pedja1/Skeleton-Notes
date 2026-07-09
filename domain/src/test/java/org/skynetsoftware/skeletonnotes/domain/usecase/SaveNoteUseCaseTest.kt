@@ -1,26 +1,24 @@
 package org.skynetsoftware.skeletonnotes.domain.usecase
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.skynetsoftware.skeletonnotes.domain.BaseFakeNotesRepository
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
-import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 
 class SaveNoteUseCaseTest {
     @Test
-    fun savesNoteAndReturnsId() =
+    fun savesNoteSuccessfully() =
         runTest {
             val repository = FakeSaveRepository()
             val useCase = SaveNoteUseCase(repository)
             val note =
                 Note(
-                    id = 0,
+                    id = "",
                     title = "Test",
                     content = "Content",
                     createdAt = 1000L,
@@ -31,7 +29,6 @@ class SaveNoteUseCaseTest {
 
             val result = useCase(noteWithAttachments)
             assertTrue(result is Result.Success)
-            assertEquals(42L, (result as Result.Success).data)
             assertTrue(repository.saveCalled)
         }
 
@@ -42,7 +39,7 @@ class SaveNoteUseCaseTest {
             val useCase = SaveNoteUseCase(repository)
             val note =
                 Note(
-                    id = 0,
+                    id = "",
                     title = "With File",
                     content = "Content",
                     createdAt = 1000L,
@@ -51,7 +48,7 @@ class SaveNoteUseCaseTest {
                 )
             val attachments =
                 listOf(
-                    Attachment(id = 0, noteId = 0, uri = "file://test.txt"),
+                    Attachment(id = "att1", noteId = "", uri = "file://test.txt"),
                 )
             val noteWithAttachments = NoteWithAttachments(note, attachments)
 
@@ -69,7 +66,7 @@ class SaveNoteUseCaseTest {
             val useCase = SaveNoteUseCase(repository)
             val note =
                 Note(
-                    id = 0,
+                    id = "",
                     title = "Test",
                     content = "Content",
                     createdAt = 1000L,
@@ -83,39 +80,15 @@ class SaveNoteUseCaseTest {
 
     private class FakeSaveRepository(
         private val shouldFail: Boolean = false,
-    ) : NotesRepository {
+    ) : BaseFakeNotesRepository() {
         var saveCalled = false
         var savedNote: NoteWithAttachments? = null
 
-        override fun getAllNotes(): Flow<Result<List<Note>>> =
-            flow {
-                emit(Result.Success(emptyList()))
-            }
-
-        override fun getNoteByIdFlow(id: Long): Flow<Result<NoteWithAttachments>> =
-            flow {
-                emit(getNoteById(id))
-            }
-
-        override fun getNoteById(id: Long): Result<NoteWithAttachments> =
-            Result.Success(
-                NoteWithAttachments(
-                    Note(id, "Test", "Content", 1000L, 1000L, emptySet()),
-                    emptyList(),
-                ),
-            )
-
-        override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Long> {
+        override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit> {
             if (shouldFail) return Result.Failure(RuntimeException("DB error"))
             saveCalled = true
             savedNote = noteWithAttachments
-            return Result.Success(42L)
+            return Result.Success(Unit)
         }
-
-        override suspend fun deleteNote(id: Long): Result<Unit> = Result.Success(Unit)
-
-        override suspend fun moveToTrash(id: Long): Result<Unit> = Result.Success(Unit)
-
-        override suspend fun archiveNote(id: Long): Result<Unit> = Result.Success(Unit)
     }
 }

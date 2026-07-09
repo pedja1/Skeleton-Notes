@@ -1,4 +1,4 @@
-package org.skynetsoftware.skeletonnotes
+package org.skynetsoftware.skeletonnotes.home
 
 import android.content.Context
 import android.text.Html
@@ -7,7 +7,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
-import android.widget.TextView
+import org.skynetsoftware.skeletonnotes.R
+import org.skynetsoftware.skeletonnotes.databinding.ItemNoteCardBinding
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 
@@ -49,36 +50,33 @@ class NoteAdapter(
      * Creates or reuses a view for the note at [position] using the ViewHolder pattern.
      */
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
-        val view: View
+        val binding: ItemNoteCardBinding
         val viewHolder: ViewHolder
 
         if (convertView == null) {
-            view = LayoutInflater.from(context)
-                .inflate(R.layout.item_note_card, parent, false)
-            viewHolder = ViewHolder(view)
-            view.tag = viewHolder
+            binding = ItemNoteCardBinding.inflate(LayoutInflater.from(context), parent, false)
+            viewHolder = ViewHolder(binding)
+            binding.root.tag = viewHolder
         } else {
-            view = convertView
-            viewHolder = view.tag as ViewHolder
+            binding = ItemNoteCardBinding.bind(convertView)
+            viewHolder = binding.root.tag as ViewHolder
         }
 
         viewHolder.bind(getItem(position), onNoteClick)
-        return view
+        return binding.root
     }
 
     /**
      * ViewHolder for recycling note card views.
      */
-    class ViewHolder(private val item: View) {
-        private val titleView: TextView = item.findViewById(R.id.note_tile)
-        private val previewView: TextView = item.findViewById(R.id.note_preview)
+    class ViewHolder(private val binding: ItemNoteCardBinding) {
 
         /**
          * Binds note data to the view and sets click listener.
          */
         fun bind(note: Note, onNoteClick: (Note) -> Unit) {
-            titleView.text = note.title
-            previewView.text = SpannableStringBuilder(
+            binding.noteTile.text = note.title
+            binding.notePreview.text = SpannableStringBuilder(
                 Html.fromHtml(
                     note.content,
                     Html.FROM_HTML_MODE_LEGACY,
@@ -88,9 +86,9 @@ class NoteAdapter(
             )
 
             if(note.title.isNullOrBlank()) {
-                titleView.visibility = View.GONE
+                binding.noteTile.visibility = View.GONE
             } else {
-                titleView.visibility = View.VISIBLE
+                binding.noteTile.visibility = View.VISIBLE
             }
 
             val backgroundRes = when (note.status) {
@@ -98,9 +96,9 @@ class NoteAdapter(
                 NoteStatus.ARCHIVE -> R.drawable.card_background_archive
                 else -> R.drawable.card_background
             }
-            item.setBackgroundResource(backgroundRes)
+            binding.root.setBackgroundResource(backgroundRes)
 
-            item.setOnClickListener { onNoteClick(note) }
+            binding.root.setOnClickListener { onNoteClick(note) }
         }
     }
 }

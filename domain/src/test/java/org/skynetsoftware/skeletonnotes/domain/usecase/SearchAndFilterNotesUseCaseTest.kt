@@ -13,8 +13,8 @@ class SearchAndFilterNotesUseCaseTest {
     fun searchMatchesTitle() {
         val notes =
             listOf(
-                note(1, "Hello World", "Some content"),
-                note(2, "Goodbye", "Other content"),
+                note("1", "Hello World", "Some content"),
+                note("2", "Goodbye", "Other content"),
             )
         val result = useCase(notes, Filter(query = "Hello", showTrashed = false, showArchived = false))
         assertEquals(1, result.size)
@@ -25,8 +25,8 @@ class SearchAndFilterNotesUseCaseTest {
     fun searchMatchesContent() {
         val notes =
             listOf(
-                note(1, "Note A", "Contains keyword here"),
-                note(2, "Note B", "No match"),
+                note("1", "Note A", "Contains keyword here"),
+                note("2", "Note B", "No match"),
             )
         val result = useCase(notes, Filter(query = "keyword", showTrashed = false, showArchived = false))
         assertEquals(1, result.size)
@@ -37,8 +37,8 @@ class SearchAndFilterNotesUseCaseTest {
     fun excludesTrashByDefault() {
         val notes =
             listOf(
-                note(1, "Active", status = NoteStatus.ACTIVE),
-                note(2, "Trash", status = NoteStatus.TRASH),
+                note("1", "Active", status = NoteStatus.ACTIVE),
+                note("2", "Trash", status = NoteStatus.TRASH),
             )
         val result = useCase(notes, Filter(query = "", showTrashed = false, showArchived = false))
         assertEquals(1, result.size)
@@ -49,8 +49,8 @@ class SearchAndFilterNotesUseCaseTest {
     fun includesTrashWhenRequested() {
         val notes =
             listOf(
-                note(1, "Active", status = NoteStatus.ACTIVE),
-                note(2, "Trash", status = NoteStatus.TRASH),
+                note("1", "Active", status = NoteStatus.ACTIVE),
+                note("2", "Trash", status = NoteStatus.TRASH),
             )
         val result = useCase(notes, Filter(query = "", showTrashed = true, showArchived = false))
         assertEquals(2, result.size)
@@ -60,8 +60,8 @@ class SearchAndFilterNotesUseCaseTest {
     fun includesArchivedWhenRequested() {
         val notes =
             listOf(
-                note(1, "Active", status = NoteStatus.ACTIVE),
-                note(2, "Archived", status = NoteStatus.ARCHIVE),
+                note("1", "Active", status = NoteStatus.ACTIVE),
+                note("2", "Archived", status = NoteStatus.ARCHIVE),
             )
         val result = useCase(notes, Filter(query = "", showTrashed = false, showArchived = true))
         assertEquals(2, result.size)
@@ -71,8 +71,8 @@ class SearchAndFilterNotesUseCaseTest {
     fun emptyQueryReturnsAllNotes() {
         val notes =
             listOf(
-                note(1, "A"),
-                note(2, "B"),
+                note("1", "A"),
+                note("2", "B"),
             )
         val result = useCase(notes, Filter(query = "", showTrashed = false, showArchived = false))
         assertEquals(2, result.size)
@@ -82,8 +82,8 @@ class SearchAndFilterNotesUseCaseTest {
     fun searchIsCaseInsensitive() {
         val notes =
             listOf(
-                note(1, "UPPERCASE"),
-                note(2, "lowercase"),
+                note("1", "UPPERCASE"),
+                note("2", "lowercase"),
             )
         val result = useCase(notes, Filter(query = "upper", showTrashed = false, showArchived = false))
         assertEquals(1, result.size)
@@ -91,7 +91,7 @@ class SearchAndFilterNotesUseCaseTest {
     }
 
     private fun note(
-        id: Long,
+        id: String,
         title: String,
         content: String = "Content",
         createdAt: Long = 0L,

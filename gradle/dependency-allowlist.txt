@@ -8,6 +8,9 @@ dep:androidx.lifecycle:lifecycle-viewmodel-ktx
 dep:org.jetbrains.kotlin:kotlin-stdlib
 dep:org.jetbrains.kotlinx:kotlinx-coroutines-android
 dep:org.jetbrains.kotlinx:kotlinx-coroutines-core
+dep:androidx.databinding:viewbinding
+dep:com.squareup.okhttp3:okhttp
+dep:androidx.browser:browser
 
 # Plugins
 plugin:com.android.application

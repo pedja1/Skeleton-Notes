@@ -14,5 +14,5 @@ class GetNoteByIdUseCase(private val notesRepository: NotesRepository) {
      * @param id the ID of the note to retrieve
      * @return [Result.Success] with the note and attachments, or [Result.Failure] on error
      */
-    suspend operator fun invoke(id: Long): Result<NoteWithAttachments> = notesRepository.getNoteById(id)
+    suspend operator fun invoke(id: String): Result<NoteWithAttachments> = notesRepository.getNoteById(id)
 }

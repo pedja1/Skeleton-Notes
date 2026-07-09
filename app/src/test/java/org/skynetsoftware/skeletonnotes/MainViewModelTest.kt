@@ -15,6 +15,7 @@ import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
+import org.skynetsoftware.skeletonnotes.home.MainViewModel
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelTest {
@@ -26,8 +27,8 @@ class MainViewModelTest {
 
         try {
             val notes = listOf(
-                Note(id = 1, title = "Note 1", content = "# Note 1\nContent 1", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
-                Note(id = 2, title = "Note 2", content = "# Note 2\nContent 2", createdAt = 2000L, modifiedAt = 2000L, tags = emptySet())
+                Note(id = "1", title = "Note 1", content = "# Note 1\nContent 1", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
+                Note(id = "2", title = "Note 2", content = "# Note 2\nContent 2", createdAt = 2000L, modifiedAt = 2000L, tags = emptySet())
             )
             val useCase = GetAllNotesUseCase(FakeNotesRepository(notes))
             val searchAndFilter = SearchAndFilterNotesUseCase()
@@ -82,8 +83,8 @@ class MainViewModelTest {
 
         try {
             val notes = listOf(
-                Note(id = 1, title = "Hello World", content = "Some content", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
-                Note(id = 2, title = "Goodbye", content = "Other content", createdAt = 2000L, modifiedAt = 2000L, tags = emptySet())
+                Note(id = "1", title = "Hello World", content = "Some content", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
+                Note(id = "2", title = "Goodbye", content = "Other content", createdAt = 2000L, modifiedAt = 2000L, tags = emptySet())
             )
             val searchAndFilter = SearchAndFilterNotesUseCase()
             val useCase = GetAllNotesUseCase(FakeNotesRepository(notes))
@@ -114,8 +115,8 @@ class MainViewModelTest {
 
         try {
             val notes = listOf(
-                Note(id = 1, title = "Note A", content = "Contains keyword here", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
-                Note(id = 2, title = "Note B", content = "No match", createdAt = 2000L, modifiedAt = 2000L, tags = emptySet())
+                Note(id = "1", title = "Note A", content = "Contains keyword here", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
+                Note(id = "2", title = "Note B", content = "No match", createdAt = 2000L, modifiedAt = 2000L, tags = emptySet())
             )
             val searchAndFilter = SearchAndFilterNotesUseCase()
             val useCase = GetAllNotesUseCase(FakeNotesRepository(notes))
@@ -146,8 +147,8 @@ class MainViewModelTest {
 
         try {
             val notes = listOf(
-                Note(id = 1, title = "Active Note", content = "Active content", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet(), status = NoteStatus.ACTIVE),
-                Note(id = 2, title = "Trash Note", content = "Trash content", createdAt = 2000L, modifiedAt = 2000L, tags = emptySet(), status = NoteStatus.TRASH)
+                Note(id = "1", title = "Active Note", content = "Active content", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet(), status = NoteStatus.ACTIVE),
+                Note(id = "2", title = "Trash Note", content = "Trash content", createdAt = 2000L, modifiedAt = 2000L, tags = emptySet(), status = NoteStatus.TRASH)
             )
             val searchAndFilter = SearchAndFilterNotesUseCase()
             val useCase = GetAllNotesUseCase(FakeNotesRepository(notes))

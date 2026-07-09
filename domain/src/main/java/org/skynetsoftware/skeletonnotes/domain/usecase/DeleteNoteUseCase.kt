@@ -13,5 +13,5 @@ class DeleteNoteUseCase(private val notesRepository: NotesRepository) {
      * @param id the ID of the note to delete
      * @return [Result.Success] on successful deletion, or [Result.Failure] on error
      */
-    suspend operator fun invoke(id: Long): Result<Unit> = notesRepository.deleteNote(id)
+    suspend operator fun invoke(id: String): Result<Unit> = notesRepository.deleteNote(id)
 }
