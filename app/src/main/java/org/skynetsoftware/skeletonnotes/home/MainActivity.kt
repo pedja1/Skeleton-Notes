@@ -15,6 +15,7 @@ import androidx.core.widget.doOnTextChanged
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import kotlinx.coroutines.launch
 import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.databinding.ActivityMainBinding
@@ -45,9 +46,10 @@ class MainActivity : ComponentActivity() {
         }
 
         val gridView = binding.gridNotes
-        gridView.numColumns = 2
+        gridView.layoutManager =
+            StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
 
-        adapter = NoteAdapter(this) { note ->
+        adapter = NoteAdapter { note ->
             val intent = Intent(this, NoteDetailActivity::class.java)
             intent.putExtra(NoteDetailActivity.EXTRA_NOTE_ID, note.id)
             startActivity(intent)

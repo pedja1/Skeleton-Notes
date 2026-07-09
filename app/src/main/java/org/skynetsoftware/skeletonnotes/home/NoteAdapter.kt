@@ -1,94 +1,89 @@
 package org.skynetsoftware.skeletonnotes.home
 
-import android.content.Context
 import android.text.Html
-import android.text.SpannableStringBuilder
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.BaseAdapter
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.RecyclerView
 import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.databinding.ItemNoteCardBinding
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 
 /**
- * Adapter for displaying notes in a GridView using the ViewHolder pattern
- * for view recycling. Applies different backgrounds based on note status.
+ * Adapter for displaying notes in a RecyclerView using a StaggeredGridLayoutManager,
+ * which lets each card size itself to its content. Applies different backgrounds based
+ * on note status.
  */
 class NoteAdapter(
-    private val context: Context,
     private val onNoteClick: (Note) -> Unit
-) : BaseAdapter() {
+) : RecyclerView.Adapter<NoteAdapter.ViewHolder>() {
 
     private var notes: List<Note> = emptyList()
 
     /**
-     * Updates the notes list and triggers a refresh.
+     * Updates the notes list and dispatches minimal changes via [DiffUtil].
      */
     fun setNotes(notes: List<Note>) {
+        val diff = DiffUtil.calculateDiff(NoteDiffCallback(this.notes, notes))
         this.notes = notes
-        notifyDataSetChanged()
+        diff.dispatchUpdatesTo(this)
     }
 
     /**
      * Returns the total number of notes in the adapter.
      */
-    override fun getCount(): Int = notes.size
+    override fun getItemCount(): Int = notes.size
 
     /**
-     * Returns the [Note] at the given [position].
+     * Inflates a note card view and wraps it in a [ViewHolder].
      */
-    override fun getItem(position: Int): Note = notes[position]
-
-    /**
-     * Returns a stable ID for the item at [position], derived from the note's ID.
-     */
-    override fun getItemId(position: Int): Long = notes[position].id.hashCode().toLong()
-
-    /**
-     * Creates or reuses a view for the note at [position] using the ViewHolder pattern.
-     */
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
-        val binding: ItemNoteCardBinding
-        val viewHolder: ViewHolder
-
-        if (convertView == null) {
-            binding = ItemNoteCardBinding.inflate(LayoutInflater.from(context), parent, false)
-            viewHolder = ViewHolder(binding)
-            binding.root.tag = viewHolder
-        } else {
-            binding = ItemNoteCardBinding.bind(convertView)
-            viewHolder = binding.root.tag as ViewHolder
-        }
-
-        viewHolder.bind(getItem(position), onNoteClick)
-        return binding.root
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val binding = ItemNoteCardBinding.inflate(
+            LayoutInflater.from(parent.context),
+            parent,
+            false
+        )
+        return ViewHolder(binding)
     }
 
     /**
-     * ViewHolder for recycling note card views.
+     * Binds the note at [position] to the given [holder].
      */
-    class ViewHolder(private val binding: ItemNoteCardBinding) {
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        holder.bind(notes[position], onNoteClick)
+    }
+
+    /**
+     * ViewHolder for a note card.
+     */
+    class ViewHolder(
+        private val binding: ItemNoteCardBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
 
         /**
          * Binds note data to the view and sets click listener.
          */
         fun bind(note: Note, onNoteClick: (Note) -> Unit) {
             binding.noteTile.text = note.title
-            binding.notePreview.text = SpannableStringBuilder(
-                Html.fromHtml(
-                    note.content,
-                    Html.FROM_HTML_MODE_LEGACY,
-                    null,
-                    null
-                )
-            )
+            binding.notePreview.text = Html.fromHtml(
+                note.content,
+                Html.FROM_HTML_MODE_LEGACY,
+                null,
+                null
+            ).trimEnd()
 
             if(note.title.isNullOrBlank()) {
                 binding.noteTile.visibility = View.GONE
             } else {
                 binding.noteTile.visibility = View.VISIBLE
+            }
+
+            if(note.content.isBlank()) {
+                binding.notePreview.visibility = View.GONE
+            } else {
+                binding.notePreview.visibility = View.VISIBLE
             }
 
             val backgroundRes = when (note.status) {
@@ -100,5 +95,24 @@ class NoteAdapter(
 
             binding.root.setOnClickListener { onNoteClick(note) }
         }
+    }
+
+    /**
+     * Computes the difference between two note lists for efficient RecyclerView updates.
+     */
+    private class NoteDiffCallback(
+        private val oldList: List<Note>,
+        private val newList: List<Note>
+    ) : DiffUtil.Callback() {
+
+        override fun getOldListSize(): Int = oldList.size
+
+        override fun getNewListSize(): Int = newList.size
+
+        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+            oldList[oldItemPosition].id == newList[newItemPosition].id
+
+        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+            oldList[oldItemPosition] == newList[newItemPosition]
     }
 }

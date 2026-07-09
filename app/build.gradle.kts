@@ -72,6 +72,9 @@ android {
                 )
         }
     }
+    testOptions {
+        animationsDisabled = true
+    }
 }
 
 dependencies {
@@ -82,9 +85,15 @@ dependencies {
 
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.browser)
+    implementation(libs.androidx.recyclerview)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.espresso.contrib) {
+        // espresso-contrib pulls hamcrest 2.2, which conflicts with the hamcrest 1.3
+        // used by the rest of the test suite (e.g. CoreMatchers.allOf(Matcher, Matcher)).
+        exclude(group = "org.hamcrest")
+    }
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.intents)
 }

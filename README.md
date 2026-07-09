@@ -57,6 +57,7 @@
 - androidx.databinding:viewbinding - alternative is `findViewById`, I am not a masochist 🤕
 - com.squareup.okhttp3:okhttp - Nextcloud uses WebDav for file access, which uses `PROPFIND` and `MKCOL` http methods which aren't supported in `HttpUrlConnection`
 - androidx.browser:browser - Nextcloud Flow V2 login
+- androidx.recyclerview:recyclerview - GridView sucks
 
 ### License
     Copyright (C) 2026  pedja

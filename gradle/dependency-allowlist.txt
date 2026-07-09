@@ -11,6 +11,7 @@ dep:org.jetbrains.kotlinx:kotlinx-coroutines-core
 dep:androidx.databinding:viewbinding
 dep:com.squareup.okhttp3:okhttp
 dep:androidx.browser:browser
+dep:androidx.recyclerview:recyclerview
 
 # Plugins
 plugin:com.android.application

@@ -1,10 +1,11 @@
 package org.skynetsoftware.skeletonnotes
 
+import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ActivityScenario
-import androidx.test.espresso.Espresso.onData
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.contrib.RecyclerViewActions
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intended
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasComponent
@@ -13,7 +14,6 @@ import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import org.hamcrest.CoreMatchers.allOf
-import org.hamcrest.CoreMatchers.anything
 import org.hamcrest.CoreMatchers.not
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
@@ -145,10 +145,13 @@ class MainActivityTest {
     fun test10_noteClickOpensNoteDetailActivity() {
         val noteId = prePopulateNote()
         ActivityScenario.launch(MainActivity::class.java).use { _ ->
-            onData(anything())
-                .inAdapterView(withId(R.id.grid_notes))
-                .atPosition(0)
-                .perform(click())
+            onView(withId(R.id.grid_notes))
+                .perform(
+                    RecyclerViewActions.actionOnItemAtPosition<RecyclerView.ViewHolder>(
+                        0,
+                        click()
+                    )
+                )
             intended(
                 allOf(
                     hasComponent(NoteDetailActivity::class.java.name),
