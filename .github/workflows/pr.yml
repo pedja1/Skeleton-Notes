@@ -7,7 +7,7 @@ on:
 jobs:
   pr:
     name: Verify PR (Lint, Build, Tests)
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
