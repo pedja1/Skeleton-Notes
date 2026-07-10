@@ -278,8 +278,9 @@ class NextcloudApiImplTest {
 
             val result = api.listDirectory("")
 
-            // The DOCTYPE must be rejected outright so the external entity is never resolved.
-            assertTrue(result is Result.Failure)
+            // The external entity must never be resolved, so the secret file contents must not
+            // appear in any parsed filename. (On the JVM/Xerces parser the DOCTYPE is rejected
+            // outright; on Android the entity is simply left unexpanded — either way, no leak.)
             val leaked = (result as? Result.Success)?.data.orEmpty()
                 .any { it.filename.contains("TOP_SECRET_CONTENTS") }
             assertTrue("XXE payload must not leak local file contents", !leaked)

@@ -23,6 +23,7 @@ import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.parsers.ParserConfigurationException
 
 /**
  * Communicates with Nextcloud via WebDAV and Login Flow v2 using OkHttp.
@@ -333,18 +334,40 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
 
     /**
      * Creates a [DocumentBuilder] hardened against XML External Entity (XXE) attacks by disabling
-     * DOCTYPE declarations and external entity resolution, so a malicious or compromised server
-     * response cannot trigger local-file disclosure or SSRF.
+     * external entity resolution and entity expansion, so a malicious or compromised server response
+     * cannot trigger local-file disclosure or SSRF.
+     *
+     * Feature toggles are applied best-effort: Android's built-in parser does not implement the
+     * Apache `disallow-doctype-decl` feature and throws [ParserConfigurationException] for it, so
+     * unsupported features are skipped rather than aborting parsing. The runtime protection on
+     * Android comes from disabling external general/parameter entities and not expanding entity
+     * references (all supported on Android).
      */
     private fun newSecureDocumentBuilder(): DocumentBuilder {
         val factory = DocumentBuilderFactory.newInstance()
-        factory.setFeature(FEATURE_DISALLOW_DOCTYPE, true)
-        factory.setFeature(FEATURE_EXTERNAL_GENERAL_ENTITIES, false)
-        factory.setFeature(FEATURE_EXTERNAL_PARAMETER_ENTITIES, false)
-        factory.setXIncludeAware(false)
+        trySetFeature(factory, FEATURE_DISALLOW_DOCTYPE, true)
+        trySetFeature(factory, FEATURE_EXTERNAL_GENERAL_ENTITIES, false)
+        trySetFeature(factory, FEATURE_EXTERNAL_PARAMETER_ENTITIES, false)
+        try {
+            factory.setXIncludeAware(false)
+        } catch (e: UnsupportedOperationException) {
+            Log.w(TAG, "setXIncludeAware unsupported", e)
+        }
         factory.isExpandEntityReferences = false
         factory.isNamespaceAware = true
         return factory.newDocumentBuilder()
+    }
+
+    /**
+     * Applies an XML parser [feature], ignoring parsers that do not support it (Android's parser
+     * throws [ParserConfigurationException] for features such as `disallow-doctype-decl`).
+     */
+    private fun trySetFeature(factory: DocumentBuilderFactory, feature: String, value: Boolean) {
+        try {
+            factory.setFeature(feature, value)
+        } catch (e: ParserConfigurationException) {
+            Log.w(TAG, "XML feature not supported: $feature", e)
+        }
     }
 
     /**
