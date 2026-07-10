@@ -32,6 +32,12 @@
         android:textColor="?android:textColorSecondary"
         tools:text="Note content"/>
 
+    <org.skynetsoftware.skeletonnotes.widget.FlowLayout
+        android:id="@+id/note_tags"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/note_preview_margin_top" />
+
     <TextView
         android:id="@+id/note_last_edited"
         android:layout_width="match_parent"

@@ -179,11 +179,12 @@ class NoteDetailActivity : ComponentActivity() {
         val content = binding.editNoteContent.text?.let {
             Html.toHtml(it)
         } ?: ""
+        val plainText = binding.editNoteContent.text?.toString() ?: ""
         if (viewModel.isNewNote() && title == null && content.isBlank()) {
             finish()
             return
         }
-        viewModel.saveNote(title, content, attachments)
+        viewModel.saveNote(title, content, plainText, attachments)
     }
 
     private fun showDeleteConfirmation() {

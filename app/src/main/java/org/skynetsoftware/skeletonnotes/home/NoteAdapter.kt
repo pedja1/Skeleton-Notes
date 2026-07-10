@@ -1,9 +1,12 @@
 package org.skynetsoftware.skeletonnotes.home
 
 import android.text.Html
+import android.text.TextUtils
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import org.skynetsoftware.skeletonnotes.R
@@ -86,6 +89,8 @@ class NoteAdapter(
                 binding.notePreview.visibility = View.VISIBLE
             }
 
+            bindTags(note)
+
             binding.noteLastEdited.text = NoteTimeFormatter.format(
                 note.modifiedAt,
                 binding.root.context
@@ -99,6 +104,63 @@ class NoteAdapter(
             binding.root.setBackgroundResource(backgroundRes)
 
             binding.root.setOnClickListener { onNoteClick(note) }
+        }
+
+        /**
+         * Renders the note's tags as chip pills, or hides the container when there are none.
+         * Reuses the chips already present in the container (ViewHolders are recycled and the
+         * chips are not recycled by RecyclerView), creating new ones only when the note has more
+         * tags than there are existing chips, and hiding any surplus chips left over from a
+         * previous, longer binding.
+         */
+        private fun bindTags(note: Note) {
+            val container = binding.noteTags
+            if (note.tags.isEmpty()) {
+                container.visibility = View.GONE
+                return
+            }
+            container.visibility = View.VISIBLE
+            var index = 0
+            for (tag in note.tags) {
+                val chip = container.getChildAt(index) as TextView?
+                    ?: createTagChip().also { container.addView(it) }
+                chip.visibility = View.VISIBLE
+                chip.text = tag
+                index++
+            }
+            for (i in index until container.childCount) {
+                container.getChildAt(i).visibility = View.GONE
+            }
+        }
+
+        /**
+         * Creates a single tag chip [TextView] styled as a rounded pill. The chip text is set by
+         * the caller so the chip can be reused across binds.
+         */
+        private fun createTagChip(): TextView {
+            val context = binding.root.context
+            val resources = context.resources
+            val horizontalPadding =
+                resources.getDimensionPixelSize(R.dimen.tag_chip_padding_horizontal)
+            val verticalPadding =
+                resources.getDimensionPixelSize(R.dimen.tag_chip_padding_vertical)
+            val margin = resources.getDimensionPixelSize(R.dimen.tag_chip_margin)
+
+            return TextView(context).apply {
+                setBackgroundResource(R.drawable.tag_chip_background)
+                setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+                setTextColor(resources.getColor(R.color.tag_chip_text, context.theme))
+                setTextSize(
+                    TypedValue.COMPLEX_UNIT_PX,
+                    resources.getDimension(R.dimen.tag_chip_text_size)
+                )
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+                layoutParams = ViewGroup.MarginLayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply { setMargins(0, 0, margin, margin) }
+            }
         }
     }
 

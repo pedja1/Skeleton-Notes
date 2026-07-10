@@ -73,6 +73,28 @@ class NoteMapperInstrumentedTest {
     }
 
     @Test
+    fun cursorToNoteReturnsEmptyTagsForNoteWithoutTags() {
+        val noteId = "test-id-empty-tags"
+        val cv = Note(
+            id = noteId,
+            title = "Test Title",
+            content = "Content",
+            createdAt = 1000L,
+            modifiedAt = 1000L,
+            tags = emptySet()
+        ).toContentValues()
+        database.insert(TABLE_NOTES, null, cv)
+
+        val cursor = database.rawQuery("SELECT * FROM $TABLE_NOTES WHERE $COLUMN_ID = ?", arrayOf(noteId))
+        assertTrue(cursor.moveToFirst())
+
+        val note = cursor.toNote()
+        assertEquals(emptySet<String>(), note.tags)
+
+        cursor.close()
+    }
+
+    @Test
     fun cursorToNoteHandlesNullTitle() {
         val noteId = "test-id-null-title"
         val cv = Note(

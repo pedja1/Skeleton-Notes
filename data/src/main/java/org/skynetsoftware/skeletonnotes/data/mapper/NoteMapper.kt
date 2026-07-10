@@ -28,7 +28,11 @@ internal fun Cursor.toNote(): Note {
         content = getString(getColumnIndexOrThrow(COLUMN_CONTENT)),
         createdAt = getLong(getColumnIndexOrThrow(COLUMN_CREATED)),
         modifiedAt = getLong(getColumnIndexOrThrow(COLUMN_MODIFIED)),
-        tags = getStringOrNull(getColumnIndexOrThrow(COLUMN_TAGS))?.splitToSequence(",").orEmpty().toSet(),
+        tags = getStringOrNull(getColumnIndexOrThrow(COLUMN_TAGS))
+            ?.splitToSequence(",")
+            .orEmpty()
+            .filter { it.isNotBlank() }
+            .toSet(),
         status = NoteStatus.fromValue(getInt(getColumnIndexOrThrow(COLUMN_STATUS))),
         remoteLastModified = getLong(getColumnIndexOrThrow(COLUMN_REMOTE_LAST_MODIFIED)),
     )

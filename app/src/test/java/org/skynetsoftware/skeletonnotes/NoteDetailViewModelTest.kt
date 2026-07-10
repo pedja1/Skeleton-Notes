@@ -90,7 +90,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository(shouldFailLoad = true)
             val viewModel = createViewModel("existing", repository)
 
-            viewModel.saveNote("Title", "Content", emptyList())
+            viewModel.saveNote("Title", "Content", "Content", emptyList())
 
             assertTrue(repository.savedNoteWithAttachments == null)
         } finally {
@@ -106,12 +106,31 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository()
             val viewModel = createViewModel("", repository, isNewNote = true)
 
-            viewModel.saveNote("Title", "<p>Hello #world and #foo</p>", emptyList())
+            viewModel.saveNote("Title", "<p>Hello #world and #foo</p>", "Hello #world and #foo", emptyList())
 
             val state = viewModel.uiState.value
             assertEquals(NoteDetailViewModel.UiState.Saved, state)
             val savedNote = repository.savedNoteWithAttachments
             assertEquals(setOf("world", "foo"), savedNote?.note?.tags)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun saveNoteExtractsTagsFromPlainTextEvenWhenHtmlWrapsThem() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val repository = FakeNoteDetailRepository()
+            val viewModel = createViewModel("", repository, isNewNote = true)
+
+            // HTML content wraps the tag word in inline markup (as IME spell-check spans do),
+            // which would hide it from a regex over the HTML. Plain text keeps it intact.
+            viewModel.saveNote("Title", "<p>#<u>LinuxRules</u></p>", "#LinuxRules", emptyList())
+
+            assertEquals(NoteDetailViewModel.UiState.Saved, viewModel.uiState.value)
+            assertEquals(setOf("LinuxRules"), repository.savedNoteWithAttachments?.note?.tags)
         } finally {
             Dispatchers.resetMain()
         }
@@ -125,7 +144,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository(shouldFailSave = true)
             val viewModel = createViewModel("", repository, isNewNote = true)
 
-            viewModel.saveNote("Title", "Content", emptyList())
+            viewModel.saveNote("Title", "Content", "Content", emptyList())
 
             val state = viewModel.uiState.value
             assertTrue(state is NoteDetailViewModel.UiState.Error)
@@ -142,7 +161,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository()
             val viewModel = createViewModel("existing-id", repository, isNewNote = true)
 
-            viewModel.saveNote("New", "Content", emptyList())
+            viewModel.saveNote("New", "Content", "Content", emptyList())
             assertEquals(NoteDetailViewModel.UiState.Saved, viewModel.uiState.value)
             assertEquals("existing-id", viewModel.noteId)
         } finally {
@@ -204,7 +223,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository(note = note)
             val viewModel = createViewModel("10", repository)
 
-            viewModel.saveNote("Updated", "Updated content", emptyList())
+            viewModel.saveNote("Updated", "Updated content", "Updated content", emptyList())
             assertEquals(NoteDetailViewModel.UiState.Saved, viewModel.uiState.value)
             assertEquals("10", viewModel.noteId)
         } finally {
@@ -225,7 +244,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository(note = note)
             val viewModel = createViewModel("10", repository)
 
-            viewModel.saveNote("Updated", "Updated content", emptyList())
+            viewModel.saveNote("Updated", "Updated content", "Updated content", emptyList())
 
             val saved = repository.savedNoteWithAttachments?.note
             assertEquals(1000L, saved?.createdAt)

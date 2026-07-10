@@ -121,15 +121,17 @@ class NoteDetailViewModel(
 
     /**
      * Saves the note with the given [title], [content], and [attachments].
-     * Tags are extracted from [content] and stored in the note.
+     * [content] is the HTML representation stored on the note, while [plainTextContent]
+     * is the markup-free text used for tag extraction (HTML markup can split a `#tag`
+     * across inline elements and hide it from the extractor).
      * On success emits [UiState.Saved], on failure emits [UiState.Error].
      */
-    fun saveNote(title: String?, content: String, attachments: List<Attachment>) {
+    fun saveNote(title: String?, content: String, plainTextContent: String, attachments: List<Attachment>) {
         if (uiState.value is UiState.Error) return
         _uiState.value = UiState.Saving
         currentAttachments = attachments
         viewModelScope.launch {
-            val tags = TagExtractor.extractTags(content)
+            val tags = TagExtractor.extractTags(plainTextContent)
             val now = System.currentTimeMillis()
             val existing = loadedNote
             val note = Note(
