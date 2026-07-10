@@ -149,6 +149,19 @@ class SettingsActivity : ComponentActivity() {
             settingsViewModel.setPeriodicSyncEnabled(checked)
         }
 
+        binding.itemNextcloudSyncInterval.itemTitle.text = getString(R.string.settings_item_sync_interval_title)
+        binding.itemNextcloudSyncInterval.itemSubtitle.visibility = View.VISIBLE
+        binding.itemNextcloudSyncInterval.root.setOnClickListener {
+            showSyncIntervalDialog()
+        }
+
+        binding.itemNextcloudSyncOnlyOnUnmetered.itemTitle.text = getString(R.string.settings_item_sync_only_on_unmetered_title)
+        binding.itemNextcloudSyncOnlyOnUnmetered.itemSubtitle.text = getString(R.string.settings_item_sync_only_on_unmetered_subtitle)
+        binding.itemNextcloudSyncOnlyOnUnmetered.itemSubtitle.visibility = View.VISIBLE
+        binding.itemNextcloudSyncOnlyOnUnmetered.itemSwitch.setOnCheckedChangeListener { _, checked ->
+            settingsViewModel.setSyncOnlyOnUnmetered(checked)
+        }
+
         binding.itemNextcloudSyncNow.itemTitle.text = getString(R.string.settings_item_sync_now_title)
         binding.itemNextcloudSyncNow.itemSubtitle.visibility = View.VISIBLE
         binding.itemNextcloudSyncNow.root.setOnClickListener {
@@ -200,6 +213,9 @@ class SettingsActivity : ComponentActivity() {
             )
         }
         binding.itemNextcloudPeriodicSync.itemSwitch.isChecked = settings.nextcloudPeriodicSyncEnabled
+        val intervalLabel = syncIntervalLabel(settings.nextcloudSyncIntervalMinutes)
+        binding.itemNextcloudSyncInterval.itemSubtitle.text = getString(R.string.settings_item_sync_interval_subtitle, intervalLabel)
+        binding.itemNextcloudSyncOnlyOnUnmetered.itemSwitch.isChecked = settings.nextcloudSyncOnlyOnUnmetered
     }
 
     private fun updateNextcloudConnectionState(nextcloudLoginState: NextcloudLoginState) {
@@ -215,6 +231,7 @@ class SettingsActivity : ComponentActivity() {
                 binding.itemNextcloudConnect.progressBar.visibility = View.GONE
                 binding.itemNextcloudConnect.itemArrow.visibility = View.VISIBLE
                 binding.itemNextcloudConnect.root.isEnabled = true
+                setNextcloudSyncOptionsVisible(true)
             }
 
             NextcloudLoginState.InitiatingLogin -> {
@@ -225,6 +242,7 @@ class SettingsActivity : ComponentActivity() {
                 binding.itemNextcloudConnect.progressBar.visibility = View.VISIBLE
                 binding.itemNextcloudConnect.itemArrow.visibility = View.GONE
                 binding.itemNextcloudConnect.root.isEnabled = false
+                setNextcloudSyncOptionsVisible(false)
             }
 
             NextcloudLoginState.NotConnected -> {
@@ -235,6 +253,7 @@ class SettingsActivity : ComponentActivity() {
                 binding.itemNextcloudConnect.progressBar.visibility = View.GONE
                 binding.itemNextcloudConnect.itemArrow.visibility = View.VISIBLE
                 binding.itemNextcloudConnect.root.isEnabled = true
+                setNextcloudSyncOptionsVisible(false)
             }
 
             NextcloudLoginState.WaitingForLogin -> {
@@ -245,6 +264,7 @@ class SettingsActivity : ComponentActivity() {
                 binding.itemNextcloudConnect.progressBar.visibility = View.VISIBLE
                 binding.itemNextcloudConnect.itemArrow.visibility = View.GONE
                 binding.itemNextcloudConnect.root.isEnabled = false
+                setNextcloudSyncOptionsVisible(false)
             }
 
             NextcloudLoginState.LoginError -> {
@@ -255,8 +275,48 @@ class SettingsActivity : ComponentActivity() {
                 binding.itemNextcloudConnect.progressBar.visibility = View.GONE
                 binding.itemNextcloudConnect.itemArrow.visibility = View.VISIBLE
                 binding.itemNextcloudConnect.root.isEnabled = true
+                setNextcloudSyncOptionsVisible(false)
             }
         }
+    }
+
+    private fun setNextcloudSyncOptionsVisible(visible: Boolean) {
+        if(visible) {
+            binding.itemNextcloudSyncNow.root.visibility = View.VISIBLE
+            binding.itemNextcloudPeriodicSync.root.visibility = View.VISIBLE
+            binding.itemNextcloudSyncInterval.root.visibility = View.VISIBLE
+            binding.itemNextcloudSyncOnlyOnUnmetered.root.visibility = View.VISIBLE
+        } else {
+            binding.itemNextcloudSyncNow.root.visibility = View.GONE
+            binding.itemNextcloudPeriodicSync.root.visibility = View.GONE
+            binding.itemNextcloudSyncInterval.root.visibility = View.GONE
+            binding.itemNextcloudSyncOnlyOnUnmetered.root.visibility = View.GONE
+        }
+    }
+
+    private fun showSyncIntervalDialog() {
+        val options = syncIntervalOptions()
+        val labels = options.map { (_, label) -> label }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.settings_sync_interval_dialog_title)
+            .setItems(labels) { _, which ->
+                settingsViewModel.setSyncInterval(options[which].first)
+            }
+            .show()
+    }
+
+    private fun syncIntervalOptions(): List<Pair<Long, String>> = listOf(
+        15L to getString(R.string.settings_sync_interval_15min),
+        60L to getString(R.string.settings_sync_interval_1h),
+        360L to getString(R.string.settings_sync_interval_6h),
+        1440L to getString(R.string.settings_sync_interval_24h),
+    )
+
+    private fun syncIntervalLabel(minutes: Long): String = when (minutes) {
+        15L -> getString(R.string.settings_sync_interval_15min)
+        60L -> getString(R.string.settings_sync_interval_1h)
+        1440L -> getString(R.string.settings_sync_interval_24h)
+        else -> getString(R.string.settings_sync_interval_6h)
     }
 
     private fun showNextcloudServerUrlDialog(nextcloudServerUrl: String?) {

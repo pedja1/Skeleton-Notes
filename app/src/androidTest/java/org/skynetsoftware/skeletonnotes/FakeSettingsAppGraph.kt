@@ -16,6 +16,9 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
+import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
 
 /**
  * [SettingsRepository] implementation for instrumented tests that allows
@@ -24,13 +27,21 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUse
 class FakeSettingsRepository(
     periodicSync: Boolean = false,
     lastSyncTimestamp: Long = 0L,
+    syncIntervalMinutes: Long = 360L,
+    syncOnlyOnUnmetered: Boolean = true,
 ) : SettingsRepository {
     private val periodicSyncFlow = MutableStateFlow(periodicSync)
     private val lastSyncTimestampFlow = MutableStateFlow(lastSyncTimestamp)
+    private val syncIntervalMinutesFlow = MutableStateFlow(syncIntervalMinutes)
+    private val syncOnlyOnUnmeteredFlow = MutableStateFlow(syncOnlyOnUnmetered)
 
     override val nextcloudPeriodicSync: Flow<Boolean> = periodicSyncFlow
 
     override val nextcloudLastSyncTimestamp: Flow<Long> = lastSyncTimestampFlow
+
+    override val nextcloudSyncIntervalMinutes: Flow<Long> = syncIntervalMinutesFlow
+
+    override val nextcloudSyncOnlyOnUnmetered: Flow<Boolean> = syncOnlyOnUnmeteredFlow
 
     var periodicSyncEnabled: Boolean = periodicSync
         private set
@@ -40,10 +51,20 @@ class FakeSettingsRepository(
 
     override fun setPeriodicSyncEnabled(enabled: Boolean) {
         periodicSyncEnabled = enabled
+        periodicSyncFlow.value = enabled
     }
 
     override fun setNextcloudLastSyncTimestamp(timestamp: Long) {
         nextcloudLastSyncTimestampValue = timestamp
+        lastSyncTimestampFlow.value = timestamp
+    }
+
+    override fun setSyncIntervalMinutes(minutes: Long) {
+        syncIntervalMinutesFlow.value = minutes
+    }
+
+    override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {
+        syncOnlyOnUnmeteredFlow.value = onlyOnUnmetered
     }
 }
 
@@ -54,7 +75,7 @@ class FakeSettingsRepository(
  * allowing tests to observe intermediate login states.
  */
 class FakeSettingsNextcloudRepository(
-    private val connection: NextcloudConnectionInfo? = null,
+    connection: NextcloudConnectionInfo? = null,
     private val initiateResult: Result<NextcloudInitiateLoginResult> = Result.Success(
         NextcloudInitiateLoginResult("", "", "")
     ),
@@ -114,8 +135,8 @@ class FakeSettingsNextcloudRepository(
  */
 class FakeSettingsAppGraph(
     val delegate: AppGraph,
-    val settingsRepository: FakeSettingsRepository = FakeSettingsRepository(),
-    val nextcloudRepository: FakeSettingsNextcloudRepository = FakeSettingsNextcloudRepository(),
+    settingsRepository: FakeSettingsRepository = FakeSettingsRepository(),
+    nextcloudRepository: FakeSettingsNextcloudRepository = FakeSettingsNextcloudRepository(),
 ) : AppGraph by delegate {
     override val getSettingsUseCase: GetSettingsUseCase =
         GetSettingsUseCase(settingsRepository, nextcloudRepository)
@@ -123,9 +144,24 @@ class FakeSettingsAppGraph(
     override val setPeriodicSyncEnabledUseCase: SetPeriodicSyncEnabledUseCase =
         SetPeriodicSyncEnabledUseCase(settingsRepository)
 
+    override val setSyncIntervalUseCase: SetSyncIntervalUseCase =
+        SetSyncIntervalUseCase(settingsRepository)
+
+    override val setSyncOnlyOnUnmeteredUseCase: SetSyncOnlyOnUnmeteredUseCase =
+        SetSyncOnlyOnUnmeteredUseCase(settingsRepository)
+
     override val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase =
         InitiateNextcloudLoginUseCase(nextcloudRepository)
 
     override val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase =
         PollNextcloudLoginUseCase(nextcloudRepository)
+
+    override val nextcloudSyncScheduler: NextcloudSyncScheduler = NoOpSyncScheduler()
+}
+
+/** [NextcloudSyncScheduler] that does nothing, used in UI tests to avoid real job scheduling. */
+class NoOpSyncScheduler : NextcloudSyncScheduler {
+    override fun reschedulePeriodicSync() {}
+    override fun syncNow() {}
+    override fun cancelPeriodicSync() {}
 }

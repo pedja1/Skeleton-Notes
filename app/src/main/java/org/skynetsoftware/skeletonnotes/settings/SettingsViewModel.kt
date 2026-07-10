@@ -27,8 +27,9 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
-import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
-import org.skynetsoftware.skeletonnotes.domain.usecase.SyncResult
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
+import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -38,9 +39,11 @@ import kotlin.time.Duration.Companion.milliseconds
 class SettingsViewModel(
     private val getSettings: GetSettingsUseCase,
     private val setPeriodicSyncEnabled: SetPeriodicSyncEnabledUseCase,
+    private val setSyncInterval: SetSyncIntervalUseCase,
+    private val setSyncOnlyOnUnmetered: SetSyncOnlyOnUnmeteredUseCase,
     private val initiateNextcloudLogin: InitiateNextcloudLoginUseCase,
     private val pollNextcloudLogin: PollNextcloudLoginUseCase,
-    private val syncNotesWithNextcloud: SyncNotesWithNextcloudUseCase,
+    private val scheduler: NextcloudSyncScheduler,
 ) : ViewModel() {
 
     companion object {
@@ -55,9 +58,11 @@ class SettingsViewModel(
                 SettingsViewModel(
                     getSettings = AppDi.getSettingsUseCase,
                     setPeriodicSyncEnabled = AppDi.setPeriodicSyncEnabledUseCase,
+                    setSyncInterval = AppDi.setSyncIntervalUseCase,
+                    setSyncOnlyOnUnmetered = AppDi.setSyncOnlyOnUnmeteredUseCase,
                     initiateNextcloudLogin = AppDi.initiateNextcloudLoginUseCase,
                     pollNextcloudLogin = AppDi.pollNextcloudLoginUseCase,
-                    syncNotesWithNextcloud = AppDi.syncNotesWithNextcloudUseCase,
+                    scheduler = AppDi.nextcloudSyncScheduler,
                 )
             }
         }
@@ -72,9 +77,6 @@ class SettingsViewModel(
     val nextcloudLoginState: StateFlow<NextcloudLoginState> = _nextcloudLoginState.asStateFlow()
 
     private val nextcloudLoginError = MutableStateFlow<String?>(null)
-
-    private val _syncResult = MutableStateFlow<SyncResult?>(null)
-    val syncResult: StateFlow<SyncResult?> = _syncResult.asStateFlow()
 
     private val _authEvents = MutableSharedFlow<NextcloudAuthEvent>(extraBufferCapacity = 1)
     val authEvents: SharedFlow<NextcloudAuthEvent> = _authEvents.asSharedFlow()
@@ -91,8 +93,22 @@ class SettingsViewModel(
         }
     }
 
+    /** Persists the periodic-sync toggle and reschedules the job accordingly. */
     fun setPeriodicSyncEnabled(checked: Boolean) {
         setPeriodicSyncEnabled.invoke(checked)
+        scheduler.reschedulePeriodicSync()
+    }
+
+    /** Persists the sync interval and reschedules the periodic job. */
+    fun setSyncInterval(minutes: Long) {
+        setSyncInterval.invoke(minutes)
+        scheduler.reschedulePeriodicSync()
+    }
+
+    /** Persists the network-type preference and reschedules the periodic job. */
+    fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {
+        setSyncOnlyOnUnmetered.invoke(onlyOnUnmetered)
+        scheduler.reschedulePeriodicSync()
     }
 
     /**
@@ -169,19 +185,8 @@ class SettingsViewModel(
         return withScheme.trimEnd('/')
     }
 
-    /**
-     * Triggers a full bidirectional sync with Nextcloud.
-     */
+    /** Enqueues a one-off immediate sync job on any network. */
     fun syncNow() {
-        viewModelScope.launch {
-            when (val result = syncNotesWithNextcloud()) {
-                is Result.Success -> {
-                    _syncResult.value = result.data
-                }
-                is Result.Failure -> {
-                    _syncResult.value = SyncResult.Error(result.throwable)
-                }
-            }
-        }
+        scheduler.syncNow()
     }
 }

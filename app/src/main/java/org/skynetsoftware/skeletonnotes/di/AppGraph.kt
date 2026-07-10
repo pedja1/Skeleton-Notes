@@ -14,7 +14,11 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
+import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
+import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncSchedulerImpl
 
 /**
  * The application's object graph: the [Application] plus every use case exposed to the UI
@@ -33,8 +37,11 @@ interface AppGraph {
     val syncNotesWithNextcloudUseCase: SyncNotesWithNextcloudUseCase
     val getSettingsUseCase: GetSettingsUseCase
     val setPeriodicSyncEnabledUseCase: SetPeriodicSyncEnabledUseCase
+    val setSyncIntervalUseCase: SetSyncIntervalUseCase
+    val setSyncOnlyOnUnmeteredUseCase: SetSyncOnlyOnUnmeteredUseCase
     val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase
     val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase
+    val nextcloudSyncScheduler: NextcloudSyncScheduler
 }
 
 /**
@@ -79,7 +86,15 @@ class ProductionAppGraph(
 
     override val setPeriodicSyncEnabledUseCase: SetPeriodicSyncEnabledUseCase get() = DomainDi.setPeriodicSyncEnabled
 
+    override val setSyncIntervalUseCase: SetSyncIntervalUseCase get() = DomainDi.setSyncIntervalUseCase
+
+    override val setSyncOnlyOnUnmeteredUseCase: SetSyncOnlyOnUnmeteredUseCase get() = DomainDi.setSyncOnlyOnUnmeteredUseCase
+
     override val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase get() = DomainDi.initiateNextcloudLoginUseCase
 
     override val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase get() = DomainDi.pollNextcloudLoginUseCase
+
+    override val nextcloudSyncScheduler: NextcloudSyncScheduler by lazy {
+        NextcloudSyncSchedulerImpl(application, DomainDi.getSettingsUseCase)
+    }
 }

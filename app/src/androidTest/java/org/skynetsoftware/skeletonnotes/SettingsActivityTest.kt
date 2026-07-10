@@ -68,6 +68,13 @@ class SettingsActivityTest {
 
     @Test
     fun periodicSyncItemIsDisplayed() {
+        val connectionInfo = NextcloudConnectionInfo("https://example.com", "user")
+        val ncRepo = FakeSettingsNextcloudRepository(connection = connectionInfo)
+        val settingsRepo = FakeSettingsRepository()
+        val prodGraph = ProductionAppGraph(testApplication, inMemoryDatabase = true)
+        val fakeGraph = FakeSettingsAppGraph(prodGraph, settingsRepo, ncRepo)
+        AppDi.install(fakeGraph)
+
         ActivityScenario.launch(SettingsActivity::class.java).use { _ ->
             onView(withText(R.string.settings_item_periodic_sync_title))
                 .check(matches(isDisplayed()))
@@ -76,6 +83,13 @@ class SettingsActivityTest {
 
     @Test
     fun syncNowItemIsDisplayed() {
+        val connectionInfo = NextcloudConnectionInfo("https://example.com", "user")
+        val ncRepo = FakeSettingsNextcloudRepository(connection = connectionInfo)
+        val settingsRepo = FakeSettingsRepository()
+        val prodGraph = ProductionAppGraph(testApplication, inMemoryDatabase = true)
+        val fakeGraph = FakeSettingsAppGraph(prodGraph, settingsRepo, ncRepo)
+        AppDi.install(fakeGraph)
+
         ActivityScenario.launch(SettingsActivity::class.java).use { _ ->
             onView(withText(R.string.settings_item_sync_now_title))
                 .check(matches(isDisplayed()))

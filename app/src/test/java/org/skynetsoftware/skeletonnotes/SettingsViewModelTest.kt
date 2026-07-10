@@ -9,16 +9,13 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudConnectionInfo
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiateLoginResult
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
-import org.skynetsoftware.skeletonnotes.domain.repository.AttachmentFileStorage
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
@@ -26,11 +23,11 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
-import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
-import org.skynetsoftware.skeletonnotes.domain.usecase.SyncResult
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
 import org.skynetsoftware.skeletonnotes.settings.NextcloudLoginState
 import org.skynetsoftware.skeletonnotes.settings.SettingsViewModel
-import java.io.File
+import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -63,7 +60,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun setPeriodicSyncEnabledCallsRepository() = runTest {
+    fun setPeriodicSyncEnabledCallsRepositoryAndReschedules() = runTest {
         val testDispatcher = UnconfinedTestDispatcher(testScheduler)
         Dispatchers.setMain(testDispatcher)
         try {
@@ -73,11 +70,75 @@ class SettingsViewModelTest {
                     enabledValue = enabled
                 }
             }
-            val viewModel = createViewModel(settingsRepository = settingsRepo)
+            val fakeScheduler = FakeSyncScheduler()
+            val viewModel = createViewModel(settingsRepository = settingsRepo, scheduler = fakeScheduler)
 
             viewModel.setPeriodicSyncEnabled(true)
 
             assertTrue(enabledValue)
+            assertTrue(fakeScheduler.reschedulePeriodicSyncCalled)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun setSyncIntervalCallsRepositoryAndReschedules() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            var capturedMinutes = -1L
+            val settingsRepo = object : SettingsRepository by FakeSettingsRepo() {
+                override fun setSyncIntervalMinutes(minutes: Long) {
+                    capturedMinutes = minutes
+                }
+            }
+            val fakeScheduler = FakeSyncScheduler()
+            val viewModel = createViewModel(settingsRepository = settingsRepo, scheduler = fakeScheduler)
+
+            viewModel.setSyncInterval(60L)
+
+            assertEquals(60L, capturedMinutes)
+            assertTrue(fakeScheduler.reschedulePeriodicSyncCalled)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun setSyncOnlyOnUnmeteredCallsRepositoryAndReschedules() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            var capturedValue = false
+            val settingsRepo = object : SettingsRepository by FakeSettingsRepo() {
+                override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {
+                    capturedValue = onlyOnUnmetered
+                }
+            }
+            val fakeScheduler = FakeSyncScheduler()
+            val viewModel = createViewModel(settingsRepository = settingsRepo, scheduler = fakeScheduler)
+
+            viewModel.setSyncOnlyOnUnmetered(true)
+
+            assertTrue(capturedValue)
+            assertTrue(fakeScheduler.reschedulePeriodicSyncCalled)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun syncNowCallsSchedulerSyncNow() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val fakeScheduler = FakeSyncScheduler()
+            val viewModel = createViewModel(scheduler = fakeScheduler)
+
+            viewModel.syncNow()
+
+            assertTrue(fakeScheduler.syncNowCalled)
         } finally {
             Dispatchers.resetMain()
         }
@@ -95,11 +156,8 @@ class SettingsViewModelTest {
             val viewModel = createViewModel(nextcloudRepo = ncRepo)
 
             viewModel.initiateNextcloudLogin("https://cloud.example.com")
-            // The poll stays pending, so the browser-waiting state is observable
-            // before the loop eventually times out.
             assertEquals(NextcloudLoginState.WaitingForLogin, viewModel.nextcloudLoginState.value)
 
-            // Drain the polling loop so no coroutine is left running past resetMain().
             testScheduler.advanceUntilIdle()
         } finally {
             Dispatchers.resetMain()
@@ -150,50 +208,6 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun syncNowCallsSyncUseCase() = runTest {
-        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
-        Dispatchers.setMain(testDispatcher)
-        try {
-            var syncCalled = false
-            val syncUseCase = FakeSyncUseCase(onInvoke = { syncCalled = true })
-            val viewModel = createViewModel(syncUseCase = syncUseCase)
-
-            viewModel.syncNow()
-            testScheduler.advanceUntilIdle()
-
-            assertTrue(syncCalled)
-        } finally {
-            Dispatchers.resetMain()
-        }
-    }
-
-    @Test
-    fun syncNowPropagatesSyncResult() = runTest {
-        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
-        Dispatchers.setMain(testDispatcher)
-        try {
-            val conflictNote = Note(
-                id = "note1", title = "Conflict", content = "content",
-                createdAt = 1000L, modifiedAt = 2000L, tags = emptySet(),
-            )
-            val syncResult = SyncResult.HasConflicts(
-                listOf(org.skynetsoftware.skeletonnotes.domain.usecase.NoteConflict(conflictNote, "note1"))
-            )
-            val syncUseCase = FakeSyncUseCase(result = Result.Success(syncResult))
-            val viewModel = createViewModel(syncUseCase = syncUseCase)
-
-            viewModel.syncNow()
-            testScheduler.advanceUntilIdle()
-
-            val result = viewModel.syncResult.value
-            assertNotNull(result)
-            assertTrue(result is SyncResult.HasConflicts)
-        } finally {
-            Dispatchers.resetMain()
-        }
-    }
-
-    @Test
     fun initiateLoginFailureSetsLoginError() = runTest {
         val testDispatcher = UnconfinedTestDispatcher(testScheduler)
         Dispatchers.setMain(testDispatcher)
@@ -221,28 +235,8 @@ class SettingsViewModelTest {
             )
             val viewModel = createViewModel(nextcloudRepo = ncRepo)
             viewModel.initiateNextcloudLogin("https://cloud.example.com")
-            // Advance past the polling timeout; login never completes.
             testScheduler.advanceUntilIdle()
             assertEquals(NextcloudLoginState.LoginError, viewModel.nextcloudLoginState.value)
-        } finally {
-            Dispatchers.resetMain()
-        }
-    }
-
-    @Test
-    fun syncNowFailurePropagatesSyncError() = runTest {
-        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
-        Dispatchers.setMain(testDispatcher)
-        try {
-            val error = Exception("sync failed")
-            val syncUseCase = FakeSyncUseCase(result = Result.Failure(error))
-            val viewModel = createViewModel(syncUseCase = syncUseCase)
-            viewModel.syncNow()
-            testScheduler.advanceUntilIdle()
-            val result = viewModel.syncResult.value
-            assertNotNull(result)
-            assertTrue(result is SyncResult.Error)
-            assertEquals(error, (result as SyncResult.Error).throwable)
         } finally {
             Dispatchers.resetMain()
         }
@@ -253,14 +247,16 @@ class SettingsViewModelTest {
         connectionInfo: NextcloudConnectionInfo? = null,
         settingsRepository: SettingsRepository = FakeSettingsRepo(periodicSyncEnabled),
         nextcloudRepo: NextcloudRepository = FakeNextcloudRepoForSettings(connectionInfo = connectionInfo),
-        syncUseCase: FakeSyncUseCase = FakeSyncUseCase(),
+        scheduler: NextcloudSyncScheduler = FakeSyncScheduler(),
     ): SettingsViewModel {
         return SettingsViewModel(
             getSettings = GetSettingsUseCase(settingsRepository, nextcloudRepo),
             setPeriodicSyncEnabled = SetPeriodicSyncEnabledUseCase(settingsRepository),
+            setSyncInterval = SetSyncIntervalUseCase(settingsRepository),
+            setSyncOnlyOnUnmetered = SetSyncOnlyOnUnmeteredUseCase(settingsRepository),
             initiateNextcloudLogin = InitiateNextcloudLoginUseCase(nextcloudRepo),
             pollNextcloudLogin = PollNextcloudLoginUseCase(nextcloudRepo),
-            syncNotesWithNextcloud = syncUseCase,
+            scheduler = scheduler,
         )
     }
 
@@ -269,8 +265,12 @@ class SettingsViewModelTest {
     ) : SettingsRepository {
         override val nextcloudPeriodicSync = flowOf(periodicSync)
         override val nextcloudLastSyncTimestamp = flowOf(0L)
+        override val nextcloudSyncIntervalMinutes: Flow<Long> = flowOf(360L)
+        override val nextcloudSyncOnlyOnUnmetered: Flow<Boolean> = flowOf(true)
         override fun setPeriodicSyncEnabled(enabled: Boolean) {}
         override fun setNextcloudLastSyncTimestamp(timestamp: Long) {}
+        override fun setSyncIntervalMinutes(minutes: Long) {}
+        override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
     }
 
     private class FakeNextcloudRepoForSettings(
@@ -292,26 +292,21 @@ class SettingsViewModelTest {
         override suspend fun deleteRemoteNoteDirectory(uuid: String) = Result.Success(Unit)
     }
 
-    private class FakeSyncUseCase(
-        private val onInvoke: () -> Unit = {},
-        private val result: Result<SyncResult> = Result.Success(SyncResult.Success),
-    ) : SyncNotesWithNextcloudUseCase(
-        TestNotesRepo(),
-        FakeNextcloudRepoForSettings(),
-        FakeAttachmentFileStorage(),
-        FakeSettingsRepo()
-    ) {
-        override suspend fun invoke(): Result<SyncResult> {
-            onInvoke()
-            return result
+    private class FakeSyncScheduler : NextcloudSyncScheduler {
+        var reschedulePeriodicSyncCalled = false
+        var syncNowCalled = false
+        var cancelPeriodicSyncCalled = false
+
+        override fun reschedulePeriodicSync() {
+            reschedulePeriodicSyncCalled = true
         }
-    }
 
-    private class TestNotesRepo : BaseFakeNotesRepository()
+        override fun syncNow() {
+            syncNowCalled = true
+        }
 
-    private class FakeAttachmentFileStorage : AttachmentFileStorage {
-        override fun writeBytes(attachmentId: String, bytes: ByteArray): String = "/fake/$attachmentId"
-        override fun getFile(attachmentId: String): File = File.createTempFile("test_", ".tmp").also { it.deleteOnExit() }
-        override fun deleteFile(attachmentId: String) {}
+        override fun cancelPeriodicSync() {
+            cancelPeriodicSyncCalled = true
+        }
     }
 }

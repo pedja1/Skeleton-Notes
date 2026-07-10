@@ -642,4 +642,9 @@ private class FakeNextcloudConfigStore : NextcloudConfigStore {
     override fun setLastSyncTimestamp(lastSyncTimestamp: Long) {
         setLastSyncTimestampValue = lastSyncTimestamp
     }
+
+    override val syncIntervalMinutes: StateFlow<Long> = MutableStateFlow(360L)
+    override val syncOnlyOnUnmetered: StateFlow<Boolean> = MutableStateFlow(true)
+    override fun setSyncIntervalMinutes(minutes: Long) {}
+    override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
 }

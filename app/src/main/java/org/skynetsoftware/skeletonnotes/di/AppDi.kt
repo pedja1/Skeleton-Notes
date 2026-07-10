@@ -1,7 +1,6 @@
 package org.skynetsoftware.skeletonnotes.di
 
 import android.app.Application
-import androidx.annotation.VisibleForTesting
 import org.skynetsoftware.skeletonnotes.di.AppDi.init
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
@@ -14,7 +13,10 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
+import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
 
 /**
  * Top-level dependency injection container. Delegates to a swappable [AppGraph] so tests can
@@ -37,7 +39,6 @@ object AppDi {
      * Installs the given [graph], replacing any previously installed one. Intended as the
      * seam for instrumented tests to inject an alternative object graph.
      */
-    @VisibleForTesting
     fun install(graph: AppGraph) {
         this.graph = graph
     }
@@ -64,7 +65,13 @@ object AppDi {
 
     val setPeriodicSyncEnabledUseCase: SetPeriodicSyncEnabledUseCase get() = graph.setPeriodicSyncEnabledUseCase
 
+    val setSyncIntervalUseCase: SetSyncIntervalUseCase get() = graph.setSyncIntervalUseCase
+
+    val setSyncOnlyOnUnmeteredUseCase: SetSyncOnlyOnUnmeteredUseCase get() = graph.setSyncOnlyOnUnmeteredUseCase
+
     val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase get() = graph.initiateNextcloudLoginUseCase
 
     val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase get() = graph.pollNextcloudLoginUseCase
+
+    val nextcloudSyncScheduler: NextcloudSyncScheduler get() = graph.nextcloudSyncScheduler
 }

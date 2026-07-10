@@ -26,6 +26,10 @@ internal class NextcloudConfigStoreImpl(
         private const val KEY_APP_PASSWORD_ENCRYPTED = "appPasswordEnc"
         private const val KEY_PERIODIC_SYNC_ENABLED = "periodicSyncEnabled"
         private const val KEY_LAST_SYNC_TIMESTAMP = "lastSyncTimestamp"
+        private const val KEY_SYNC_INTERVAL_MINUTES = "syncIntervalMinutes"
+        private const val KEY_SYNC_ONLY_ON_UNMETERED = "syncOnlyOnUnmetered"
+        /** Default sync interval: 6 hours. */
+        private const val DEFAULT_SYNC_INTERVAL_MINUTES = 360L
 
         fun from(context: Context): NextcloudConfigStoreImpl =
             NextcloudConfigStoreImpl(context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE))
@@ -75,6 +79,12 @@ internal class NextcloudConfigStoreImpl(
     private val _lastSyncTimestamp = MutableStateFlow(prefs.getLong(KEY_LAST_SYNC_TIMESTAMP, 0L))
     override val lastSyncTimestamp: StateFlow<Long> get() = _lastSyncTimestamp.asStateFlow()
 
+    private val _syncIntervalMinutes = MutableStateFlow(prefs.getLong(KEY_SYNC_INTERVAL_MINUTES, DEFAULT_SYNC_INTERVAL_MINUTES))
+    override val syncIntervalMinutes: StateFlow<Long> get() = _syncIntervalMinutes.asStateFlow()
+
+    private val _syncOnlyOnUnmetered = MutableStateFlow(prefs.getBoolean(KEY_SYNC_ONLY_ON_UNMETERED, true))
+    override val syncOnlyOnUnmetered: StateFlow<Boolean> get() = _syncOnlyOnUnmetered.asStateFlow()
+
     override fun setServerConfig(serverUrl: String, username: String, appPassword: String) {
         prefs.edit()
             .putString(KEY_SERVER_URL, serverUrl)
@@ -111,5 +121,19 @@ internal class NextcloudConfigStoreImpl(
             .putLong(KEY_LAST_SYNC_TIMESTAMP, lastSyncTimestamp)
             .apply()
         _lastSyncTimestamp.value = lastSyncTimestamp
+    }
+
+    override fun setSyncIntervalMinutes(minutes: Long) {
+        prefs.edit()
+            .putLong(KEY_SYNC_INTERVAL_MINUTES, minutes)
+            .apply()
+        _syncIntervalMinutes.value = minutes
+    }
+
+    override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {
+        prefs.edit()
+            .putBoolean(KEY_SYNC_ONLY_ON_UNMETERED, onlyOnUnmetered)
+            .apply()
+        _syncOnlyOnUnmetered.value = onlyOnUnmetered
     }
 }

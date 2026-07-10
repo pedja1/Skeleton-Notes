@@ -165,6 +165,8 @@ class NextcloudApiImplInstrumentedTest {
         val isConfiguredFlow = MutableStateFlow(false)
         val periodicSyncEnabledFlow = MutableStateFlow(false)
         val lastSyncTimestampFlow = MutableStateFlow(0L)
+        val syncIntervalMinutesFlow = MutableStateFlow(0L)
+        val syncOnlyOnUnmeteredFlow = MutableStateFlow(true)
 
         override val serverUrl: StateFlow<String?> = serverUrlFlow
         override val username: StateFlow<String?> = usernameFlow
@@ -172,10 +174,14 @@ class NextcloudApiImplInstrumentedTest {
         override val isConfigured: Flow<Boolean> = isConfiguredFlow
         override val periodicSyncEnabled: StateFlow<Boolean> = periodicSyncEnabledFlow
         override val lastSyncTimestamp: StateFlow<Long> = lastSyncTimestampFlow
+        override val syncIntervalMinutes: StateFlow<Long> = syncIntervalMinutesFlow
+        override val syncOnlyOnUnmetered: StateFlow<Boolean> = syncOnlyOnUnmeteredFlow
 
         override fun setServerConfig(serverUrl: String, username: String, appPassword: String) {}
         override fun clearServerConfig() {}
         override fun setPeriodicSyncEnabled(periodicSyncEnabled: Boolean) {}
         override fun setLastSyncTimestamp(lastSyncTimestamp: Long) {}
+        override fun setSyncIntervalMinutes(minutes: Long) {}
+        override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
     }
 }

@@ -16,6 +16,8 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
 
 /**
@@ -78,6 +80,14 @@ object DomainDi {
         SetPeriodicSyncEnabledUseCase(
             settingsRepository,
         )
+    }
+
+    val setSyncIntervalUseCase: SetSyncIntervalUseCase by lazy {
+        SetSyncIntervalUseCase(settingsRepository)
+    }
+
+    val setSyncOnlyOnUnmeteredUseCase: SetSyncOnlyOnUnmeteredUseCase by lazy {
+        SetSyncOnlyOnUnmeteredUseCase(settingsRepository)
     }
 
     val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase by lazy {

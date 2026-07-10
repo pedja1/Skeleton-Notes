@@ -1,10 +1,16 @@
 package org.skynetsoftware.skeletonnotes.domain.usecase
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.skynetsoftware.skeletonnotes.domain.model.Note
@@ -22,6 +28,7 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
 import java.io.File
+import kotlin.coroutines.cancellation.CancellationException
 
 class SyncNotesWithNextcloudUseCaseTest {
     @Test
@@ -509,6 +516,47 @@ class SyncNotesWithNextcloudUseCaseTest {
             assertEquals(0L, (settingsRepository.nextcloudLastSyncTimestamp as MutableStateFlow).value)
         }
 
+    @Test
+    fun syncPropagatesCancellationExceptionInsteadOfReturningError() =
+        runTest {
+            val entered = CompletableDeferred<Unit>()
+            // A repo that suspends indefinitely inside the first remote call so the sync can be
+            // cancelled while in flight.
+            val ncRepo =
+                object : NextcloudRepository by FakeNextcloudRepo() {
+                    override suspend fun listRemoteFiles(): Result<List<RemoteFileInfo>> {
+                        entered.complete(Unit)
+                        awaitCancellation()
+                    }
+                }
+            val useCase =
+                SyncNotesWithNextcloudUseCase(
+                    FakeNotesRepo(),
+                    ncRepo,
+                    FakeAttachmentFileStorage(),
+                    FakeSettingsRepository(),
+                )
+
+            var caught: Throwable? = null
+            var result: Result<SyncResult>? = null
+            val job =
+                launch(start = CoroutineStart.UNDISPATCHED) {
+                    try {
+                        result = useCase()
+                    } catch (e: CancellationException) {
+                        caught = e
+                        throw e
+                    }
+                }
+
+            entered.await()
+            job.cancelAndJoin()
+
+            // Cancellation must propagate cooperatively, not be swallowed into SyncResult.Error.
+            assertTrue(caught is CancellationException)
+            assertNull(result)
+        }
+
     private fun createUseCase(
         notesRepo: FakeNotesRepo,
         ncRepo: FakeNextcloudRepo,
@@ -665,6 +713,8 @@ class SyncNotesWithNextcloudUseCaseTest {
     private class FakeSettingsRepository : SettingsRepository {
         override val nextcloudPeriodicSync: Flow<Boolean> = MutableStateFlow(false)
         override val nextcloudLastSyncTimestamp: Flow<Long> = MutableStateFlow(0L)
+        override val nextcloudSyncIntervalMinutes: Flow<Long> = MutableStateFlow(360L)
+        override val nextcloudSyncOnlyOnUnmetered: Flow<Boolean> = MutableStateFlow(true)
 
         override fun setPeriodicSyncEnabled(enabled: Boolean) {
             (nextcloudPeriodicSync as MutableStateFlow).value = enabled
@@ -673,5 +723,9 @@ class SyncNotesWithNextcloudUseCaseTest {
         override fun setNextcloudLastSyncTimestamp(timestamp: Long) {
             (nextcloudLastSyncTimestamp as MutableStateFlow).value = timestamp
         }
+
+        override fun setSyncIntervalMinutes(minutes: Long) {}
+
+        override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
     }
 }

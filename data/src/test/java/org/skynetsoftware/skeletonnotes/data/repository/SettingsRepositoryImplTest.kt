@@ -1,6 +1,7 @@
 package org.skynetsoftware.skeletonnotes.data.repository
 
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -81,5 +82,10 @@ class SettingsRepositoryImplTest {
         override fun setLastSyncTimestamp(lastSyncTimestamp: Long) {
             setLastSyncTimestampValue = lastSyncTimestamp
         }
+
+        override val syncIntervalMinutes: StateFlow<Long> = MutableStateFlow(360L)
+        override val syncOnlyOnUnmetered: StateFlow<Boolean> = MutableStateFlow(true)
+        override fun setSyncIntervalMinutes(minutes: Long) {}
+        override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
     }
 }

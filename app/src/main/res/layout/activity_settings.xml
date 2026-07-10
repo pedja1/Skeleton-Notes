@@ -18,6 +18,12 @@
         android:id="@+id/itemNextcloudPeriodicSync"/>
 
     <include layout="@layout/item_settings_clickable"
+        android:id="@+id/itemNextcloudSyncInterval"/>
+
+    <include layout="@layout/item_settings_switch"
+        android:id="@+id/itemNextcloudSyncOnlyOnUnmetered"/>
+
+    <include layout="@layout/item_settings_clickable"
         android:id="@+id/itemNextcloudSyncNow"/>
 
     <include layout="@layout/item_settings_section"

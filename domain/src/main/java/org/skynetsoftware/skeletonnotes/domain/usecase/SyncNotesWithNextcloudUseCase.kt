@@ -12,6 +12,7 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Orchestrates bidirectional sync between local notes and Nextcloud WebDAV storage.
@@ -25,6 +26,9 @@ open class SyncNotesWithNextcloudUseCase(
 ) {
     /**
      * Runs a complete sync cycle using internally stored credentials.
+     *
+     * If the calling coroutine is cancelled mid-sync, the [CancellationException] is rethrown so
+     * cancellation stays cooperative (it is not converted into [SyncResult.Error]).
      *
      * @return [SyncResult.Success] if sync completed without conflicts,
      *         [SyncResult.HasConflicts] if any note had both local and remote changes,
@@ -76,6 +80,8 @@ open class SyncNotesWithNextcloudUseCase(
                 }
             settingsRepository.setNextcloudLastSyncTimestamp(System.currentTimeMillis())
             result
+        } catch (c: CancellationException) {
+            throw c
         } catch (t: Throwable) {
             Result.Success(SyncResult.Error(t))
         }

@@ -91,4 +91,13 @@
     <string name="nextcloud_server_url_title">Nextcloud Server URL</string>
     <string name="nextcloud_server_url_invalid">NextCloud server url is not valid</string>
     <string name="nextcloud_no_browser">No browser installed to complete login</string>
+    <string name="settings_item_sync_interval_title">Sync Interval</string>
+    <string name="settings_item_sync_interval_subtitle">Every %s</string>
+    <string name="settings_item_sync_only_on_unmetered_title">Sync on Wi-Fi Only</string>
+    <string name="settings_item_sync_only_on_unmetered_subtitle">Restrict periodic sync to unmetered connections</string>
+    <string name="settings_sync_interval_15min">15 minutes</string>
+    <string name="settings_sync_interval_1h">1 hour</string>
+    <string name="settings_sync_interval_6h">6 hours</string>
+    <string name="settings_sync_interval_24h">24 hours</string>
+    <string name="settings_sync_interval_dialog_title">Sync Interval</string>
 </resources>

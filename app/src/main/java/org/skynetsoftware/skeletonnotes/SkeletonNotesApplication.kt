@@ -16,6 +16,7 @@ open class SkeletonNotesApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         AppDi.install(createGraph())
+        AppDi.nextcloudSyncScheduler.reschedulePeriodicSync()
     }
 
     /**
