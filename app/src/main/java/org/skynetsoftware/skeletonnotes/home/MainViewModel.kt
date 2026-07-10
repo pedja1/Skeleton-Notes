@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import org.skynetsoftware.skeletonnotes.di.AppDi
 import org.skynetsoftware.skeletonnotes.domain.model.Filter
-import org.skynetsoftware.skeletonnotes.domain.model.Note
+import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
@@ -48,7 +48,7 @@ class MainViewModel(
         /** The notes list is being loaded. */
         object Loading: UiState()
         /** The notes list has been successfully loaded. */
-        data class Notes(val notes: List<Note>): UiState()
+        data class Notes(val notes: List<NoteWithAttachments>): UiState()
         /** An error occurred while loading the notes list. */
         object Error: UiState()
     }
@@ -58,9 +58,9 @@ class MainViewModel(
 
     val uiState: StateFlow<UiState> = combine(getAllNotesUseCase(), filter) { notes, filter  ->
         when(notes) {
-            is Result.Failure<List<Note>> -> UiState.Error
-            is Result.Success<List<Note>> -> {
-                UiState.Notes(searchAndFilterNotesUseCase(notes.data,filter))
+            is Result.Failure<List<NoteWithAttachments>> -> UiState.Error
+            is Result.Success<List<NoteWithAttachments>> -> {
+                UiState.Notes(searchAndFilterNotesUseCase(notes.data, filter))
             }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, UiState.Loading)

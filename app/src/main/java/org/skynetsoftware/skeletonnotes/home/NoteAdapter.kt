@@ -8,11 +8,14 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.CoroutineScope
 import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.databinding.ItemNoteCardBinding
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
+import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.note.MarkdownFormatter
+import org.skynetsoftware.skeletonnotes.util.bindImages
 
 /**
  * Adapter for displaying notes in a RecyclerView using a StaggeredGridLayoutManager,
@@ -20,15 +23,16 @@ import org.skynetsoftware.skeletonnotes.note.MarkdownFormatter
  * on note status.
  */
 class NoteAdapter(
+    private val scope: CoroutineScope,
     private val onNoteClick: (Note) -> Unit
 ) : RecyclerView.Adapter<NoteAdapter.ViewHolder>() {
 
-    private var notes: List<Note> = emptyList()
+    private var notes: List<NoteWithAttachments> = emptyList()
 
     /**
      * Updates the notes list and dispatches minimal changes via [DiffUtil].
      */
-    fun setNotes(notes: List<Note>) {
+    fun setNotes(notes: List<NoteWithAttachments>) {
         val diff = DiffUtil.calculateDiff(NoteDiffCallback(this.notes, notes))
         this.notes = notes
         diff.dispatchUpdatesTo(this)
@@ -55,7 +59,7 @@ class NoteAdapter(
      * Binds the note at [position] to the given [holder].
      */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(notes[position], onNoteClick)
+        holder.bind(notes[position], scope, onNoteClick)
     }
 
     /**
@@ -68,7 +72,14 @@ class NoteAdapter(
         /**
          * Binds note data to the view and sets click listener.
          */
-        fun bind(note: Note, onNoteClick: (Note) -> Unit) {
+        fun bind(noteWithAttachments: NoteWithAttachments, scope: CoroutineScope, onNoteClick: (Note) -> Unit) {
+            val note = noteWithAttachments.note
+
+            binding.noteImages.bindImages(
+                noteWithAttachments.attachments.filter { it.mimeType?.startsWith("image/") == true }.map { it.uri },
+                scope
+            )
+
             binding.noteTile.text = note.title
             binding.notePreview.text = MarkdownFormatter.fromMarkdown(
                 note.content
@@ -165,8 +176,8 @@ class NoteAdapter(
      * Computes the difference between two note lists for efficient RecyclerView updates.
      */
     private class NoteDiffCallback(
-        private val oldList: List<Note>,
-        private val newList: List<Note>
+        private val oldList: List<NoteWithAttachments>,
+        private val newList: List<NoteWithAttachments>
     ) : DiffUtil.Callback() {
 
         override fun getOldListSize(): Int = oldList.size
@@ -174,7 +185,7 @@ class NoteAdapter(
         override fun getNewListSize(): Int = newList.size
 
         override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
-            oldList[oldItemPosition].id == newList[newItemPosition].id
+            oldList[oldItemPosition].note.id == newList[newItemPosition].note.id
 
         override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
             oldList[oldItemPosition] == newList[newItemPosition]

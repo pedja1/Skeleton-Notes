@@ -98,6 +98,9 @@ class NextcloudSyncJobServiceTest {
 
         override fun getAllNotes(): Result<List<Note>> = Result.Success(emptyList())
 
+        override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> =
+            flowOf(Result.Success(emptyList()))
+
         override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> =
             flowOf(Result.Failure(Exception("not found")))
 

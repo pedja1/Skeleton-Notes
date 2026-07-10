@@ -11,6 +11,10 @@ class FakeNotesRepository(private val notes: List<Note>) : BaseFakeNotesReposito
         emit(Result.Success(notes))
     }
 
+    override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> = flow {
+        emit(Result.Success(notes.map { NoteWithAttachments(it, emptyList()) }))
+    }
+
     override fun getNoteById(id: String): Result<NoteWithAttachments> =
         Result.Success(NoteWithAttachments(note = notes.first { it.id == id }, attachments = emptyList()))
 }

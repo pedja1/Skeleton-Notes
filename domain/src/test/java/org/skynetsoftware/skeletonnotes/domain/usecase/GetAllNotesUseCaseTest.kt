@@ -42,8 +42,8 @@ class GetAllNotesUseCaseTest {
             val notesList = (result as Result.Success).data
 
             assertEquals(2, notesList.size)
-            assertEquals("First", notesList[0].title)
-            assertEquals("Second", notesList[1].title)
+            assertEquals("First", notesList[0].note.title)
+            assertEquals("Second", notesList[1].note.title)
         }
 
     @Test
@@ -62,6 +62,11 @@ class GetAllNotesUseCaseTest {
         override fun getAllNotesFlow(): Flow<Result<List<Note>>> =
             flow {
                 emit(Result.Success(notes))
+            }
+
+        override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> =
+            flow {
+                emit(Result.Success(notes.map { NoteWithAttachments(it, emptyList()) }))
             }
 
         override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> =

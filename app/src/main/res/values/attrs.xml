@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ImageGridLayout">
+        <!-- Target height for a justified image row; the actual row height is scaled from this to
+             fill the available width. Larger values mean fewer, bigger images per row. -->
+        <attr name="imageTargetRowHeight" format="dimension" />
+    </declare-styleable>
+</resources>

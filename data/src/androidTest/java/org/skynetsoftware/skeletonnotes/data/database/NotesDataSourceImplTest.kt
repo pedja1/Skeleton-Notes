@@ -12,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
@@ -68,6 +69,30 @@ class NotesDataSourceImplTest {
         val ids = (result as Result.Success).data.map { it.id }
         assertTrue(ids.contains(first.id))
         assertTrue(ids.contains(second.id))
+    }
+
+    @Test
+    fun getAllNotesWithAttachmentsFlowGroupsAttachmentsPerNoteAndKeepsMimeType() = runTest(timeout = 5.seconds) {
+        val dataSource = NotesDataSourceImpl(databaseHelper)
+
+        val withImages = Note(id = UUID.randomUUID().toString(), title = "WithImages", content = "c", createdAt = 1000L, modifiedAt = 2000L, tags = emptySet())
+        val image1 = Attachment(id = UUID.randomUUID().toString(), noteId = withImages.id, uri = "/tmp/a", mimeType = "image/jpeg")
+        val image2 = Attachment(id = UUID.randomUUID().toString(), noteId = withImages.id, uri = "/tmp/b", mimeType = "image/png")
+        val withoutAttachments = Note(id = UUID.randomUUID().toString(), title = "Empty", content = "c", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet())
+
+        dataSource.saveNote(NoteWithAttachments(withImages, listOf(image1, image2)))
+        dataSource.saveNote(NoteWithAttachments(withoutAttachments, emptyList()))
+
+        val result = dataSource.getAllNotesWithAttachmentsFlow().first()
+        assertTrue(result is Result.Success)
+        val data = (result as Result.Success).data
+
+        val loadedWithImages = data.first { it.note.id == withImages.id }
+        assertEquals(2, loadedWithImages.attachments.size)
+        assertEquals(setOf("image/jpeg", "image/png"), loadedWithImages.attachments.mapNotNull { it.mimeType }.toSet())
+
+        val loadedEmpty = data.first { it.note.id == withoutAttachments.id }
+        assertTrue(loadedEmpty.attachments.isEmpty())
     }
 
     @Test

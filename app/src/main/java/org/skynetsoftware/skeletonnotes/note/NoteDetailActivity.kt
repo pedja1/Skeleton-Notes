@@ -28,6 +28,7 @@ import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.data.attachment.AttachmentStorageManager
 import org.skynetsoftware.skeletonnotes.databinding.ActivityNoteDetailBinding
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
+import org.skynetsoftware.skeletonnotes.util.bindImages
 import java.util.UUID
 
 /**
@@ -144,6 +145,7 @@ class NoteDetailActivity : ComponentActivity() {
                             )
                             attachments.clear()
                             attachments.addAll(state.attachments)
+                            renderImages()
                         }
 
                         NoteDetailViewModel.UiState.Saved -> finish()
@@ -309,15 +311,13 @@ class NoteDetailActivity : ComponentActivity() {
         val attachment = Attachment(
             id = attachmentId,
             noteId = viewModel.noteId,
-            uri = localPath
+            uri = localPath,
+            mimeType = contentResolver.getType(uri),
         )
         attachments.add(attachment)
 
         if (isImage) {
-            val editable = binding.editNoteContent.text
-            val cursorPos = binding.editNoteContent.selectionStart
-            val imgMarkdown = "![]($localPath)"
-            editable.insert(cursorPos, imgMarkdown)
+            renderImages()
         } else {
             //TODO translate
             Toast.makeText(this, "File attached", Toast.LENGTH_SHORT).show()
@@ -327,5 +327,16 @@ class NoteDetailActivity : ComponentActivity() {
             uri,
             Intent.FLAG_GRANT_READ_URI_PERMISSION
         )
+    }
+
+    /**
+     * Renders the note's image attachments in the grid above the title. Images live only in the
+     * attachments list, never in the note's Markdown content.
+     */
+    private fun renderImages() {
+        val imagePaths = attachments
+            .filter { it.mimeType?.startsWith("image/") == true }
+            .map { it.uri }
+        binding.noteImages.bindImages(imagePaths, lifecycleScope)
     }
 }

@@ -28,6 +28,13 @@ internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource)
     override fun getAllNotes(): Result<List<Note>> = notesDataSource.getAllNotes()
 
     /**
+     * @see NotesRepository.getAllNotesWithAttachmentsFlow
+     * @see NotesDataSource.getAllNotesWithAttachmentsFlow
+     */
+    override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> =
+        notesDataSource.getAllNotesWithAttachmentsFlow()
+
+    /**
      * @see NotesRepository.getNoteByIdFlow
      * @see NotesDataSource.getNoteByIdFlow
      */

@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.map
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_ID
+import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MIME_TYPE
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MODIFIED
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_NOTE_ID
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_STATUS
@@ -17,6 +18,7 @@ import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelpe
 import org.skynetsoftware.skeletonnotes.data.mapper.toContentValues
 import org.skynetsoftware.skeletonnotes.data.mapper.toNoteWithAttachments
 import org.skynetsoftware.skeletonnotes.data.mapper.toNotes
+import org.skynetsoftware.skeletonnotes.data.mapper.toNotesWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
@@ -76,6 +78,44 @@ internal class NotesDataSourceImpl(
 
 
     /**
+     * @see NotesDataSource.getAllNotesWithAttachmentsFlow
+     */
+    override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> {
+        return getAllNotesChangedFlow.map {
+            getAllNotesWithAttachments()
+        }
+    }
+
+    private fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> {
+        var cursor: Cursor? = null
+        return try {
+            val database = skeletonNotesDatabaseHelper.writableDatabase
+            cursor = database.rawQuery(
+                """
+                SELECT
+                    $TABLE_NOTES.*,
+                    $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
+                    $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
+                    $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI,
+                    $TABLE_ATTACHMENTS.$COLUMN_MIME_TYPE AS ${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE
+                FROM $TABLE_NOTES
+                LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
+                ORDER BY $TABLE_NOTES.$COLUMN_MODIFIED DESC, $TABLE_NOTES.$COLUMN_ID
+                """.trimIndent(),
+                null
+            )
+            val notes = cursor.toNotesWithAttachments()
+            Log.d(TAG, "getAllNotesWithAttachments: ${notes.size}")
+            Result.Success(notes)
+        } catch (t: Throwable) {
+            Log.e(TAG, null, t)
+            Result.Failure(t)
+        } finally {
+            cursor?.close()
+        }
+    }
+
+    /**
      * @see NotesDataSource.getNoteByIdFlow
      */
     override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> {
@@ -100,7 +140,8 @@ internal class NotesDataSourceImpl(
                     $TABLE_NOTES.*,
                     $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
                     $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
-                    $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI
+                    $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI,
+                    $TABLE_ATTACHMENTS.$COLUMN_MIME_TYPE AS ${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE
                 FROM $TABLE_NOTES
                 LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
                 WHERE $TABLE_NOTES.$COLUMN_ID = ?

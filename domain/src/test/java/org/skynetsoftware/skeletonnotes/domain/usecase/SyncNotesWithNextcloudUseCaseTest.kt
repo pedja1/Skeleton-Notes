@@ -575,6 +575,9 @@ class SyncNotesWithNextcloudUseCaseTest {
 
         override fun getAllNotes(): Result<List<Note>> = Result.Success(notes)
 
+        override fun getAllNotesWithAttachmentsFlow() =
+            flowOf(Result.Success(notes.map { NoteWithAttachments(it, attachments.filter { a -> a.noteId == it.id }) }))
+
         override fun getNoteByIdFlow(id: String) =
             flowOf(
                 Result.Success(

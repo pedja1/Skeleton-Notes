@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Stores the in-flight decode Job on an ImageView so a new load can cancel the previous one. -->
+    <item name="image_loader_job_tag" type="id" />
+    <!-- Stores the "path@wxh" an ImageView last requested, so the binder can skip redundant loads. -->
+    <item name="image_grid_loaded_key" type="id" />
+    <!-- Stores the image path currently bound to a grid ImageView, to detect recycled-cell reuse. -->
+    <item name="image_grid_path_tag" type="id" />
+</resources>

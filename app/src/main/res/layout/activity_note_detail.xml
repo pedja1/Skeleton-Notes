@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -7,6 +8,16 @@
 
     <include layout="@layout/layout_toolbar"
         android:id="@+id/toolbar"/>
+
+    <org.skynetsoftware.skeletonnotes.widget.ImageGridLayout
+        android:id="@+id/note_images"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:imageTargetRowHeight="@dimen/note_images_row_height_detail"
+        android:paddingStart="@dimen/note_detail_padding_horizontal"
+        android:paddingEnd="@dimen/note_detail_padding_horizontal"
+        android:paddingTop="@dimen/note_detail_padding_horizontal" />
 
     <EditText
         android:id="@+id/edit_note_title"

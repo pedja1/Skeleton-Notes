@@ -1,8 +1,8 @@
 package org.skynetsoftware.skeletonnotes.domain.usecase
 
 import org.skynetsoftware.skeletonnotes.domain.model.Filter
-import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
+import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 
 /**
  * Use case for searching notes with filtering.
@@ -13,10 +13,11 @@ class SearchAndFilterNotesUseCase {
      * @return Filtered list of notes
      */
     operator fun invoke(
-        notes: List<Note>,
+        notes: List<NoteWithAttachments>,
         filter: Filter,
-    ): List<Note> {
-        return notes.filter { note ->
+    ): List<NoteWithAttachments> {
+        return notes.filter { noteWithAttachments ->
+            val note = noteWithAttachments.note
             val statusFilterMatches =
                 when (note.status) {
                     NoteStatus.ACTIVE -> true

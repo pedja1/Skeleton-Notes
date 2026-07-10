@@ -22,6 +22,11 @@ internal interface NotesDataSource {
     fun getAllNotes(): Result<List<Note>>
 
     /**
+     * Retrieves all notes together with their attachments as a Flow.
+     */
+    fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>>
+
+    /**
      * Retrieves a single note with its attachments by [id] as Flow
      */
     fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>>

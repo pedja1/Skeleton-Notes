@@ -5,6 +5,7 @@ import org.junit.Test
 import org.skynetsoftware.skeletonnotes.domain.model.Filter
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
+import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 
 class SearchAndFilterNotesUseCaseTest {
     private val useCase = SearchAndFilterNotesUseCase()
@@ -18,7 +19,7 @@ class SearchAndFilterNotesUseCaseTest {
             )
         val result = useCase(notes, Filter(query = "Hello", showTrashed = false, showArchived = false))
         assertEquals(1, result.size)
-        assertEquals("Hello World", result[0].title)
+        assertEquals("Hello World", result[0].note.title)
     }
 
     @Test
@@ -30,7 +31,7 @@ class SearchAndFilterNotesUseCaseTest {
             )
         val result = useCase(notes, Filter(query = "keyword", showTrashed = false, showArchived = false))
         assertEquals(1, result.size)
-        assertEquals("Note A", result[0].title)
+        assertEquals("Note A", result[0].note.title)
     }
 
     @Test
@@ -42,7 +43,7 @@ class SearchAndFilterNotesUseCaseTest {
             )
         val result = useCase(notes, Filter(query = "", showTrashed = false, showArchived = false))
         assertEquals(1, result.size)
-        assertEquals("Active", result[0].title)
+        assertEquals("Active", result[0].note.title)
     }
 
     @Test
@@ -87,7 +88,7 @@ class SearchAndFilterNotesUseCaseTest {
             )
         val result = useCase(notes, Filter(query = "upper", showTrashed = false, showArchived = false))
         assertEquals(1, result.size)
-        assertEquals("UPPERCASE", result[0].title)
+        assertEquals("UPPERCASE", result[0].note.title)
     }
 
     private fun note(
@@ -97,5 +98,5 @@ class SearchAndFilterNotesUseCaseTest {
         createdAt: Long = 0L,
         modifiedAt: Long = 0L,
         status: NoteStatus = NoteStatus.ACTIVE,
-    ) = Note(id, title, content, createdAt, modifiedAt, emptySet(), status)
+    ) = NoteWithAttachments(Note(id, title, content, createdAt, modifiedAt, emptySet(), status), emptyList())
 }

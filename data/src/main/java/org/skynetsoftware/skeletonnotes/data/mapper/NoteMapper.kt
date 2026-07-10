@@ -5,6 +5,7 @@ import android.database.Cursor
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_CONTENT
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_CREATED
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_ID
+import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MIME_TYPE
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MODIFIED
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_NOTE_ID
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_REMOTE_LAST_MODIFIED
@@ -45,24 +46,55 @@ internal fun Cursor.toNote(): Note {
 internal fun Cursor.toNoteWithAttachments(): NoteWithAttachments {
     var note: Note? = null
     val attachments = ArrayList<Attachment>()
-    val attachmentIdColumnIndex = getColumnIndexOrThrow("${TABLE_ATTACHMENTS}_$COLUMN_ID")
-    val attachmentNoteIdColumnIndex = getColumnIndexOrThrow("${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID")
-    val attachmentUriColumnIndex = getColumnIndexOrThrow("${TABLE_ATTACHMENTS}_$COLUMN_URI")
     while (moveToNext()) {
         if (note == null) {
             note = toNote()
         }
-        if (!isNull(attachmentIdColumnIndex)) {
-            attachments.add(
-                Attachment(
-                    id = getString(attachmentIdColumnIndex),
-                    noteId = getString(attachmentNoteIdColumnIndex),
-                    uri = getString(attachmentUriColumnIndex),
-                )
-            )
-        }
+        toAttachmentFromJoin()?.let { attachments.add(it) }
     }
     return NoteWithAttachments(note ?: error("Failed to parse note from cursor"), attachments)
+}
+
+/**
+ * Converts this [Cursor] (result of a notes+attachments join query, ordered so that the rows
+ * for a note are contiguous) to a list of [NoteWithAttachments], grouping the joined attachment
+ * rows under each note. The cursor must be positioned before the first row.
+ */
+internal fun Cursor.toNotesWithAttachments(): List<NoteWithAttachments> {
+    val result = ArrayList<NoteWithAttachments>()
+    var currentNote: Note? = null
+    var currentAttachments = ArrayList<Attachment>()
+    while (moveToNext()) {
+        val note = toNote()
+        if (currentNote == null || currentNote.id != note.id) {
+            currentNote?.let { result.add(NoteWithAttachments(it, currentAttachments)) }
+            currentNote = note
+            currentAttachments = ArrayList()
+        }
+        toAttachmentFromJoin()?.let { currentAttachments.add(it) }
+    }
+    currentNote?.let { result.add(NoteWithAttachments(it, currentAttachments)) }
+    return result
+}
+
+/**
+ * Resolves and reads the aliased attachment columns from a notes+attachments join cursor.
+ * Returns `null` for a row whose attachment side is NULL (a note with no attachments in a
+ * LEFT JOIN).
+ */
+internal fun Cursor.toAttachmentFromJoin(): Attachment? {
+    val idIndex = getColumnIndexOrThrow("${TABLE_ATTACHMENTS}_$COLUMN_ID")
+    if (isNull(idIndex)) return null
+
+    val noteIdIndex = getColumnIndexOrThrow("${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID")
+    val uriIndex = getColumnIndexOrThrow("${TABLE_ATTACHMENTS}_$COLUMN_URI")
+    val mimeTypeIndex = getColumnIndex("${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE")
+    return Attachment(
+        id = getString(idIndex),
+        noteId = getString(noteIdIndex),
+        uri = getString(uriIndex),
+        mimeType = getStringOrNull(mimeTypeIndex),
+    )
 }
 
 /**
@@ -101,6 +133,7 @@ internal fun Attachment.toContentValues(): ContentValues {
         put(COLUMN_ID, id)
         put(COLUMN_NOTE_ID, noteId)
         put(COLUMN_URI, uri)
+        put(COLUMN_MIME_TYPE, mimeType)
     }
 }
 

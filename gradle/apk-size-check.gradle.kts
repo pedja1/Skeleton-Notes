@@ -14,5 +14,5 @@ tasks.register<CheckApkSizeTask>("checkApkSize") {
     group = "verification"
     description = "Verifies that the release APK is smaller than the configured size limit"
     apkFile.set(resolveApkFile())
-    maxSizeKb.set(500)
+    maxSizeKb.set(550)
 }

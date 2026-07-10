@@ -16,9 +16,11 @@ import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 internal class SkeletonNotesDatabaseHelper(
     application: Application,
     databaseName: String? = "skeleton-notes",
-) : SQLiteOpenHelper(application, databaseName, null, 1) {
+) : SQLiteOpenHelper(application, databaseName, null, DATABASE_VERSION) {
 
     companion object {
+        private const val DATABASE_VERSION = 2
+
         // table notes
         const val TABLE_NOTES = "notes"
         const val COLUMN_ID = "id"
@@ -34,6 +36,7 @@ internal class SkeletonNotesDatabaseHelper(
         const val TABLE_ATTACHMENTS = "attachments"
         const val COLUMN_NOTE_ID = "noteId"
         const val COLUMN_URI = "uri"
+        const val COLUMN_MIME_TYPE = "mimeType"
     }
 
     override fun onCreate(database: SQLiteDatabase) {
@@ -58,6 +61,7 @@ internal class SkeletonNotesDatabaseHelper(
                 `$COLUMN_ID` TEXT NOT NULL,
                 `$COLUMN_NOTE_ID` TEXT NOT NULL,
                 `$COLUMN_URI` TEXT NOT NULL,
+                `$COLUMN_MIME_TYPE` TEXT,
                 PRIMARY KEY(`$COLUMN_ID`)
             )
         """.trimIndent()
@@ -69,6 +73,10 @@ internal class SkeletonNotesDatabaseHelper(
         oldVersion: Int,
         newVersion: Int
     ) {
-        // migrations go here
+        if (oldVersion < 2) {
+            database.execSQL(
+                "ALTER TABLE `$TABLE_ATTACHMENTS` ADD COLUMN `$COLUMN_MIME_TYPE` TEXT"
+            )
+        }
     }
 }

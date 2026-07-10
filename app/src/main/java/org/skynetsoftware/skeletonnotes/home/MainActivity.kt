@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
         gridView.layoutManager =
             StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
 
-        adapter = NoteAdapter { note ->
+        adapter = NoteAdapter(lifecycleScope) { note ->
             val intent = Intent(this, NoteDetailActivity::class.java)
             intent.putExtra(NoteDetailActivity.EXTRA_NOTE_ID, note.id)
             startActivity(intent)

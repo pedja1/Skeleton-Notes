@@ -100,7 +100,7 @@ class MainViewModelTest {
 
             val state = viewModel.uiState.value as MainViewModel.UiState.Notes
             assertEquals(1, state.notes.size)
-            assertEquals("Hello World", state.notes[0].title)
+            assertEquals("Hello World", state.notes[0].note.title)
 
             job.cancel()
         } finally {
@@ -132,7 +132,7 @@ class MainViewModelTest {
 
             val state = viewModel.uiState.value as MainViewModel.UiState.Notes
             assertEquals(1, state.notes.size)
-            assertEquals("Note A", state.notes[0].title)
+            assertEquals("Note A", state.notes[0].note.title)
 
             job.cancel()
         } finally {
@@ -161,7 +161,7 @@ class MainViewModelTest {
 
             val state = viewModel.uiState.value as MainViewModel.UiState.Notes
             assertEquals(1, state.notes.size)
-            assertEquals("Active Note", state.notes[0].title)
+            assertEquals("Active Note", state.notes[0].note.title)
 
             viewModel.setFilter(showArchived = false, showTrashed = true)
             testScheduler.advanceUntilIdle()

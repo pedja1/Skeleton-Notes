@@ -11,6 +11,7 @@ import org.junit.runner.RunWith
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_CONTENT
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_CREATED
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_ID
+import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MIME_TYPE
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MODIFIED
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_NOTE_ID
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_REMOTE_LAST_MODIFIED
@@ -42,8 +43,8 @@ class SkeletonNotesDatabaseHelperTest {
     }
 
     @Test
-    fun databaseVersionIs1() {
-        assertEquals(1, database.version)
+    fun databaseVersionIs2() {
+        assertEquals(2, database.version)
     }
 
     @Test
@@ -99,6 +100,7 @@ class SkeletonNotesDatabaseHelperTest {
         assertTrue(columns.contains(COLUMN_ID))
         assertTrue(columns.contains(COLUMN_NOTE_ID))
         assertTrue(columns.contains(COLUMN_URI))
+        assertTrue(columns.contains(COLUMN_MIME_TYPE))
     }
 
 
