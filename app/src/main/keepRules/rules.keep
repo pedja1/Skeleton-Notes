@@ -4,6 +4,13 @@
 # For more details, see
 #   https://d.android.com/r/tools/r8/keep-rules
 
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+    public static *** w(...);
+}
+
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:
