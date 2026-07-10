@@ -2,7 +2,6 @@ package org.skynetsoftware.skeletonnotes.note
 
 import android.app.AlertDialog
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.graphics.Typeface
 import android.net.Uri
 import android.os.Bundle
@@ -19,8 +18,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.core.graphics.drawable.toDrawable
-import androidx.core.graphics.scale
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
@@ -31,14 +28,13 @@ import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.data.attachment.AttachmentStorageManager
 import org.skynetsoftware.skeletonnotes.databinding.ActivityNoteDetailBinding
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
-import java.io.File
 import java.util.UUID
 
 /**
  * Activity for viewing and editing a single note. Supports both creating new notes
- * and editing existing ones. Content is stored as HTML and rendered via
- * [Html.fromHtml]. The formatting toolbar provides bold, italic, paragraph styles
- * (H1/H2/Paragraph), and file/image attachment.
+ * and editing existing ones. Content is stored as Markdown and rendered into the editor's
+ * span model via [MarkdownFormatter]. The formatting toolbar provides bold, italic, paragraph
+ * styles (H1/H2/Paragraph), and file/image attachment.
  */
 class NoteDetailActivity : ComponentActivity() {
 
@@ -142,9 +138,8 @@ class NoteDetailActivity : ComponentActivity() {
                             binding.toolbar.toolbarOverflow.setOnClickListener { showOverflowMenu() }
                             binding.editNoteTitle.setText(state.note.title ?: "")
                             binding.editNoteContent.text = SpannableStringBuilder(
-                                HtmlFormatter.fromHtml(
-                                    state.note.content,
-                                    resolveImageGetter()
+                                MarkdownFormatter.fromMarkdown(
+                                    state.note.content
                                 )
                             )
                             attachments.clear()
@@ -173,7 +168,7 @@ class NoteDetailActivity : ComponentActivity() {
     private fun saveAndFinish() {
         val title = binding.editNoteTitle.text?.toString()?.trim()?.ifEmpty { null }
         val content = binding.editNoteContent.text?.let {
-            HtmlFormatter.toHtml(it)
+            MarkdownFormatter.toMarkdown(it)
         } ?: ""
         val plainText = binding.editNoteContent.text?.toString() ?: ""
         if (viewModel.isNewNote() && title == null && content.isBlank()) {
@@ -280,7 +275,7 @@ class NoteDetailActivity : ComponentActivity() {
             .forEach { spannable.removeSpan(it) }
 
         if (level != null) {
-            val scale = if (level == 1) HtmlFormatter.H1_SCALE else HtmlFormatter.H2_SCALE
+            val scale = if (level == 1) MarkdownFormatter.H1_SCALE else MarkdownFormatter.H2_SCALE
             spannable.setSpan(
                 RelativeSizeSpan(scale),
                 paragraphStart,
@@ -321,8 +316,8 @@ class NoteDetailActivity : ComponentActivity() {
         if (isImage) {
             val editable = binding.editNoteContent.text
             val cursorPos = binding.editNoteContent.selectionStart
-            val imgTag = "<img src=\"$localPath\">"
-            editable.insert(cursorPos, imgTag)
+            val imgMarkdown = "![]($localPath)"
+            editable.insert(cursorPos, imgMarkdown)
         } else {
             //TODO translate
             Toast.makeText(this, "File attached", Toast.LENGTH_SHORT).show()
@@ -332,39 +327,5 @@ class NoteDetailActivity : ComponentActivity() {
             uri,
             Intent.FLAG_GRANT_READ_URI_PERMISSION
         )
-    }
-
-    private fun resolveImageGetter(): Html.ImageGetter {
-        return Html.ImageGetter { source ->
-            try {
-                val file = File(source)
-                val bitmap = if (file.exists()) {
-                    BitmapFactory.decodeFile(source)
-                } else {
-                    val uri = Uri.parse(source)
-                    val inputStream = contentResolver.openInputStream(uri)
-                    val bmp = BitmapFactory.decodeStream(inputStream)
-                    inputStream?.close()
-                    bmp
-                }
-                if (bitmap != null) {
-                    val maxWidth =
-                        resources.displayMetrics.widthPixels - (2 * 16 * resources.displayMetrics.density).toInt()
-                    val scaledBitmap = if (bitmap.width > maxWidth) {
-                        val scale = maxWidth.toFloat() / bitmap.width
-                        bitmap.scale(maxWidth, (bitmap.height * scale).toInt())
-                    } else {
-                        bitmap
-                    }
-                    val drawable = scaledBitmap.toDrawable(resources)
-                    drawable.setBounds(0, 0, drawable.intrinsicWidth, drawable.intrinsicHeight)
-                    drawable
-                } else {
-                    null
-                }
-            } catch (_: Exception) {
-                null
-            }
-        }
     }
 }

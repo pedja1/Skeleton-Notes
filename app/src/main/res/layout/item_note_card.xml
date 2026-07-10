@@ -27,7 +27,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/note_preview_margin_top"
         android:textSize="@dimen/note_preview_size"
-        android:maxLines="3"
+        android:maxLines="10"
         android:ellipsize="end"
         android:textColor="?android:textColorSecondary"
         tools:text="Note content"/>

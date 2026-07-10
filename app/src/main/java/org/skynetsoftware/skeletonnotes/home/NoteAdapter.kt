@@ -1,6 +1,5 @@
 package org.skynetsoftware.skeletonnotes.home
 
-import android.text.Html
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.LayoutInflater
@@ -13,6 +12,7 @@ import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.databinding.ItemNoteCardBinding
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
+import org.skynetsoftware.skeletonnotes.note.MarkdownFormatter
 
 /**
  * Adapter for displaying notes in a RecyclerView using a StaggeredGridLayoutManager,
@@ -70,11 +70,8 @@ class NoteAdapter(
          */
         fun bind(note: Note, onNoteClick: (Note) -> Unit) {
             binding.noteTile.text = note.title
-            binding.notePreview.text = Html.fromHtml(
-                note.content,
-                Html.FROM_HTML_MODE_LEGACY,
-                null,
-                null
+            binding.notePreview.text = MarkdownFormatter.fromMarkdown(
+                note.content
             ).trimEnd()
 
             if(note.title.isNullOrBlank()) {
