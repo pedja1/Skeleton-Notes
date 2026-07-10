@@ -36,12 +36,32 @@
             android:scaleType="centerInside" />
 
         <ImageView
-            android:id="@+id/format_font_size"
+            android:id="@+id/format_h1"
             android:layout_width="@dimen/formatting_button_touch_target"
             android:layout_height="match_parent"
             android:padding="@dimen/formatting_button_padding"
-            android:src="@drawable/ic_format_font_size"
-            android:contentDescription="@string/format_font_size"
+            android:src="@drawable/ic_format_h1"
+            android:contentDescription="@string/heading_h1"
+            android:background="?android:selectableItemBackgroundBorderless"
+            android:scaleType="centerInside" />
+
+        <ImageView
+            android:id="@+id/format_h2"
+            android:layout_width="@dimen/formatting_button_touch_target"
+            android:layout_height="match_parent"
+            android:padding="@dimen/formatting_button_padding"
+            android:src="@drawable/ic_format_h2"
+            android:contentDescription="@string/heading_h2"
+            android:background="?android:selectableItemBackgroundBorderless"
+            android:scaleType="centerInside" />
+
+        <ImageView
+            android:id="@+id/format_paragraph"
+            android:layout_width="@dimen/formatting_button_touch_target"
+            android:layout_height="match_parent"
+            android:padding="@dimen/formatting_button_padding"
+            android:src="@drawable/ic_format_paragraph"
+            android:contentDescription="@string/paragraph_normal"
             android:background="?android:selectableItemBackgroundBorderless"
             android:scaleType="centerInside" />
 

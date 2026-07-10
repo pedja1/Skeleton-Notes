@@ -6,7 +6,6 @@
     android:viewportHeight="960"
     android:tint="?android:textColorPrimary">
     <path
-        android:pathData="M560,800v-520L360,280v-120h520v120L680,280v520L560,800ZM200,800v-320L80,480v-120h360v120L320,480v320L200,800Z"
-        android:fillColor="@android:color/white"/>
+        android:pathData="M150,280 h105 v147 h110 v-147 h105 v400 h-105 v-147 h-110 v147 h-105 Z M525,280 h250 v105 h-250 Z M670,280 h105 v210 h-105 Z M680,470 L775,470 L620,680 L525,680 Z M525,575 h250 v105 h-250 Z"
+        android:fillColor="@android:color/white" />
 </vector>
-

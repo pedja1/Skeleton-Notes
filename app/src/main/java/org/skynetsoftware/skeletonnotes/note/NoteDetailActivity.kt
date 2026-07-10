@@ -9,9 +9,8 @@ import android.os.Bundle
 import android.text.Html
 import android.text.Spannable
 import android.text.SpannableStringBuilder
-import android.text.style.AbsoluteSizeSpan
+import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
-import android.util.TypedValue
 import android.view.View
 import android.widget.PopupMenu
 import android.widget.Toast
@@ -38,8 +37,8 @@ import java.util.UUID
 /**
  * Activity for viewing and editing a single note. Supports both creating new notes
  * and editing existing ones. Content is stored as HTML and rendered via
- * [Html.fromHtml]. The formatting toolbar provides bold, italic, font size,
- * file/image attachment, and tag insertion.
+ * [Html.fromHtml]. The formatting toolbar provides bold, italic, paragraph styles
+ * (H1/H2/Paragraph), and file/image attachment.
  */
 class NoteDetailActivity : ComponentActivity() {
 
@@ -143,11 +142,9 @@ class NoteDetailActivity : ComponentActivity() {
                             binding.toolbar.toolbarOverflow.setOnClickListener { showOverflowMenu() }
                             binding.editNoteTitle.setText(state.note.title ?: "")
                             binding.editNoteContent.text = SpannableStringBuilder(
-                                Html.fromHtml(
+                                HtmlFormatter.fromHtml(
                                     state.note.content,
-                                    Html.FROM_HTML_MODE_LEGACY,
-                                    resolveImageGetter(),
-                                    null
+                                    resolveImageGetter()
                                 )
                             )
                             attachments.clear()
@@ -173,11 +170,10 @@ class NoteDetailActivity : ComponentActivity() {
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun saveAndFinish() {
         val title = binding.editNoteTitle.text?.toString()?.trim()?.ifEmpty { null }
         val content = binding.editNoteContent.text?.let {
-            Html.toHtml(it)
+            HtmlFormatter.toHtml(it)
         } ?: ""
         val plainText = binding.editNoteContent.text?.toString() ?: ""
         if (viewModel.isNewNote() && title == null && content.isBlank()) {
@@ -227,7 +223,9 @@ class NoteDetailActivity : ComponentActivity() {
     private fun setupFormattingToolbar() {
         binding.formattingToolbar.formatBold.setOnClickListener { toggleBold() }
         binding.formattingToolbar.formatItalic.setOnClickListener { toggleItalic() }
-        binding.formattingToolbar.formatFontSize.setOnClickListener { showFontSizeDialog() }
+        binding.formattingToolbar.formatH1.setOnClickListener { applyHeading(1) }
+        binding.formattingToolbar.formatH2.setOnClickListener { applyHeading(2) }
+        binding.formattingToolbar.formatParagraph.setOnClickListener { applyHeading(null) }
         binding.formattingToolbar.formatAttachFile.setOnClickListener { pickFile() }
         binding.formattingToolbar.formatAttachImage.setOnClickListener { pickImage() }
     }
@@ -258,43 +256,44 @@ class NoteDetailActivity : ComponentActivity() {
         }
     }
 
-    private fun showFontSizeDialog() {
-        val sizes = arrayOf(
-            getString(R.string.font_size_small),
-            getString(R.string.font_size_normal),
-            getString(R.string.font_size_large),
-            getString(R.string.font_size_huge)
-        )
-        val sizeValues = intArrayOf(12, 16, 20, 24)
-        AlertDialog.Builder(this)
-            .setTitle(R.string.font_size_dialog_title)
-            .setItems(sizes) { _, which ->
-                applyFontSize(sizeValues[which])
-            }
-            .show()
-    }
+    /**
+     * Applies a heading style ([level] 1 or 2) or reverts to a plain paragraph ([level] null)
+     * to the paragraph(s) covered by the current selection. Headings are represented the same way
+     * [Html.fromHtml] represents them: a [RelativeSizeSpan] plus a bold [StyleSpan].
+     */
+    private fun applyHeading(level: Int?) {
+        val spannable = binding.editNoteContent.text as? Spannable ?: return
+        val text = spannable.toString()
 
-    private fun applyFontSize(sizeSp: Int) {
-        val editable = binding.editNoteContent.text
-        val selectionStart = binding.editNoteContent.selectionStart
-        val selectionEnd = binding.editNoteContent.selectionEnd
-        if (selectionStart == selectionEnd) return
-        val spannable = editable as Spannable
-        val existingSpans = spannable.getSpans(
-            selectionStart, selectionEnd, AbsoluteSizeSpan::class.java
-        )
-        existingSpans.forEach { spannable.removeSpan(it) }
-        val dip = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_SP,
-            sizeSp.toFloat(),
-            resources.displayMetrics
-        ).toInt()
-        spannable.setSpan(
-            AbsoluteSizeSpan(dip),
-            selectionStart,
-            selectionEnd,
-            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-        )
+        val selectionStart = binding.editNoteContent.selectionStart.coerceAtLeast(0)
+        val selectionEnd = binding.editNoteContent.selectionEnd.coerceAtLeast(0)
+
+        val paragraphStart = text.lastIndexOf('\n', (selectionStart - 1).coerceAtLeast(0))
+            .let { if (it < 0) 0 else it + 1 }
+        val paragraphEnd = text.indexOf('\n', selectionEnd).let { if (it < 0) text.length else it }
+        if (paragraphStart >= paragraphEnd) return
+
+        spannable.getSpans(paragraphStart, paragraphEnd, RelativeSizeSpan::class.java)
+            .forEach { spannable.removeSpan(it) }
+        spannable.getSpans(paragraphStart, paragraphEnd, StyleSpan::class.java)
+            .filter { it.style == Typeface.BOLD }
+            .forEach { spannable.removeSpan(it) }
+
+        if (level != null) {
+            val scale = if (level == 1) HtmlFormatter.H1_SCALE else HtmlFormatter.H2_SCALE
+            spannable.setSpan(
+                RelativeSizeSpan(scale),
+                paragraphStart,
+                paragraphEnd,
+                Spannable.SPAN_EXCLUSIVE_INCLUSIVE
+            )
+            spannable.setSpan(
+                StyleSpan(Typeface.BOLD),
+                paragraphStart,
+                paragraphEnd,
+                Spannable.SPAN_EXCLUSIVE_INCLUSIVE
+            )
+        }
     }
 
     private fun pickFile() {

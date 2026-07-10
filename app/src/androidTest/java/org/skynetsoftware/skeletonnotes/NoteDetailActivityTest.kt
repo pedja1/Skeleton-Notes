@@ -3,6 +3,7 @@ package org.skynetsoftware.skeletonnotes
 import android.content.Intent
 import android.graphics.Typeface
 import android.text.Spannable
+import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import android.widget.EditText
 import androidx.test.core.app.ActivityScenario
@@ -280,24 +281,20 @@ class NoteDetailActivityTest {
     }
 
     @Test
-    fun test18_fontSizeDialogAppears() {
-        ActivityScenario.launch(NoteDetailActivity::class.java).use { _ ->
-            onView(withId(R.id.edit_note_content)).perform(click())
-            onView(withId(R.id.format_font_size)).perform(click())
-            onView(withText(R.string.font_size_dialog_title))
-                .check(matches(isDisplayed()))
-        }
-    }
-
-    @Test
-    fun test19_insertTagInsertsHash() {
+    fun test18_headingButtonAppliesSizeSpan() {
         ActivityScenario.launch(NoteDetailActivity::class.java).use { scenario ->
-            onView(withId(R.id.edit_note_content)).perform(click())
-            onView(withId(R.id.format_add_tag)).perform(click())
+            onView(withId(R.id.edit_note_content))
+                .perform(click(), typeText("Heading"), closeSoftKeyboard())
             scenario.onActivity { activity ->
-                val editContent = activity.findViewById<EditText>(R.id.edit_note_content)
-                val text = editContent.text.toString()
-                assertTrue("Text should contain # tag", text.contains("#"))
+                activity.findViewById<EditText>(R.id.edit_note_content).selectAll()
+            }
+            onView(withId(R.id.format_h1)).perform(click())
+            scenario.onActivity { activity ->
+                val spannable =
+                    activity.findViewById<EditText>(R.id.edit_note_content).text as Spannable
+                val sizeSpans =
+                    spannable.getSpans(0, spannable.length, RelativeSizeSpan::class.java)
+                assertTrue("H1 should apply a relative size span", sizeSpans.isNotEmpty())
             }
         }
     }
