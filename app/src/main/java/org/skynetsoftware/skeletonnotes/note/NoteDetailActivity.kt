@@ -230,7 +230,6 @@ class NoteDetailActivity : ComponentActivity() {
         binding.formattingToolbar.formatFontSize.setOnClickListener { showFontSizeDialog() }
         binding.formattingToolbar.formatAttachFile.setOnClickListener { pickFile() }
         binding.formattingToolbar.formatAttachImage.setOnClickListener { pickImage() }
-        binding.formattingToolbar.formatAddTag.setOnClickListener { insertTag() }
     }
 
     private fun toggleBold() {
@@ -304,12 +303,6 @@ class NoteDetailActivity : ComponentActivity() {
 
     private fun pickImage() {
         pickImageLauncher.launch("image/*")
-    }
-
-    private fun insertTag() {
-        val editable = binding.editNoteContent.text
-        val cursorPos = binding.editNoteContent.selectionStart
-        editable.insert(cursorPos, "#")
     }
 
     private fun onAttachmentPicked(uri: Uri?, isImage: Boolean) {
