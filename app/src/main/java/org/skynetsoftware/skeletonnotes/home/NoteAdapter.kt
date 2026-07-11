@@ -117,6 +117,24 @@ class NoteAdapter(
                     note.modifiedAt,
                     binding.root.context,
                 )
+            if (noteWithAttachments.attachments.isEmpty() ||
+                noteWithAttachments.attachments.count { it.mimeType?.startsWith("image/") == true } ==
+                noteWithAttachments.attachments.count()
+            ) {
+                binding.noteLastEdited.setCompoundDrawablesWithIntrinsicBounds(
+                    0,
+                    0,
+                    0,
+                    0,
+                )
+            } else {
+                binding.noteLastEdited.setCompoundDrawablesWithIntrinsicBounds(
+                    R.drawable.ic_attach_file_small,
+                    0,
+                    0,
+                    0,
+                )
+            }
 
             val backgroundRes =
                 when (note.status) {
