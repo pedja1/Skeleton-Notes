@@ -57,7 +57,8 @@ class MainViewModel(
         object Error : UiState()
     }
 
-    private val _filter = MutableStateFlow(Filter(query = "", showTrashed = false, showArchived = false))
+    private val _filter =
+        MutableStateFlow(Filter(query = "", showActive = true, showTrashed = false, showArchived = false))
     val filter: StateFlow<Filter> get() = _filter.asStateFlow()
 
     val uiState: StateFlow<UiState> =
@@ -74,10 +75,12 @@ class MainViewModel(
      * Sets filter.
      */
     fun setFilter(
+        showActive: Boolean,
         showArchived: Boolean,
         showTrashed: Boolean,
     ) {
-        _filter.value = _filter.value.copy(showTrashed = showTrashed, showArchived = showArchived)
+        _filter.value =
+            _filter.value.copy(showActive = showActive, showTrashed = showTrashed, showArchived = showArchived)
     }
 
     fun setQuery(query: String) {

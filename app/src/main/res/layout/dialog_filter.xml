@@ -6,6 +6,12 @@
     android:padding="16dp">
 
     <CheckBox
+        android:id="@+id/checkbox_show_active"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/filter_show_active" />
+
+    <CheckBox
         android:id="@+id/checkbox_show_trash"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

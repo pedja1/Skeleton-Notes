@@ -20,7 +20,7 @@ class SearchAndFilterNotesUseCase {
             val note = noteWithAttachments.note
             val statusFilterMatches =
                 when (note.status) {
-                    NoteStatus.ACTIVE -> true
+                    NoteStatus.ACTIVE -> filter.showActive
                     NoteStatus.TRASH -> filter.showTrashed
                     NoteStatus.ARCHIVE -> filter.showArchived
                 }

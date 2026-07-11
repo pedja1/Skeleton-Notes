@@ -4,6 +4,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.replaceText
+import androidx.test.espresso.assertion.ViewAssertions.doesNotExist
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
@@ -77,6 +78,7 @@ class SearchFilterTest {
     fun test6_filterIconShowsFilterDialog() {
         ActivityScenario.launch(MainActivity::class.java).use { _ ->
             onView(withId(R.id.icon_filter)).perform(click())
+            onView(withText(R.string.filter_show_active)).check(matches(isDisplayed()))
             onView(withText(R.string.filter_show_trash)).check(matches(isDisplayed()))
             onView(withText(R.string.filter_show_archived)).check(matches(isDisplayed()))
         }
@@ -156,6 +158,56 @@ class SearchFilterTest {
         }
         ActivityScenario.launch(MainActivity::class.java).use { _ ->
             onView(withId(R.id.grid_notes)).check(matches(isDisplayed()))
+        }
+    }
+
+    @Test
+    fun test9_filterCanShowOnlyTrashedNotes() {
+        runBlocking {
+            val active =
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = UUID.randomUUID().toString(),
+                            title = "Active Note",
+                            content = "Active",
+                            createdAt = System.currentTimeMillis(),
+                            modifiedAt = System.currentTimeMillis(),
+                            tags = emptySet(),
+                            status = NoteStatus.ACTIVE,
+                        ),
+                    attachments = emptyList(),
+                )
+            DataDi.notesRepository.saveNote(active)
+            val trash =
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = UUID.randomUUID().toString(),
+                            title = "Trash Note",
+                            content = "Trash",
+                            createdAt = System.currentTimeMillis(),
+                            modifiedAt = System.currentTimeMillis(),
+                            tags = emptySet(),
+                            status = NoteStatus.TRASH,
+                        ),
+                    attachments = emptyList(),
+                )
+            DataDi.notesRepository.saveNote(trash)
+        }
+        ActivityScenario.launch(MainActivity::class.java).use { _ ->
+            // Active notes are visible by default, trashed ones are not.
+            onView(withText("Active Note")).check(matches(isDisplayed()))
+            onView(withText("Trash Note")).check(doesNotExist())
+
+            // Open the filter, hide active notes and show trashed notes only.
+            onView(withId(R.id.icon_filter)).perform(click())
+            onView(withText(R.string.filter_show_active)).perform(click())
+            onView(withText(R.string.filter_show_trash)).perform(click())
+            onView(withId(android.R.id.button1)).perform(click())
+
+            onView(withText("Trash Note")).check(matches(isDisplayed()))
+            onView(withText("Active Note")).check(doesNotExist())
         }
     }
 }

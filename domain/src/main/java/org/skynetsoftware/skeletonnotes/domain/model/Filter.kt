@@ -5,6 +5,7 @@ package org.skynetsoftware.skeletonnotes.domain.model
  */
 data class Filter(
     val query: String,
+    val showActive: Boolean,
     val showTrashed: Boolean,
     val showArchived: Boolean,
 )

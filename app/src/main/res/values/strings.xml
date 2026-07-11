@@ -51,6 +51,7 @@
     <!--Search & Filter-->
     <string name="search_hint">Search notes…</string>
     <string name="filter_title">Filter notes</string>
+    <string name="filter_show_active">Show active notes</string>
     <string name="filter_show_trash">Show trash notes</string>
     <string name="filter_show_archived">Show archived notes</string>
     <string name="search_content_description">Search</string>

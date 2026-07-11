@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewMode.filter.collect {
-                    if (it.showTrashed || it.showArchived) {
+                    if (!it.showActive || it.showTrashed || it.showArchived) {
                         filterIcon.setColorFilter(
                             ContextCompat.getColor(this@MainActivity, R.color.filter_active),
                             PorterDuff.Mode.SRC_IN,
@@ -129,9 +129,11 @@ class MainActivity : ComponentActivity() {
 
         filterIcon.setOnClickListener {
             val dialogBinding = DialogFilterBinding.inflate(layoutInflater)
+            val checkboxActive = dialogBinding.checkboxShowActive
             val checkboxTrash = dialogBinding.checkboxShowTrash
             val checkboxArchived = dialogBinding.checkboxShowArchived
 
+            checkboxActive.isChecked = mainViewMode.filter.value.showActive
             checkboxTrash.isChecked = mainViewMode.filter.value.showTrashed
             checkboxArchived.isChecked = mainViewMode.filter.value.showArchived
 
@@ -140,7 +142,11 @@ class MainActivity : ComponentActivity() {
                 .setTitle(R.string.filter_title)
                 .setView(dialogBinding.root)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
-                    mainViewMode.setFilter(checkboxArchived.isChecked, checkboxTrash.isChecked)
+                    mainViewMode.setFilter(
+                        checkboxActive.isChecked,
+                        checkboxArchived.isChecked,
+                        checkboxTrash.isChecked,
+                    )
                 }.setNegativeButton(android.R.string.cancel, null)
                 .show()
         }

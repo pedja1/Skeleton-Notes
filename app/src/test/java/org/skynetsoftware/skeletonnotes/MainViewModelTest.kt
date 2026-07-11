@@ -234,11 +234,62 @@ class MainViewModelTest {
                 assertEquals(1, state.notes.size)
                 assertEquals("Active Note", state.notes[0].note.title)
 
-                viewModel.setFilter(showArchived = false, showTrashed = true)
+                viewModel.setFilter(showActive = true, showArchived = false, showTrashed = true)
                 testScheduler.advanceUntilIdle()
 
                 val withTrashState = viewModel.uiState.value as MainViewModel.UiState.Notes
                 assertEquals(2, withTrashState.notes.size)
+
+                job.cancel()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun filterShowsOnlyTrashWhenActiveDisabled() =
+        runTest {
+            val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+            Dispatchers.setMain(testDispatcher)
+
+            try {
+                val notes =
+                    listOf(
+                        Note(
+                            id = "1",
+                            title = "Active Note",
+                            content = "Active content",
+                            createdAt = 1000L,
+                            modifiedAt = 1000L,
+                            tags = emptySet(),
+                            status = NoteStatus.ACTIVE,
+                        ),
+                        Note(
+                            id = "2",
+                            title = "Trash Note",
+                            content = "Trash content",
+                            createdAt = 2000L,
+                            modifiedAt = 2000L,
+                            tags = emptySet(),
+                            status = NoteStatus.TRASH,
+                        ),
+                    )
+                val searchAndFilter = SearchAndFilterNotesUseCase()
+                val useCase = GetAllNotesUseCase(FakeNotesRepository(notes))
+                val viewModel = MainViewModel(searchAndFilter, useCase)
+
+                val job =
+                    backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                        viewModel.uiState.collect {}
+                    }
+                testScheduler.advanceUntilIdle()
+
+                viewModel.setFilter(showActive = false, showArchived = false, showTrashed = true)
+                testScheduler.advanceUntilIdle()
+
+                val state = viewModel.uiState.value as MainViewModel.UiState.Notes
+                assertEquals(1, state.notes.size)
+                assertEquals("Trash Note", state.notes[0].note.title)
 
                 job.cancel()
             } finally {
@@ -264,15 +315,20 @@ class MainViewModelTest {
                 testScheduler.advanceUntilIdle()
 
                 val initialFilter = viewModel.filter.value
-                assertFalse(initialFilter.showTrashed || initialFilter.showArchived)
+                assertTrue(initialFilter.showActive)
+                assertFalse(!initialFilter.showActive || initialFilter.showTrashed || initialFilter.showArchived)
 
-                viewModel.setFilter(showArchived = false, showTrashed = true)
+                viewModel.setFilter(showActive = true, showArchived = false, showTrashed = true)
                 var filter = viewModel.filter.value
-                assertTrue(filter.showTrashed || filter.showArchived)
+                assertTrue(!filter.showActive || filter.showTrashed || filter.showArchived)
 
-                viewModel.setFilter(showArchived = true, showTrashed = false)
+                viewModel.setFilter(showActive = true, showArchived = true, showTrashed = false)
                 filter = viewModel.filter.value
-                assertTrue(filter.showTrashed || filter.showArchived)
+                assertTrue(!filter.showActive || filter.showTrashed || filter.showArchived)
+
+                viewModel.setFilter(showActive = false, showArchived = false, showTrashed = false)
+                filter = viewModel.filter.value
+                assertTrue(!filter.showActive || filter.showTrashed || filter.showArchived)
 
                 job.cancel()
             } finally {
