@@ -8,6 +8,7 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteAttachmentLocalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.ExportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
@@ -118,6 +119,12 @@ object DomainDi {
 
     val createAttachmentUseCase: CreateAttachmentUseCase by lazy {
         CreateAttachmentUseCase(
+            attachmentFileStorage,
+        )
+    }
+
+    val deleteAttachmentLocalUseCase: DeleteAttachmentLocalUseCase by lazy {
+        DeleteAttachmentLocalUseCase(
             attachmentFileStorage,
         )
     }

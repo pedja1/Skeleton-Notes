@@ -24,6 +24,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.databinding.ActivityNoteDetailBinding
+import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.util.bindImages
 
@@ -162,14 +163,24 @@ class NoteDetailActivity : ComponentActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.attachments.collect { attachments ->
                     // TODO display other non-image attachments
-                    val imagePaths =
-                        attachments
-                            .filter { it.mimeType?.startsWith("image/") == true }
-                            .map { it.uri }
-                    binding.noteImages.bindImages(imagePaths, lifecycleScope)
+                    val imageAttachments = attachments.filter { it.mimeType?.startsWith("image/") == true }
+                    val imagePaths = imageAttachments.map { it.uri }
+                    binding.noteImages.bindImages(imagePaths, lifecycleScope) { index ->
+                        showRemoveAttachmentConfirmation(imageAttachments[index])
+                    }
                 }
             }
         }
+    }
+
+    private fun showRemoveAttachmentConfirmation(attachment: Attachment) {
+        AlertDialog
+            .Builder(this)
+            .setTitle(R.string.remove_attachment_confirm_title)
+            .setPositiveButton(R.string.remove_attachment_confirm_positive) { _, _ ->
+                viewModel.onRemoveAttachment(attachment)
+            }.setNegativeButton(R.string.delete_note_confirm_negative, null)
+            .show()
     }
 
     private fun observeToasts() {

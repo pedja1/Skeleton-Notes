@@ -4,6 +4,7 @@ import android.app.Application
 import org.skynetsoftware.skeletonnotes.di.AppDi.init
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteAttachmentLocalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.ExportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
@@ -89,4 +90,5 @@ object AppDi {
     val nextcloudSyncScheduler: NextcloudSyncScheduler get() = graph.nextcloudSyncScheduler
 
     val createAttachmentUseCase: CreateAttachmentUseCase get() = graph.createAttachmentUseCase
+    val deleteAttachmentLocalUseCase: DeleteAttachmentLocalUseCase get() = graph.deleteAttachmentLocalUseCase
 }

@@ -19,6 +19,7 @@ import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteAttachmentLocalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
@@ -542,10 +543,103 @@ class NoteDetailViewModelTest {
             }
         }
 
+    @Test
+    fun onRemoveAttachmentRemovesItFromList() =
+        runTest {
+            val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+            Dispatchers.setMain(testDispatcher)
+            try {
+                val attachment1 = Attachment("att-1", "note-1", "/path/img1.png", "image/png")
+                val attachment2 = Attachment("att-2", "note-1", "/path/img2.png", "image/png")
+                val note = Note("note-1", "Title", "Content", 1000L, 1000L, emptySet())
+                val repository = FakeNoteDetailRepository(note = note, attachments = listOf(attachment1, attachment2))
+                val viewModel = createViewModel("note-1", repository)
+
+                viewModel.onRemoveAttachment(attachment1)
+
+                assertEquals(1, viewModel.attachments.value.size)
+                assertEquals("att-2", viewModel.attachments.value[0].id)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun savingWithRemovedAttachmentCallsRepositoryEvenIfTextUnchanged() =
+        runTest {
+            val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+            Dispatchers.setMain(testDispatcher)
+            try {
+                val attachment = Attachment("att-1", "note-1", "/path/img.png", "image/png")
+                val note = Note("note-1", "Existing", "<b>Content</b>", 1000L, 1000L, emptySet())
+                val repository = FakeNoteDetailRepository(note = note, attachments = listOf(attachment))
+                val viewModel = createViewModel("note-1", repository)
+
+                viewModel.onRemoveAttachment(attachment)
+                // title and content unchanged — would normally short-circuit — but attachment changed
+                viewModel.saveNote("Existing", "<b>Content</b>", "Content")
+
+                assertEquals(NoteDetailViewModel.UiState.Saved, viewModel.uiState.value)
+                val saved = repository.savedNoteWithAttachments
+                assertTrue("Repository save should have been called", saved != null)
+                assertTrue("Saved note should have no attachments", saved!!.attachments.isEmpty())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun saveDeletesLocalFileForRemovedAttachment() =
+        runTest {
+            val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+            Dispatchers.setMain(testDispatcher)
+            try {
+                val attachment = Attachment("att-to-delete", "note-1", "/path/img.png", "image/png")
+                val note = Note("note-1", "Title", "Content", 1000L, 1000L, emptySet())
+                val repository = FakeNoteDetailRepository(note = note, attachments = listOf(attachment))
+                val storage = TrackingAttachmentStorage()
+                val viewModel = createViewModel("note-1", repository, storage = storage)
+
+                viewModel.onRemoveAttachment(attachment)
+                viewModel.saveNote("Title", "Changed content", "Changed content")
+
+                assertTrue(
+                    "deleteFile should be called for the removed attachment",
+                    storage.deletedIds.contains("att-to-delete"),
+                )
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun saveDoesNotDeleteLocalFileForRetainedAttachment() =
+        runTest {
+            val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+            Dispatchers.setMain(testDispatcher)
+            try {
+                val attachment1 = Attachment("att-keep", "note-1", "/path/img1.png", "image/png")
+                val attachment2 = Attachment("att-remove", "note-1", "/path/img2.png", "image/png")
+                val note = Note("note-1", "Title", "Content", 1000L, 1000L, emptySet())
+                val repository = FakeNoteDetailRepository(note = note, attachments = listOf(attachment1, attachment2))
+                val storage = TrackingAttachmentStorage()
+                val viewModel = createViewModel("note-1", repository, storage = storage)
+
+                viewModel.onRemoveAttachment(attachment2)
+                viewModel.saveNote("Title", "Changed content", "Changed content")
+
+                assertEquals(listOf("att-remove"), storage.deletedIds)
+                assertFalse("File for retained attachment must not be deleted", storage.deletedIds.contains("att-keep"))
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun createViewModel(
         noteId: String,
         repository: FakeNoteDetailRepository = FakeNoteDetailRepository(),
         isNewNote: Boolean = false,
+        storage: AttachmentFileStorage = NoOpAttachmentStorage(),
     ): NoteDetailViewModel =
         NoteDetailViewModel(
             noteId = noteId,
@@ -556,31 +650,41 @@ class NoteDetailViewModelTest {
             moveToTrashUseCase = MoveToTrashUseCase(repository),
             archiveNoteUseCase = ArchiveNoteUseCase(repository),
             restoreNoteUseCase = RestoreNoteUseCase(repository),
-            createAttachment =
-                CreateAttachmentUseCase(
-                    object : AttachmentFileStorage {
-                        override fun copyToStorage(
-                            source: String,
-                            attachmentId: String,
-                            mimeType: String?,
-                        ) = ""
-
-                        override fun writeStream(
-                            attachmentId: String,
-                            inputStream: InputStream,
-                        ) = ""
-
-                        override fun openWriteStream(
-                            attachmentId: String,
-                            extension: String?,
-                        ) = AttachmentWriteTarget("", ByteArrayOutputStream())
-
-                        override fun getFile(attachmentId: String) = File("")
-
-                        override fun deleteFile(attachmentId: String) {}
-                    },
-                ),
+            createAttachment = CreateAttachmentUseCase(storage),
+            // Keep the local file deletion on the test scheduler so its side effects are
+            // observable synchronously and do not leak past the test onto a real IO thread.
+            deleteAttachmentLocal = DeleteAttachmentLocalUseCase(storage, UnconfinedTestDispatcher()),
         )
+
+    private open class NoOpAttachmentStorage : AttachmentFileStorage {
+        override fun copyToStorage(
+            source: String,
+            attachmentId: String,
+            mimeType: String?,
+        ) = ""
+
+        override fun writeStream(
+            attachmentId: String,
+            inputStream: InputStream,
+        ) = ""
+
+        override fun openWriteStream(
+            attachmentId: String,
+            extension: String?,
+        ) = AttachmentWriteTarget("", ByteArrayOutputStream())
+
+        override fun getFile(attachmentId: String) = File("")
+
+        override fun deleteFile(attachmentId: String) {}
+    }
+
+    private class TrackingAttachmentStorage : NoOpAttachmentStorage() {
+        val deletedIds = mutableListOf<String>()
+
+        override fun deleteFile(attachmentId: String) {
+            deletedIds.add(attachmentId)
+        }
+    }
 
     private class FakeNoteDetailRepository(
         private val note: Note? = null,

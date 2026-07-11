@@ -5,6 +5,7 @@ import org.skynetsoftware.skeletonnotes.data.di.DataDi
 import org.skynetsoftware.skeletonnotes.domain.di.DomainDi
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteAttachmentLocalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.ExportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
@@ -50,6 +51,7 @@ interface AppGraph {
     val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase
     val nextcloudSyncScheduler: NextcloudSyncScheduler
     val createAttachmentUseCase: CreateAttachmentUseCase
+    val deleteAttachmentLocalUseCase: DeleteAttachmentLocalUseCase
 }
 
 /**
@@ -115,4 +117,7 @@ class ProductionAppGraph(
         NextcloudSyncSchedulerImpl(application, DomainDi.getSettingsUseCase)
     }
     override val createAttachmentUseCase: CreateAttachmentUseCase by lazy { DomainDi.createAttachmentUseCase }
+    override val deleteAttachmentLocalUseCase: DeleteAttachmentLocalUseCase by lazy {
+        DomainDi.deleteAttachmentLocalUseCase
+    }
 }

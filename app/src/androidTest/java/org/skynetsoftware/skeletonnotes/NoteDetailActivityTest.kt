@@ -10,6 +10,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.action.ViewActions.closeSoftKeyboard
+import androidx.test.espresso.action.ViewActions.longClick
 import androidx.test.espresso.action.ViewActions.typeText
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.intent.Intents
@@ -29,6 +30,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.MethodSorters
 import org.skynetsoftware.skeletonnotes.data.di.DataDi
+import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
@@ -375,6 +377,50 @@ class NoteDetailActivityTest {
         assertTrue(result is Result.Failure)
     }
 
+    @Test
+    fun test24_longPressOnImageShowsRemoveAttachmentDialog() {
+        val noteId = prePopulateNoteWithImageAttachment()
+        val intent =
+            Intent().apply {
+                setClassName(
+                    "org.skynetsoftware.skeletonnotes",
+                    "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity",
+                )
+                putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
+            }
+
+        ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
+            Thread.sleep(500) // allow the grid to bind and cells to become visible
+            onView(withId(R.id.note_images)).perform(longClick())
+            onView(withText(R.string.remove_attachment_confirm_title))
+                .check(matches(isDisplayed()))
+            onView(withText(R.string.remove_attachment_confirm_positive))
+                .check(matches(isDisplayed()))
+            onView(withText(R.string.delete_note_confirm_negative))
+                .check(matches(isDisplayed()))
+        }
+    }
+
+    @Test
+    fun test25_confirmingRemoveAttachmentHidesImageGrid() {
+        val noteId = prePopulateNoteWithImageAttachment()
+        val intent =
+            Intent().apply {
+                setClassName(
+                    "org.skynetsoftware.skeletonnotes",
+                    "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity",
+                )
+                putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
+            }
+
+        ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
+            Thread.sleep(500)
+            onView(withId(R.id.note_images)).perform(longClick())
+            onView(withText(R.string.remove_attachment_confirm_positive)).perform(click())
+            onView(withId(R.id.note_images)).check(matches(not(isDisplayed())))
+        }
+    }
+
     private fun prePopulateNote(): String =
         runBlocking {
             val noteId = UUID.randomUUID().toString()
@@ -392,9 +438,38 @@ class NoteDetailActivityTest {
                     attachments = emptyList(),
                 )
             val result = DataDi.notesRepository.saveNote(note)
-            require(result is Result.Success) {
-                "Failed to save note"
-            }
+            require(result is Result.Success) { "Failed to save note" }
+            noteId
+        }
+
+    private fun prePopulateNoteWithImageAttachment(): String =
+        runBlocking {
+            val noteId = UUID.randomUUID().toString()
+            val attachmentId = UUID.randomUUID().toString()
+            // The URI can be any non-empty path; the grid cells are made visible based on mimeType
+            // alone, without requiring the file to exist on disk.
+            val attachment =
+                Attachment(
+                    id = attachmentId,
+                    noteId = noteId,
+                    uri = "/fake/path/$attachmentId.jpg",
+                    mimeType = "image/jpeg",
+                )
+            val note =
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = noteId,
+                            title = "Note with Image",
+                            content = "Content",
+                            createdAt = System.currentTimeMillis(),
+                            modifiedAt = System.currentTimeMillis(),
+                            tags = emptySet(),
+                        ),
+                    attachments = listOf(attachment),
+                )
+            val result = DataDi.notesRepository.saveNote(note)
+            require(result is Result.Success) { "Failed to save note with attachment" }
             noteId
         }
 }

@@ -25,6 +25,8 @@
     <string name="delete_note_confirm_message">This action cannot be undone.</string>
     <string name="delete_note_confirm_positive">Delete</string>
     <string name="delete_note_confirm_negative">Cancel</string>
+    <string name="remove_attachment_confirm_title">Remove attachment?</string>
+    <string name="remove_attachment_confirm_positive">Remove</string>
 
     <!--Trash & Archive-->
     <string name="move_to_trash">Move to trash</string>

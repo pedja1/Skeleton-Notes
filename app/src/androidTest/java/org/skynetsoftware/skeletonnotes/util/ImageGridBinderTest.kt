@@ -117,6 +117,38 @@ class ImageGridBinderTest {
     }
 
     @Test
+    fun longClickCallbackFiredWithCorrectIndex() {
+        val a = writeImage(200, 100)
+        val b = writeImage(100, 200)
+        val firedIndices = mutableListOf<Int>()
+
+        lateinit var grid: ImageGridLayout
+        instrumentation.runOnMainSync {
+            grid = ImageGridLayout(context)
+            grid.bindImages(listOf(a, b), scope) { index -> firedIndices.add(index) }
+        }
+
+        instrumentation.runOnMainSync {
+            grid.getChildAt(0).performLongClick()
+            grid.getChildAt(1).performLongClick()
+        }
+
+        assertEquals(listOf(0, 1), firedIndices)
+    }
+
+    @Test
+    fun longClickCallbackNullDoesNotCrash() {
+        val a = writeImage(200, 100)
+
+        instrumentation.runOnMainSync {
+            val grid = ImageGridLayout(context)
+            grid.bindImages(listOf(a), scope)
+            // no callback — long-click must not throw
+            grid.getChildAt(0).performLongClick()
+        }
+    }
+
+    @Test
     fun rebindWithDifferentPathResetsRecycledCell() {
         val a = writeImage(200, 100)
         val b = writeImage(100, 200)

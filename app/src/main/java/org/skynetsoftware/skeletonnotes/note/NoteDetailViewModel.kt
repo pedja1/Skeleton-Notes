@@ -22,6 +22,7 @@ import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteAttachmentLocalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
@@ -43,6 +44,7 @@ class NoteDetailViewModel(
     private val archiveNoteUseCase: ArchiveNoteUseCase,
     private val restoreNoteUseCase: RestoreNoteUseCase,
     private val createAttachment: CreateAttachmentUseCase,
+    private val deleteAttachmentLocal: DeleteAttachmentLocalUseCase,
 ) : ViewModel() {
     companion object {
         private const val TAG = "NoteDetailsViewModel"
@@ -65,6 +67,7 @@ class NoteDetailViewModel(
                         archiveNoteUseCase = AppDi.archiveNoteUseCase,
                         restoreNoteUseCase = AppDi.restoreNoteUseCase,
                         createAttachment = AppDi.createAttachmentUseCase,
+                        deleteAttachmentLocal = AppDi.deleteAttachmentLocalUseCase,
                     )
                 }
             }
@@ -122,7 +125,7 @@ class NoteDetailViewModel(
      * The note as loaded from the repository, retained so that a save preserves original metadata
      * (creation timestamp, status, remote sync marker) that the edit screen does not expose.
      */
-    private var loadedNote: Note? = null
+    private var loadedNote: NoteWithAttachments? = null
 
     init {
         if (isNewNote) {
@@ -133,7 +136,7 @@ class NoteDetailViewModel(
                     is Result.Success -> {
                         val data = result.data
                         _attachments.value = data.attachments
-                        loadedNote = data.note
+                        loadedNote = data
                         _uiState.value = UiState.NoteLoaded(data.note, data.attachments)
                     }
                     is Result.Failure -> {
@@ -158,7 +161,18 @@ class NoteDetailViewModel(
         plainTextContent: String,
     ) {
         if (uiState.value is UiState.Error) return
-        if (!isNewNote && title == loadedNote?.title && content == loadedNote?.content) {
+        val attachmentsUnchanged =
+            attachments.value.map { it.id }.toSet() ==
+                loadedNote
+                    ?.attachments
+                    ?.map { it.id }
+                    .orEmpty()
+                    .toSet()
+        if (!isNewNote &&
+            title == loadedNote?.note?.title &&
+            content == loadedNote?.note?.content &&
+            attachmentsUnchanged
+        ) {
             _uiState.value = UiState.Saved
             return
         }
@@ -172,15 +186,23 @@ class NoteDetailViewModel(
                     id = noteId,
                     title = title,
                     content = content,
-                    createdAt = existing?.createdAt ?: now,
+                    createdAt = existing?.note?.createdAt ?: now,
                     modifiedAt = now,
                     tags = tags,
-                    status = existing?.status ?: NoteStatus.ACTIVE,
-                    remoteLastModified = existing?.remoteLastModified ?: 0L,
+                    status = existing?.note?.status ?: NoteStatus.ACTIVE,
+                    remoteLastModified = existing?.note?.remoteLastModified ?: 0L,
                 )
             val attachmentsWithNoteId = attachments.value.map { it.copy(noteId = noteId) }
             when (val result = saveNoteUseCase(NoteWithAttachments(note, attachmentsWithNoteId))) {
                 is Result.Success -> {
+                    val removedIds =
+                        loadedNote
+                            ?.attachments
+                            ?.map { it.id }
+                            .orEmpty()
+                            .toSet() -
+                            attachments.value.map { it.id }.toSet()
+                    removedIds.forEach { deleteAttachmentLocal(it) }
                     _uiState.value = UiState.Saved
                 }
                 is Result.Failure -> {
@@ -271,7 +293,11 @@ class NoteDetailViewModel(
      * Returns the [NoteStatus] of the currently loaded note, or `null` if no note
      * has been loaded yet (e.g. a new note).
      */
-    fun noteStatus(): NoteStatus? = loadedNote?.status
+    fun noteStatus(): NoteStatus? = loadedNote?.note?.status
+
+    fun onRemoveAttachment(attachment: Attachment) {
+        _attachments.value = _attachments.value.filter { it.id != attachment.id }
+    }
 
     fun onAttachmentPicked(uri: Uri?) =
         viewModelScope.launch {
