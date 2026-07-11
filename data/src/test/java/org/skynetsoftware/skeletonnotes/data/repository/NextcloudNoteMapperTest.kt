@@ -9,22 +9,23 @@ import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudAttachme
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 
 class NextcloudNoteMapperTest {
-
     @Test
     fun nextcloudNoteToJsonAndBack() {
-        val note = NextcloudNote(
-            id = "abc123",
-            title = "Test Note",
-            content = "<h1>Hello</h1>",
-            createdAt = 1000L,
-            modifiedAt = 2000L,
-            tags = setOf("tag1", "tag2"),
-            status = "ACTIVE",
-            attachments = listOf(
-                NextcloudAttachment(id = "att1", filename = "image.jpg"),
-                NextcloudAttachment(id = "att2", filename = "doc.pdf"),
-            ),
-        )
+        val note =
+            NextcloudNote(
+                id = "abc123",
+                title = "Test Note",
+                content = "<h1>Hello</h1>",
+                createdAt = 1000L,
+                modifiedAt = 2000L,
+                tags = setOf("tag1", "tag2"),
+                status = "ACTIVE",
+                attachments =
+                    listOf(
+                        NextcloudAttachment(id = "att1", filename = "image.jpg"),
+                        NextcloudAttachment(id = "att2", filename = "doc.pdf"),
+                    ),
+            )
 
         val json = note.toJson()
         val parsed = JSONObject(json).toNextcloudNote()
@@ -43,16 +44,17 @@ class NextcloudNoteMapperTest {
 
     @Test
     fun nextcloudNoteWithEmptyTitle() {
-        val note = NextcloudNote(
-            id = "abc",
-            title = null,
-            content = "content",
-            createdAt = 0L,
-            modifiedAt = 0L,
-            tags = emptySet(),
-            status = "ACTIVE",
-            attachments = emptyList(),
-        )
+        val note =
+            NextcloudNote(
+                id = "abc",
+                title = null,
+                content = "content",
+                createdAt = 0L,
+                modifiedAt = 0L,
+                tags = emptySet(),
+                status = "ACTIVE",
+                attachments = emptyList(),
+            )
 
         val json = note.toJson()
         val parsed = JSONObject(json).toNextcloudNote()

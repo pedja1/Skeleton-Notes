@@ -25,9 +25,8 @@ import org.skynetsoftware.skeletonnotes.util.bindImages
 class NoteAdapter(
     private val scope: CoroutineScope,
     private val onNoteClick: (Note) -> Unit,
-    private val onTagClick: (String) -> Unit
+    private val onTagClick: (String) -> Unit,
 ) : RecyclerView.Adapter<NoteAdapter.ViewHolder>() {
-
     private var notes: List<NoteWithAttachments> = emptyList()
 
     /**
@@ -47,19 +46,26 @@ class NoteAdapter(
     /**
      * Inflates a note card view and wraps it in a [ViewHolder].
      */
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val binding = ItemNoteCardBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        )
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int,
+    ): ViewHolder {
+        val binding =
+            ItemNoteCardBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false,
+            )
         return ViewHolder(binding)
     }
 
     /**
      * Binds the note at [position] to the given [holder].
      */
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+    override fun onBindViewHolder(
+        holder: ViewHolder,
+        position: Int,
+    ) {
         holder.bind(notes[position], scope, onNoteClick, onTagClick)
     }
 
@@ -67,9 +73,8 @@ class NoteAdapter(
      * ViewHolder for a note card.
      */
     class ViewHolder(
-        private val binding: ItemNoteCardBinding
+        private val binding: ItemNoteCardBinding,
     ) : RecyclerView.ViewHolder(binding.root) {
-
         /**
          * Binds note data to the view and sets click listener.
          */
@@ -77,27 +82,29 @@ class NoteAdapter(
             noteWithAttachments: NoteWithAttachments,
             scope: CoroutineScope,
             onNoteClick: (Note) -> Unit,
-            onTagClick: (String) -> Unit
+            onTagClick: (String) -> Unit,
         ) {
             val note = noteWithAttachments.note
 
             binding.noteImages.bindImages(
                 noteWithAttachments.attachments.filter { it.mimeType?.startsWith("image/") == true }.map { it.uri },
-                scope
+                scope,
             )
 
             binding.noteTile.text = note.title
-            binding.notePreview.text = MarkdownFormatter.fromMarkdown(
-                note.content
-            ).trimEnd()
+            binding.notePreview.text =
+                MarkdownFormatter
+                    .fromMarkdown(
+                        note.content,
+                    ).trimEnd()
 
-            if(note.title.isNullOrBlank()) {
+            if (note.title.isNullOrBlank()) {
                 binding.noteTile.visibility = View.GONE
             } else {
                 binding.noteTile.visibility = View.VISIBLE
             }
 
-            if(note.content.isBlank()) {
+            if (note.content.isBlank()) {
                 binding.notePreview.visibility = View.GONE
             } else {
                 binding.notePreview.visibility = View.VISIBLE
@@ -105,16 +112,18 @@ class NoteAdapter(
 
             bindTags(note, onTagClick)
 
-            binding.noteLastEdited.text = NoteTimeFormatter.format(
-                note.modifiedAt,
-                binding.root.context
-            )
+            binding.noteLastEdited.text =
+                NoteTimeFormatter.format(
+                    note.modifiedAt,
+                    binding.root.context,
+                )
 
-            val backgroundRes = when (note.status) {
-                NoteStatus.TRASH -> R.drawable.card_background_trash
-                NoteStatus.ARCHIVE -> R.drawable.card_background_archive
-                else -> R.drawable.card_background
-            }
+            val backgroundRes =
+                when (note.status) {
+                    NoteStatus.TRASH -> R.drawable.card_background_trash
+                    NoteStatus.ARCHIVE -> R.drawable.card_background_archive
+                    else -> R.drawable.card_background
+                }
             binding.root.setBackgroundResource(backgroundRes)
 
             binding.root.setOnClickListener { onNoteClick(note) }
@@ -127,7 +136,10 @@ class NoteAdapter(
          * tags than there are existing chips, and hiding any surplus chips left over from a
          * previous, longer binding.
          */
-        private fun bindTags(note: Note, onTagClick: (String) -> Unit) {
+        private fun bindTags(
+            note: Note,
+            onTagClick: (String) -> Unit,
+        ) {
             val container = binding.noteTags
             if (note.tags.isEmpty()) {
                 container.visibility = View.GONE
@@ -136,8 +148,9 @@ class NoteAdapter(
             container.visibility = View.VISIBLE
             var index = 0
             for (tag in note.tags) {
-                val chip = container.getChildAt(index) as TextView?
-                    ?: createTagChip(onTagClick).also { container.addView(it) }
+                val chip =
+                    container.getChildAt(index) as TextView?
+                        ?: createTagChip(onTagClick).also { container.addView(it) }
                 chip.visibility = View.VISIBLE
                 chip.text = tag
                 index++
@@ -166,7 +179,7 @@ class NoteAdapter(
                 setTextColor(resources.getColor(R.color.tag_chip_text, context.theme))
                 setTextSize(
                     TypedValue.COMPLEX_UNIT_PX,
-                    resources.getDimension(R.dimen.tag_chip_text_size)
+                    resources.getDimension(R.dimen.tag_chip_text_size),
                 )
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
@@ -176,10 +189,12 @@ class NoteAdapter(
                     val tag = (chip as? TextView)?.text?.toString() ?: return@setOnClickListener
                     onTagClick(tag)
                 }
-                layoutParams = ViewGroup.MarginLayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ).apply { setMargins(0, 0, margin, margin) }
+                layoutParams =
+                    ViewGroup
+                        .MarginLayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ).apply { setMargins(0, 0, margin, margin) }
             }
         }
     }
@@ -189,17 +204,20 @@ class NoteAdapter(
      */
     private class NoteDiffCallback(
         private val oldList: List<NoteWithAttachments>,
-        private val newList: List<NoteWithAttachments>
+        private val newList: List<NoteWithAttachments>,
     ) : DiffUtil.Callback() {
-
         override fun getOldListSize(): Int = oldList.size
 
         override fun getNewListSize(): Int = newList.size
 
-        override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
-            oldList[oldItemPosition].note.id == newList[newItemPosition].note.id
+        override fun areItemsTheSame(
+            oldItemPosition: Int,
+            newItemPosition: Int,
+        ): Boolean = oldList[oldItemPosition].note.id == newList[newItemPosition].note.id
 
-        override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
-            oldList[oldItemPosition] == newList[newItemPosition]
+        override fun areContentsTheSame(
+            oldItemPosition: Int,
+            newItemPosition: Int,
+        ): Boolean = oldList[oldItemPosition] == newList[newItemPosition]
     }
 }

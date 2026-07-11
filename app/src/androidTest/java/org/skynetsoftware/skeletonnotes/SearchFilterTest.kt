@@ -7,8 +7,8 @@ import androidx.test.espresso.action.ViewActions.replaceText
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
-import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withHint
+import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
@@ -30,7 +30,6 @@ import java.util.UUID
 @RunWith(AndroidJUnit4::class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class SearchFilterTest {
-
     @Before
     fun setUp() {
         Intents.init()
@@ -86,21 +85,33 @@ class SearchFilterTest {
     @Test
     fun test7_searchFiltersNotesByContent() {
         runBlocking {
-            val note = NoteWithAttachments(
-                note = Note(
-                    id = UUID.randomUUID().toString(), title = "Search Me", content = "Find this text",
-                    createdAt = System.currentTimeMillis(), modifiedAt = System.currentTimeMillis(),
-                    tags = emptySet()
-                ), attachments = emptyList()
-            )
+            val note =
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = UUID.randomUUID().toString(),
+                            title = "Search Me",
+                            content = "Find this text",
+                            createdAt = System.currentTimeMillis(),
+                            modifiedAt = System.currentTimeMillis(),
+                            tags = emptySet(),
+                        ),
+                    attachments = emptyList(),
+                )
             DataDi.notesRepository.saveNote(note)
-            val note2 = NoteWithAttachments(
-                note = Note(
-                    id = UUID.randomUUID().toString(), title = "Other", content = "Different content",
-                    createdAt = System.currentTimeMillis(), modifiedAt = System.currentTimeMillis(),
-                    tags = emptySet()
-                ), attachments = emptyList()
-            )
+            val note2 =
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = UUID.randomUUID().toString(),
+                            title = "Other",
+                            content = "Different content",
+                            createdAt = System.currentTimeMillis(),
+                            modifiedAt = System.currentTimeMillis(),
+                            tags = emptySet(),
+                        ),
+                    attachments = emptyList(),
+                )
             DataDi.notesRepository.saveNote(note2)
         }
         ActivityScenario.launch(MainActivity::class.java).use { _ ->
@@ -112,21 +123,35 @@ class SearchFilterTest {
     @Test
     fun test8_filterOnlyShowsActiveNotesByDefault() {
         runBlocking {
-            val active = NoteWithAttachments(
-                note = Note(
-                    id = UUID.randomUUID().toString(), title = "Active Note", content = "Active",
-                    createdAt = System.currentTimeMillis(), modifiedAt = System.currentTimeMillis(),
-                    tags = emptySet(), status = NoteStatus.ACTIVE
-                ), attachments = emptyList()
-            )
+            val active =
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = UUID.randomUUID().toString(),
+                            title = "Active Note",
+                            content = "Active",
+                            createdAt = System.currentTimeMillis(),
+                            modifiedAt = System.currentTimeMillis(),
+                            tags = emptySet(),
+                            status = NoteStatus.ACTIVE,
+                        ),
+                    attachments = emptyList(),
+                )
             DataDi.notesRepository.saveNote(active)
-            val trash = NoteWithAttachments(
-                note = Note(
-                    id = UUID.randomUUID().toString(), title = "Trash Note", content = "Trash",
-                    createdAt = System.currentTimeMillis(), modifiedAt = System.currentTimeMillis(),
-                    tags = emptySet(), status = NoteStatus.TRASH
-                ), attachments = emptyList()
-            )
+            val trash =
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = UUID.randomUUID().toString(),
+                            title = "Trash Note",
+                            content = "Trash",
+                            createdAt = System.currentTimeMillis(),
+                            modifiedAt = System.currentTimeMillis(),
+                            tags = emptySet(),
+                            status = NoteStatus.TRASH,
+                        ),
+                    attachments = emptyList(),
+                )
             DataDi.notesRepository.saveNote(trash)
         }
         ActivityScenario.launch(MainActivity::class.java).use { _ ->

@@ -37,7 +37,6 @@ internal class NextcloudApiImpl(
     private val nextcloudConfigStore: NextcloudConfigStore,
     appVersion: String,
 ) : NextcloudApi {
-
     companion object {
         private const val TAG = "NextcloudApi"
         private const val SYNC_FOLDER = ".skeleton_notes"
@@ -47,32 +46,37 @@ internal class NextcloudApiImpl(
             "http://xml.org/sax/features/external-parameter-entities"
     }
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .addInterceptor { chain ->
-            chain.proceed(
-                chain.request().newBuilder()
-                    .header("User-Agent", "Skeleton-Notes/$appVersion")
-                    .build()
-            )
-        }
-        .build()
+    private val httpClient =
+        OkHttpClient
+            .Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .addInterceptor { chain ->
+                chain.proceed(
+                    chain
+                        .request()
+                        .newBuilder()
+                        .header("User-Agent", "Skeleton-Notes/$appVersion")
+                        .build(),
+                )
+            }.build()
 
     /**
      * Dedicated client for the login poll that does not follow redirects, so a
      * reverse-proxy `302` on the "not done yet" response is treated as pending
      * instead of being followed to an HTML page.
      */
-    private val pollHttpClient = httpClient.newBuilder()
-        .followRedirects(false)
-        .followSslRedirects(false)
-        .build()
+    private val pollHttpClient =
+        httpClient
+            .newBuilder()
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .build()
 
     private fun authHeader(): String {
         val username = nextcloudConfigStore.username.value ?: error("Not logged in")
         val appPassword = nextcloudConfigStore.appPassword.value ?: error("Not logged in")
-        val credentials = "${username}:${appPassword}"
+        val credentials = "$username:$appPassword"
         return "Basic " + Base64.encodeToString(credentials.toByteArray(), Base64.NO_WRAP)
     }
 
@@ -86,41 +90,44 @@ internal class NextcloudApiImpl(
      * Initiates the Nextcloud Login Flow v2 by posting to the server.
      * This call is anonymous and does not require authentication.
      */
-    override suspend fun initiateLoginFlow(serverUrl: String): Result<NextcloudInitiateLoginResult> = withContext(
-        Dispatchers.IO
-    ) {
-        try {
-            val normalizedUrl = serverUrl.trimEnd('/')
-            val request = Request.Builder()
-                .url("$normalizedUrl/index.php/login/v2")
-                .post("".toRequestBody(null))
-                .build()
+    override suspend fun initiateLoginFlow(serverUrl: String): Result<NextcloudInitiateLoginResult> =
+        withContext(
+            Dispatchers.IO,
+        ) {
+            try {
+                val normalizedUrl = serverUrl.trimEnd('/')
+                val request =
+                    Request
+                        .Builder()
+                        .url("$normalizedUrl/index.php/login/v2")
+                        .post("".toRequestBody(null))
+                        .build()
 
-            val response = httpClient.newCall(request).execute()
-            response.use { resp ->
-                if (resp.isSuccessful) {
-                    val json = JSONObject(resp.body?.string() ?: "{}")
-                    val poll = json.getJSONObject("poll")
-                    val token = poll.getString("token")
-                    val endpoint = poll.getString("endpoint")
-                    val loginUrl = json.getString("login")
-                    Result.Success(
-                        NextcloudInitiateLoginResult(
-                            token = token,
-                            endpoint = endpoint,
-                            loginUrl = loginUrl,
-                        ),
-                    )
-                } else {
-                    Log.e(TAG, "initiateLoginFlow failed: ${resp.code} ${resp.body?.string()}")
-                    Result.Failure(Exception("Server returned ${resp.code}"))
+                val response = httpClient.newCall(request).execute()
+                response.use { resp ->
+                    if (resp.isSuccessful) {
+                        val json = JSONObject(resp.body.string())
+                        val poll = json.getJSONObject("poll")
+                        val token = poll.getString("token")
+                        val endpoint = poll.getString("endpoint")
+                        val loginUrl = json.getString("login")
+                        Result.Success(
+                            NextcloudInitiateLoginResult(
+                                token = token,
+                                endpoint = endpoint,
+                                loginUrl = loginUrl,
+                            ),
+                        )
+                    } else {
+                        Log.e(TAG, "initiateLoginFlow failed: ${resp.code} ${resp.body.string()}")
+                        Result.Failure(Exception("Server returned ${resp.code}"))
+                    }
                 }
+            } catch (t: Throwable) {
+                Log.e(TAG, "initiateLoginFlow error", t)
+                Result.Failure(t)
             }
-        } catch (t: Throwable) {
-            Log.e(TAG, "initiateLoginFlow error", t)
-            Result.Failure(t)
         }
-    }
 
     /**
      * Makes a single poll request to check whether the user has completed
@@ -131,98 +138,110 @@ internal class NextcloudApiImpl(
     override suspend fun pollLogin(
         token: String,
         endpoint: String,
-    ): NextcloudPollStatus = withContext(Dispatchers.IO) {
-        try {
-            val body = FormBody.Builder().add("token", token).build()
-            val request = Request.Builder()
-                .url(endpoint)
-                .post(body)
-                .build()
+    ): NextcloudPollStatus =
+        withContext(Dispatchers.IO) {
+            try {
+                val body = FormBody.Builder().add("token", token).build()
+                val request =
+                    Request
+                        .Builder()
+                        .url(endpoint)
+                        .post(body)
+                        .build()
 
-            val response = pollHttpClient.newCall(request).execute()
-            response.use { resp ->
-                if (resp.isSuccessful) {
-                    val json = JSONObject(resp.body?.string() ?: "{}")
-                    val serverUrl = json.getString("server")
-                    val username = json.getString("loginName")
-                    val appPassword = json.getString("appPassword")
-                    nextcloudConfigStore.setServerConfig(serverUrl, username, appPassword)
-                    NextcloudPollStatus.Authenticated(
-                        NextcloudConnectionInfo(serverUrl, username)
-                    )
-                } else {
-                    NextcloudPollStatus.Pending
+                val response = pollHttpClient.newCall(request).execute()
+                response.use { resp ->
+                    if (resp.isSuccessful) {
+                        val json = JSONObject(resp.body.string())
+                        val serverUrl = json.getString("server")
+                        val username = json.getString("loginName")
+                        val appPassword = json.getString("appPassword")
+                        nextcloudConfigStore.setServerConfig(serverUrl, username, appPassword)
+                        NextcloudPollStatus.Authenticated(
+                            NextcloudConnectionInfo(serverUrl, username),
+                        )
+                    } else {
+                        NextcloudPollStatus.Pending
+                    }
                 }
+            } catch (t: Throwable) {
+                Log.e(TAG, "pollLogin error", t)
+                NextcloudPollStatus.Pending
             }
-        } catch (t: Throwable) {
-            Log.e(TAG, "pollLogin error", t)
-            NextcloudPollStatus.Pending
         }
-    }
 
     /**
      * Lists files in .skeleton_notes/[path] via PROPFIND with Depth: 1.
      * Automatically creates the sync folder if it does not exist.
      */
-    override suspend fun listDirectory(path: String): Result<List<NextcloudFileInfo>> = withContext(Dispatchers.IO) {
-        try {
-            ensureSyncFolder()
-            val url = "${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}"
-            val request = Request.Builder()
-                .url(url)
-                .method("PROPFIND", null)
-                .header("Authorization", authHeader())
-                .header("Depth", "1")
-                .build()
+    override suspend fun listDirectory(path: String): Result<List<NextcloudFileInfo>> =
+        withContext(Dispatchers.IO) {
+            try {
+                ensureSyncFolder()
+                val url = "${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}"
+                val request =
+                    Request
+                        .Builder()
+                        .url(url)
+                        .method("PROPFIND", null)
+                        .header("Authorization", authHeader())
+                        .header("Depth", "1")
+                        .build()
 
-            val response = httpClient.newCall(request).execute()
-            response.use { resp ->
-                if (resp.code in 200..207) {
-                    val xml = resp.body?.string() ?: ""
-                    parsePropfindResponse(xml, url)
-                } else {
-                    Log.e(TAG, "listDirectory failed: ${resp.code} ${resp.body?.string()}")
-                    Result.Failure(Exception("Server returned ${resp.code}"))
+                val response = httpClient.newCall(request).execute()
+                response.use { resp ->
+                    if (resp.code in 200..207) {
+                        val xml = resp.body.string()
+                        parsePropfindResponse(xml, url)
+                    } else {
+                        Log.e(TAG, "listDirectory failed: ${resp.code} ${resp.body.string()}")
+                        Result.Failure(Exception("Server returned ${resp.code}"))
+                    }
                 }
+            } catch (t: Throwable) {
+                Log.e(TAG, "listDirectory error", t)
+                Result.Failure(t)
             }
-        } catch (t: Throwable) {
-            Log.e(TAG, "listDirectory error", t)
-            Result.Failure(t)
         }
-    }
 
     /**
      * Downloads a file from .skeleton_notes/[path] via HTTP GET.
      */
-    override suspend fun downloadFile(path: String): Result<ByteArray> = withContext(Dispatchers.IO) {
-        val outputStream = ByteArrayOutputStream()
-        when (val result = downloadFile(path, outputStream)) {
-            is Result.Success -> Result.Success(outputStream.toByteArray())
-            is Result.Failure -> Result.Failure(result.throwable)
+    override suspend fun downloadFile(path: String): Result<ByteArray> =
+        withContext(Dispatchers.IO) {
+            val outputStream = ByteArrayOutputStream()
+            when (val result = downloadFile(path, outputStream)) {
+                is Result.Success -> Result.Success(outputStream.toByteArray())
+                is Result.Failure -> Result.Failure(result.throwable)
+            }
         }
-    }
 
     /**
      * Downloads a file from .skeleton_notes/[path] via HTTP GET into [outputStream].
      */
-    override suspend fun downloadFile(path: String, outputStream: OutputStream): Result<Unit> =
+    override suspend fun downloadFile(
+        path: String,
+        outputStream: OutputStream,
+    ): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
-                val request = Request.Builder()
-                    .url("${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}")
-                    .get()
-                    .header("Authorization", authHeader())
-                    .build()
+                val request =
+                    Request
+                        .Builder()
+                        .url("${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}")
+                        .get()
+                        .header("Authorization", authHeader())
+                        .build()
 
                 val response = httpClient.newCall(request).execute()
                 response.use { resp ->
                     if (resp.isSuccessful) {
-                        resp.body?.byteStream()?.use { input ->
+                        resp.body.byteStream().use { input ->
                             input.copyTo(outputStream)
                         }
                         Result.Success(Unit)
                     } else {
-                        Log.e(TAG, "downloadFile failed: ${resp.code} ${resp.body?.string()}")
+                        Log.e(TAG, "downloadFile failed: ${resp.code} ${resp.body.string()}")
                         Result.Failure(Exception("Server returned ${resp.code}"))
                     }
                 }
@@ -235,11 +254,16 @@ internal class NextcloudApiImpl(
     /**
      * Uploads a file to .skeleton_notes/[path] via HTTP PUT.
      */
-    override suspend fun uploadFile(path: String, content: ByteArray, contentType: String): Result<Unit> = withContext(
-        Dispatchers.IO
-    ) {
-        uploadFile(path, content.inputStream(), content.size.toLong(), contentType)
-    }
+    override suspend fun uploadFile(
+        path: String,
+        content: ByteArray,
+        contentType: String,
+    ): Result<Unit> =
+        withContext(
+            Dispatchers.IO,
+        ) {
+            uploadFile(path, content.inputStream(), content.size.toLong(), contentType)
+        }
 
     /**
      * Uploads a file stream to .skeleton_notes/[path] via HTTP PUT.
@@ -249,33 +273,39 @@ internal class NextcloudApiImpl(
         inputStream: InputStream,
         contentLength: Long,
         contentType: String,
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val body = inputStream.toRequestBody(contentType, contentLength)
-            val request = Request.Builder()
-                .url("${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}")
-                .put(body)
-                .header("Authorization", authHeader())
-                .build()
+    ): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                val body = inputStream.toRequestBody(contentType, contentLength)
+                val request =
+                    Request
+                        .Builder()
+                        .url("${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}")
+                        .put(body)
+                        .header("Authorization", authHeader())
+                        .build()
 
-            val response = httpClient.newCall(request).execute()
-            response.use { resp ->
-                if (resp.code in 200..204) {
-                    Result.Success(Unit)
-                } else {
-                    Log.e(TAG, "uploadFile failed: ${resp.code} ${resp.body?.string()}")
-                    Result.Failure(Exception("Server returned ${resp.code}"))
+                val response = httpClient.newCall(request).execute()
+                response.use { resp ->
+                    if (resp.code in 200..204) {
+                        Result.Success(Unit)
+                    } else {
+                        Log.e(TAG, "uploadFile failed: ${resp.code} ${resp.body.string()}")
+                        Result.Failure(Exception("Server returned ${resp.code}"))
+                    }
                 }
+            } catch (t: Throwable) {
+                Log.e(TAG, "uploadFile error", t)
+                Result.Failure(t)
             }
-        } catch (t: Throwable) {
-            Log.e(TAG, "uploadFile error", t)
-            Result.Failure(t)
         }
-    }
 
     /** Creates an OkHttp [RequestBody] that streams from this [InputStream]. */
-    private fun InputStream.toRequestBody(contentType: String, contentLength: Long): RequestBody {
-        return object : RequestBody() {
+    private fun InputStream.toRequestBody(
+        contentType: String,
+        contentLength: Long,
+    ): RequestBody =
+        object : RequestBody() {
             override fun contentType() = contentType.toMediaType()
 
             override fun contentLength(): Long = contentLength
@@ -291,61 +321,66 @@ internal class NextcloudApiImpl(
                 }
             }
         }
-    }
 
     /**
      * Deletes a file from .skeleton_notes/[path] via HTTP DELETE.
      */
-    override suspend fun deleteFile(path: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url("${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}")
-                .method("DELETE", null)
-                .header("Authorization", authHeader())
-                .build()
+    override suspend fun deleteFile(path: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                val request =
+                    Request
+                        .Builder()
+                        .url("${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}")
+                        .method("DELETE", null)
+                        .header("Authorization", authHeader())
+                        .build()
 
-            val response = httpClient.newCall(request).execute()
-            response.use { resp ->
-                // 404 means the resource is already gone; treat delete as idempotent success.
-                if (resp.code in 200..204 || resp.code == 404) {
-                    Result.Success(Unit)
-                } else {
-                    Log.e(TAG, "deleteFile failed: ${resp.code} ${resp.body?.string()}")
-                    Result.Failure(Exception("Server returned ${resp.code}"))
+                val response = httpClient.newCall(request).execute()
+                response.use { resp ->
+                    // 404 means the resource is already gone; treat delete as idempotent success.
+                    if (resp.code in 200..204 || resp.code == 404) {
+                        Result.Success(Unit)
+                    } else {
+                        Log.e(TAG, "deleteFile failed: ${resp.code} ${resp.body.string()}")
+                        Result.Failure(Exception("Server returned ${resp.code}"))
+                    }
                 }
+            } catch (t: Throwable) {
+                Log.e(TAG, "deleteFile error", t)
+                Result.Failure(t)
             }
-        } catch (t: Throwable) {
-            Log.e(TAG, "deleteFile error", t)
-            Result.Failure(t)
         }
-    }
 
     /**
      * Creates a directory inside .skeleton_notes/[path] via WebDAV MKCOL.
      */
-    override suspend fun createDirectory(path: String): Result<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val url = "${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}".trimEnd('/')
-            val request = Request.Builder()
-                .url(url)
-                .method("MKCOL", null)
-                .header("Authorization", authHeader())
-                .build()
+    override suspend fun createDirectory(path: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                val url = "${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}".trimEnd('/')
+                val request =
+                    Request
+                        .Builder()
+                        .url(url)
+                        .method("MKCOL", null)
+                        .header("Authorization", authHeader())
+                        .build()
 
-            val response = httpClient.newCall(request).execute()
-            response.use { resp ->
-                if (resp.code in 200..204 || resp.code == 405) {
-                    Result.Success(Unit)
-                } else {
-                    Log.e(TAG, "createDirectory failed: ${resp.code} ${resp.body?.string()}")
-                    Result.Failure(Exception("Server returned ${resp.code}"))
+                val response = httpClient.newCall(request).execute()
+                response.use { resp ->
+                    if (resp.code in 200..204 || resp.code == 405) {
+                        Result.Success(Unit)
+                    } else {
+                        Log.e(TAG, "createDirectory failed: ${resp.code} ${resp.body.string()}")
+                        Result.Failure(Exception("Server returned ${resp.code}"))
+                    }
                 }
+            } catch (t: Throwable) {
+                Log.e(TAG, "createDirectory error", t)
+                Result.Failure(t)
             }
-        } catch (t: Throwable) {
-            Log.e(TAG, "createDirectory error", t)
-            Result.Failure(t)
         }
-    }
 
     /**
      * Ensures the .skeleton_notes/ directory exists on the server,
@@ -353,12 +388,14 @@ internal class NextcloudApiImpl(
      */
     private suspend fun ensureSyncFolder() {
         try {
-            val request = Request.Builder()
-                .url("${davBaseUrl()}/$SYNC_FOLDER/")
-                .method("PROPFIND", null)
-                .header("Authorization", authHeader())
-                .header("Depth", "0")
-                .build()
+            val request =
+                Request
+                    .Builder()
+                    .url("${davBaseUrl()}/$SYNC_FOLDER/")
+                    .method("PROPFIND", null)
+                    .header("Authorization", authHeader())
+                    .header("Depth", "0")
+                    .build()
 
             val response = httpClient.newCall(request).execute()
             response.use { resp ->
@@ -372,11 +409,14 @@ internal class NextcloudApiImpl(
     }
 
     /**
-     * Parses a PROPFIND multistatus XML response into a list of [RemoteFileInfo].
+     * Parses a PROPFIND multistatus XML response into a list of [NextcloudFileInfo].
      * Extracts href (filename) and getlastmodified for each response entry.
      */
-    private fun parsePropfindResponse(xml: String, basePath: String): Result<List<NextcloudFileInfo>> {
-        return try {
+    private fun parsePropfindResponse(
+        xml: String,
+        basePath: String,
+    ): Result<List<NextcloudFileInfo>> =
+        try {
             val builder = newSecureDocumentBuilder()
             val doc = builder.parse(xml.byteInputStream())
 
@@ -392,7 +432,6 @@ internal class NextcloudApiImpl(
             Log.e(TAG, "parsePropfindResponse error", t)
             Result.Failure(t)
         }
-    }
 
     /**
      * Creates a [DocumentBuilder] hardened against XML External Entity (XXE) attacks by disabling
@@ -424,7 +463,11 @@ internal class NextcloudApiImpl(
      * Applies an XML parser [feature], ignoring parsers that do not support it (Android's parser
      * throws [ParserConfigurationException] for features such as `disallow-doctype-decl`).
      */
-    private fun trySetFeature(factory: DocumentBuilderFactory, feature: String, value: Boolean) {
+    private fun trySetFeature(
+        factory: DocumentBuilderFactory,
+        feature: String,
+        value: Boolean,
+    ) {
         try {
             factory.setFeature(feature, value)
         } catch (e: ParserConfigurationException) {
@@ -433,18 +476,22 @@ internal class NextcloudApiImpl(
     }
 
     /**
-     * Parses a single DAV `<response>` element into a [RemoteFileInfo], returning null for the
+     * Parses a single DAV `<response>` element into a [NextcloudFileInfo], returning null for the
      * base collection itself or for nested collections (directories), which are not note files.
      */
-    private fun parseResponseEntry(response: Element, baseName: String): NextcloudFileInfo? {
+    private fun parseResponseEntry(
+        response: Element,
+        baseName: String,
+    ): NextcloudFileInfo? {
         val href = response.getElementsByTagNameNS("DAV:", "href").item(0)?.textContent ?: return null
         val filename = href.trimEnd('/').substringAfterLast('/')
         if (filename.isBlank() || filename == baseName) return null
 
         val resourcetypeNodes = response.getElementsByTagNameNS("DAV:", "resourcetype")
         if (resourcetypeNodes.length > 0) {
-            val collectionNodes = (resourcetypeNodes.item(0) as? Element)
-                ?.getElementsByTagNameNS("DAV:", "collection")
+            val collectionNodes =
+                (resourcetypeNodes.item(0) as? Element)
+                    ?.getElementsByTagNameNS("DAV:", "collection")
             if (collectionNodes != null && collectionNodes.length > 0) return null
         }
 
@@ -469,20 +516,21 @@ internal class NextcloudApiImpl(
      */
     private fun parseDavDate(dateString: String): Long {
         return try {
-            val formats = listOf(
-                SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US).apply {
-                    timeZone = TimeZone.getTimeZone("GMT")
-                },
-                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
-                    timeZone = TimeZone.getTimeZone("GMT")
-                },
-                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                    timeZone = TimeZone.getTimeZone("GMT")
-                },
-                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).apply {
-                    timeZone = TimeZone.getTimeZone("GMT")
-                },
-            )
+            val formats =
+                listOf(
+                    SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US).apply {
+                        timeZone = TimeZone.getTimeZone("GMT")
+                    },
+                    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                        timeZone = TimeZone.getTimeZone("GMT")
+                    },
+                    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                        timeZone = TimeZone.getTimeZone("GMT")
+                    },
+                    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).apply {
+                        timeZone = TimeZone.getTimeZone("GMT")
+                    },
+                )
             for (format in formats) {
                 try {
                     return format.parse(dateString)?.time ?: continue

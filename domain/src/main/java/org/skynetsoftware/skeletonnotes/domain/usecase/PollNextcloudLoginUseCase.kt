@@ -21,7 +21,5 @@ class PollNextcloudLoginUseCase(
     suspend operator fun invoke(
         token: String,
         endpoint: String,
-    ): NextcloudPollStatus {
-        return nextcloudRepository.pollLogin(token, endpoint)
-    }
+    ): NextcloudPollStatus = nextcloudRepository.pollLogin(token, endpoint)
 }

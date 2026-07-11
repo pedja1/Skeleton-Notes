@@ -12,7 +12,6 @@ import java.io.OutputStream
  * Provides Login Flow v2 authentication and WebDAV file operations.
  */
 internal interface NextcloudApi {
-
     /**
      * Initiates the Nextcloud Login Flow v2 by posting to the server.
      * This call is anonymous and does not require authentication.
@@ -33,7 +32,7 @@ internal interface NextcloudApi {
      * Lists files in the given WebDAV [path] inside .skeleton_notes/ using PROPFIND.
      *
      * @param path relative path inside the sync folder
-     * @return list of [RemoteFileInfo] with filenames and last-modified timestamps
+     * @return list of [NextcloudFileInfo] with filenames and last-modified timestamps
      */
     suspend fun listDirectory(path: String): Result<List<NextcloudFileInfo>>
 
@@ -51,7 +50,10 @@ internal interface NextcloudApi {
      * @param path relative path inside the sync folder
      * @param outputStream destination stream for raw file bytes
      */
-    suspend fun downloadFile(path: String, outputStream: OutputStream): Result<Unit>
+    suspend fun downloadFile(
+        path: String,
+        outputStream: OutputStream,
+    ): Result<Unit>
 
     /**
      * Uploads a file to .skeleton_notes/[path] via HTTP PUT.
@@ -60,7 +62,11 @@ internal interface NextcloudApi {
      * @param content raw file bytes
      * @param contentType MIME type for the Content-Type header
      */
-    suspend fun uploadFile(path: String, content: ByteArray, contentType: String): Result<Unit>
+    suspend fun uploadFile(
+        path: String,
+        content: ByteArray,
+        contentType: String,
+    ): Result<Unit>
 
     /**
      * Uploads a file stream to .skeleton_notes/[path] via HTTP PUT.

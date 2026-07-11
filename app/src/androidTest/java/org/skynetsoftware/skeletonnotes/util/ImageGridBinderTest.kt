@@ -28,7 +28,6 @@ import java.util.UUID
  */
 @RunWith(AndroidJUnit4::class)
 class ImageGridBinderTest {
-
     private lateinit var context: Context
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val scope = CoroutineScope(Dispatchers.Main)
@@ -38,7 +37,10 @@ class ImageGridBinderTest {
         context = instrumentation.targetContext
     }
 
-    private fun writeImage(width: Int, height: Int): String {
+    private fun writeImage(
+        width: Int,
+        height: Int,
+    ): String {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         bitmap.eraseColor(Color.RED)
         val file = File(context.cacheDir, "img-${UUID.randomUUID()}.png")
@@ -49,10 +51,12 @@ class ImageGridBinderTest {
         return file.absolutePath
     }
 
-    private fun aspectOf(child: View): Float =
-        (child.layoutParams as ImageGridLayout.LayoutParams).aspectRatio
+    private fun aspectOf(child: View): Float = (child.layoutParams as ImageGridLayout.LayoutParams).aspectRatio
 
-    private fun awaitDrawable(imageView: ImageView, timeoutMs: Long = 3000): Drawable? {
+    private fun awaitDrawable(
+        imageView: ImageView,
+        timeoutMs: Long = 3000,
+    ): Drawable? {
         val deadline = System.currentTimeMillis() + timeoutMs
         var drawable: Drawable? = null
         while (System.currentTimeMillis() < deadline) {

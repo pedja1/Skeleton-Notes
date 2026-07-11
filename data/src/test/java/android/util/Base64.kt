@@ -9,6 +9,11 @@ object Base64 {
     const val NO_WRAP = 2
 
     @JvmStatic
-    fun encodeToString(input: ByteArray, flags: Int): String =
-        java.util.Base64.getEncoder().encodeToString(input)
+    fun encodeToString(
+        input: ByteArray,
+        flags: Int,
+    ): String =
+        java.util.Base64
+            .getEncoder()
+            .encodeToString(input)
 }

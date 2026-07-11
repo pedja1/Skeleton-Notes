@@ -24,7 +24,10 @@ import org.skynetsoftware.skeletonnotes.widget.ImageGridLayout
  * Passing an empty list hides the grid. Safe to call repeatedly (e.g. from a RecyclerView bind):
  * children are reused and stale bitmaps are dropped when a recycled cell's path changes.
  */
-fun ImageGridLayout.bindImages(paths: List<String>, scope: CoroutineScope) {
+fun ImageGridLayout.bindImages(
+    paths: List<String>,
+    scope: CoroutineScope,
+) {
     if (paths.isEmpty()) {
         visibility = View.GONE
         for (i in 0 until childCount) clearCell(getChildAt(i) as ImageView)
@@ -74,9 +77,15 @@ private fun ImageGridLayout.stillBoundTo(paths: List<String>): Boolean {
     return paths.indices.all { getChildAt(it).getTag(R.id.image_grid_path_tag) == paths[it] }
 }
 
-private fun ImageGridLayout.loadCells(paths: List<String>, scope: CoroutineScope) {
-    val available = (width.takeIf { it > 0 }?.minus(paddingLeft + paddingRight)
-        ?: resources.displayMetrics.widthPixels).coerceAtLeast(1)
+private fun ImageGridLayout.loadCells(
+    paths: List<String>,
+    scope: CoroutineScope,
+) {
+    val available =
+        (
+            width.takeIf { it > 0 }?.minus(paddingLeft + paddingRight)
+                ?: resources.displayMetrics.widthPixels
+        ).coerceAtLeast(1)
     val single = paths.size == 1
 
     for (i in paths.indices) {
@@ -100,8 +109,7 @@ private fun ImageGridLayout.loadCells(paths: List<String>, scope: CoroutineScope
     }
 }
 
-private fun ImageView.aspectLayoutParams(): ImageGridLayout.LayoutParams =
-    layoutParams as ImageGridLayout.LayoutParams
+private fun ImageView.aspectLayoutParams(): ImageGridLayout.LayoutParams = layoutParams as ImageGridLayout.LayoutParams
 
 private fun clearCell(cell: ImageView) {
     cell.visibility = View.GONE
@@ -114,16 +122,21 @@ private fun clearCell(cell: ImageView) {
 private fun createImageCell(context: Context): ImageView {
     val cornerRadius = context.resources.displayMetrics.density * 8f
     return ImageView(context).apply {
-        layoutParams = ImageGridLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-        )
+        layoutParams =
+            ImageGridLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
         scaleType = ImageView.ScaleType.CENTER_CROP
         clipToOutline = true
-        outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: Outline) {
-                outline.setRoundRect(0, 0, view.width, view.height, cornerRadius)
+        outlineProvider =
+            object : ViewOutlineProvider() {
+                override fun getOutline(
+                    view: View,
+                    outline: Outline,
+                ) {
+                    outline.setRoundRect(0, 0, view.width, view.height, cornerRadius)
+                }
             }
-        }
     }
 }

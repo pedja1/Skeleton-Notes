@@ -7,9 +7,14 @@ import org.skynetsoftware.skeletonnotes.home.TimeCategory
 import java.util.Calendar
 
 class NoteTimeFormatterTest {
-
-    private fun calendar(year: Int, month: Int, day: Int, hour: Int = 12, minute: Int = 0): Calendar {
-        return Calendar.getInstance().apply {
+    private fun calendar(
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int = 12,
+        minute: Int = 0,
+    ): Calendar =
+        Calendar.getInstance().apply {
             set(Calendar.YEAR, year)
             set(Calendar.MONTH, month)
             set(Calendar.DAY_OF_MONTH, day)
@@ -18,7 +23,6 @@ class NoteTimeFormatterTest {
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }
-    }
 
     @Test
     fun categorizeReturnsTodayForSameDay() {

@@ -10,7 +10,9 @@ import java.io.InputStream
 /**
  * Use case for importing notes and their attachments from a ZIP archive.
  */
-class ImportNotesUseCase(private val backupRepository: BackupRepository) {
+class ImportNotesUseCase(
+    private val backupRepository: BackupRepository,
+) {
     /**
      * Imports notes from [inputStream], delegating id-collision handling to [onConflict].
      *

@@ -17,7 +17,6 @@ internal class SkeletonNotesDatabaseHelper(
     application: Application,
     databaseName: String? = "skeleton-notes",
 ) : SQLiteOpenHelper(application, databaseName, null, DATABASE_VERSION) {
-
     companion object {
         private const val DATABASE_VERSION = 2
 
@@ -32,7 +31,7 @@ internal class SkeletonNotesDatabaseHelper(
         const val COLUMN_STATUS = "status"
         const val COLUMN_REMOTE_LAST_MODIFIED = "remoteLastModified"
 
-        //table attachments
+        // table attachments
         const val TABLE_ATTACHMENTS = "attachments"
         const val COLUMN_NOTE_ID = "noteId"
         const val COLUMN_URI = "uri"
@@ -53,7 +52,7 @@ internal class SkeletonNotesDatabaseHelper(
                 `$COLUMN_REMOTE_LAST_MODIFIED` INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(`$COLUMN_ID`)
             )
-        """.trimIndent()
+            """.trimIndent(),
         )
         database.execSQL(
             """
@@ -64,18 +63,18 @@ internal class SkeletonNotesDatabaseHelper(
                 `$COLUMN_MIME_TYPE` TEXT,
                 PRIMARY KEY(`$COLUMN_ID`)
             )
-        """.trimIndent()
+            """.trimIndent(),
         )
     }
 
     override fun onUpgrade(
         database: SQLiteDatabase,
         oldVersion: Int,
-        newVersion: Int
+        newVersion: Int,
     ) {
         if (oldVersion < 2) {
             database.execSQL(
-                "ALTER TABLE `$TABLE_ATTACHMENTS` ADD COLUMN `$COLUMN_MIME_TYPE` TEXT"
+                "ALTER TABLE `$TABLE_ATTACHMENTS` ADD COLUMN `$COLUMN_MIME_TYPE` TEXT",
             )
         }
     }

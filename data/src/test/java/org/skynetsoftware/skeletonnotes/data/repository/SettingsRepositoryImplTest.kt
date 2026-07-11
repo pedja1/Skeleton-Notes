@@ -11,7 +11,6 @@ import org.junit.Test
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
 
 class SettingsRepositoryImplTest {
-
     private lateinit var configStore: FakeConfigStore
     private lateinit var repository: SettingsRepositoryImpl
 
@@ -22,22 +21,24 @@ class SettingsRepositoryImplTest {
     }
 
     @Test
-    fun periodicSyncEnabledExposesConfigFlow() = runBlocking {
-        configStore.periodicSyncEnabledFlow.value = true
+    fun periodicSyncEnabledExposesConfigFlow() =
+        runBlocking {
+            configStore.periodicSyncEnabledFlow.value = true
 
-        val value = repository.nextcloudPeriodicSync.first()
+            val value = repository.nextcloudPeriodicSync.first()
 
-        assertTrue(value)
-    }
+            assertTrue(value)
+        }
 
     @Test
-    fun lastSyncTimestampExposesConfigFlow() = runBlocking {
-        configStore.lastSyncTimestampFlow.value = 5000L
+    fun lastSyncTimestampExposesConfigFlow() =
+        runBlocking {
+            configStore.lastSyncTimestampFlow.value = 5000L
 
-        val value = repository.nextcloudLastSyncTimestamp.first()
+            val value = repository.nextcloudLastSyncTimestamp.first()
 
-        assertEquals(5000L, value)
-    }
+            assertEquals(5000L, value)
+        }
 
     @Test
     fun setPeriodicSyncEnabledDelegatesToStore() {
@@ -74,18 +75,27 @@ class SettingsRepositoryImplTest {
         override val periodicSyncEnabled = periodicSyncEnabledFlow
         override val lastSyncTimestamp = lastSyncTimestampFlow
 
-        override fun setServerConfig(serverUrl: String, username: String, appPassword: String) {}
+        override fun setServerConfig(
+            serverUrl: String,
+            username: String,
+            appPassword: String,
+        ) {}
+
         override fun clearServerConfig() {}
+
         override fun setPeriodicSyncEnabled(periodicSyncEnabled: Boolean) {
             setPeriodicSyncEnabledValue = periodicSyncEnabled
         }
+
         override fun setLastSyncTimestamp(lastSyncTimestamp: Long) {
             setLastSyncTimestampValue = lastSyncTimestamp
         }
 
         override val syncIntervalMinutes: StateFlow<Long> = MutableStateFlow(360L)
         override val syncOnlyOnUnmetered: StateFlow<Boolean> = MutableStateFlow(true)
+
         override fun setSyncIntervalMinutes(minutes: Long) {}
+
         override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
     }
 }

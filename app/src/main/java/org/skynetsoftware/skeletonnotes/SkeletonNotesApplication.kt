@@ -12,7 +12,6 @@ import org.skynetsoftware.skeletonnotes.di.ProductionAppGraph
  * alternative graph (for example one backed by an in-memory database).
  */
 open class SkeletonNotesApplication : Application() {
-
     override fun onCreate() {
         super.onCreate()
         AppDi.install(createGraph())

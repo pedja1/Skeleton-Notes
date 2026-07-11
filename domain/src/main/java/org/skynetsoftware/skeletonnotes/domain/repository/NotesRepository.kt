@@ -17,7 +17,7 @@ interface NotesRepository {
     /**
      * Retrieves all notes.
      */
-    fun getAllNotes(): Result<List<Note>>
+    suspend fun getAllNotes(): Result<List<Note>>
 
     /**
      * Retrieves all notes together with their attachments as a Flow.
@@ -27,7 +27,7 @@ interface NotesRepository {
     /**
      * Retrieves all notes together with their attachments as a one-shot snapshot.
      */
-    fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>>
+    suspend fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>>
 
     /**
      * Retrieves a single note with its attachments by [id].
@@ -37,7 +37,7 @@ interface NotesRepository {
     /**
      * Retrieves a single note with its attachments by [id].
      */
-    fun getNoteById(id: String): Result<NoteWithAttachments>
+    suspend fun getNoteById(id: String): Result<NoteWithAttachments>
 
     /**
      * Saves the given [noteWithAttachments] and returns the note's ID.

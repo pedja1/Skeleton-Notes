@@ -17,10 +17,10 @@ import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.withHint
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
-import org.hamcrest.CoreMatchers.not
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.hamcrest.CoreMatchers.not
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -38,7 +38,6 @@ import java.util.UUID
 @RunWith(AndroidJUnit4::class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class NoteDetailActivityTest {
-
     @Before
     fun setUp() {
         Intents.init()
@@ -130,13 +129,14 @@ class NoteDetailActivityTest {
     @Test
     fun test9_toolbarTitleShowsNoteTitleWhenEditing() {
         val noteId = prePopulateNote()
-        val intent = Intent().apply {
-            setClassName(
-                "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
-            )
-            putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
-        }
+        val intent =
+            Intent().apply {
+                setClassName(
+                    "org.skynetsoftware.skeletonnotes",
+                    "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity",
+                )
+                putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
+            }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
             onView(withId(R.id.toolbar_title))
@@ -148,13 +148,14 @@ class NoteDetailActivityTest {
     @Test
     fun test10_overflowIconIsDisplayedWhenEditing() {
         val noteId = prePopulateNote()
-        val intent = Intent().apply {
-            setClassName(
-                "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
-            )
-            putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
-        }
+        val intent =
+            Intent().apply {
+                setClassName(
+                    "org.skynetsoftware.skeletonnotes",
+                    "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity",
+                )
+                putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
+            }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
             onView(withId(R.id.toolbar_overflow))
@@ -165,13 +166,14 @@ class NoteDetailActivityTest {
     @Test
     fun test11_editTitleIsPopulatedWithNoteTitle() {
         val noteId = prePopulateNote()
-        val intent = Intent().apply {
-            setClassName(
-                "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
-            )
-            putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
-        }
+        val intent =
+            Intent().apply {
+                setClassName(
+                    "org.skynetsoftware.skeletonnotes",
+                    "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity",
+                )
+                putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
+            }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
             onView(withId(R.id.edit_note_title))
@@ -183,13 +185,14 @@ class NoteDetailActivityTest {
     @Test
     fun test12_editContentIsPopulatedWithNoteContent() {
         val noteId = prePopulateNote()
-        val intent = Intent().apply {
-            setClassName(
-                "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
-            )
-            putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
-        }
+        val intent =
+            Intent().apply {
+                setClassName(
+                    "org.skynetsoftware.skeletonnotes",
+                    "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity",
+                )
+                putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
+            }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
             onView(withId(R.id.edit_note_content))
@@ -327,13 +330,14 @@ class NoteDetailActivityTest {
     @Test
     fun test22_overflowMenuShowsDeleteConfirmationDialogWhenEditing() {
         val noteId = prePopulateNote()
-        val intent = Intent().apply {
-            setClassName(
-                "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
-            )
-            putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
-        }
+        val intent =
+            Intent().apply {
+                setClassName(
+                    "org.skynetsoftware.skeletonnotes",
+                    "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity",
+                )
+                putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
+            }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
             onView(withId(R.id.toolbar_overflow)).perform(click())
@@ -352,13 +356,14 @@ class NoteDetailActivityTest {
     @Test
     fun test23_deleteNoteConfirmationDeletesNote() {
         val noteId = prePopulateNote()
-        val intent = Intent().apply {
-            setClassName(
-                "org.skynetsoftware.skeletonnotes",
-                "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity"
-            )
-            putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
-        }
+        val intent =
+            Intent().apply {
+                setClassName(
+                    "org.skynetsoftware.skeletonnotes",
+                    "org.skynetsoftware.skeletonnotes.note.NoteDetailActivity",
+                )
+                putExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
+            }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
             onView(withId(R.id.toolbar_overflow)).perform(click())
@@ -370,25 +375,26 @@ class NoteDetailActivityTest {
         assertTrue(result is Result.Failure)
     }
 
-    private fun prePopulateNote(): String {
-        return runBlocking {
+    private fun prePopulateNote(): String =
+        runBlocking {
             val noteId = UUID.randomUUID().toString()
-            val note = NoteWithAttachments(
-                note = Note(
-                    id = noteId,
-                    title = "Test Note",
-                    content = "Content",
-                    createdAt = System.currentTimeMillis(),
-                    modifiedAt = System.currentTimeMillis(),
-                    tags = emptySet()
-                ),
-                attachments = emptyList()
-            )
+            val note =
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = noteId,
+                            title = "Test Note",
+                            content = "Content",
+                            createdAt = System.currentTimeMillis(),
+                            modifiedAt = System.currentTimeMillis(),
+                            tags = emptySet(),
+                        ),
+                    attachments = emptyList(),
+                )
             val result = DataDi.notesRepository.saveNote(note)
             require(result is Result.Success) {
                 "Failed to save note"
             }
             noteId
         }
-    }
 }

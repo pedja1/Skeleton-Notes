@@ -6,11 +6,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import org.skynetsoftware.skeletonnotes.di.AppGraph
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudConnectionInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiateLoginResult
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
-import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
@@ -77,12 +77,14 @@ class FakeSettingsRepository(
  */
 class FakeSettingsNextcloudRepository(
     connection: NextcloudConnectionInfo? = null,
-    private val initiateResult: Result<NextcloudInitiateLoginResult> = Result.Success(
-        NextcloudInitiateLoginResult("", "", "")
-    ),
-    private val pollResult: NextcloudPollStatus = NextcloudPollStatus.Authenticated(
-        NextcloudConnectionInfo("", "")
-    ),
+    private val initiateResult: Result<NextcloudInitiateLoginResult> =
+        Result.Success(
+            NextcloudInitiateLoginResult("", "", ""),
+        ),
+    private val pollResult: NextcloudPollStatus =
+        NextcloudPollStatus.Authenticated(
+            NextcloudConnectionInfo("", ""),
+        ),
     var suspendBlocker: CompletableDeferred<Unit>? = null,
 ) : NextcloudRepository {
     private val connectionFlow = MutableStateFlow(connection)
@@ -94,7 +96,10 @@ class FakeSettingsNextcloudRepository(
         return initiateResult
     }
 
-    override suspend fun pollLogin(token: String, endpoint: String): NextcloudPollStatus = pollResult
+    override suspend fun pollLogin(
+        token: String,
+        endpoint: String,
+    ): NextcloudPollStatus = pollResult
 
     override fun logout() {}
 
@@ -164,6 +169,8 @@ class FakeSettingsAppGraph(
 /** [NextcloudSyncScheduler] that does nothing, used in UI tests to avoid real job scheduling. */
 class NoOpSyncScheduler : NextcloudSyncScheduler {
     override fun reschedulePeriodicSync() {}
+
     override fun syncNow() {}
+
     override fun cancelPeriodicSync() {}
 }

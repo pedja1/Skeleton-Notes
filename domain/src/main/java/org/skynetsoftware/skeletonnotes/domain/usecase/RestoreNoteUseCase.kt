@@ -6,7 +6,9 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 /**
  * Use case for restoring a note from trash or archive by ID.
  */
-class RestoreNoteUseCase(private val notesRepository: NotesRepository) {
+class RestoreNoteUseCase(
+    private val notesRepository: NotesRepository,
+) {
     /**
      * Restores the note identified by [id], setting its status back to ACTIVE.
      *

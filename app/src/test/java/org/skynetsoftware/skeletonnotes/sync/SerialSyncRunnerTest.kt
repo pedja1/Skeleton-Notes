@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SerialSyncRunnerTest {
-
     @Test
     fun startRunsSyncAndInvokesOnComplete() =
         runTest {

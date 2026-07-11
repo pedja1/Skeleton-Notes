@@ -13,12 +13,18 @@ internal interface NextcloudConfigStore {
     val isConfigured: Flow<Boolean>
     val periodicSyncEnabled: StateFlow<Boolean>
     val lastSyncTimestamp: StateFlow<Long>
+
     /** Sync interval in minutes. */
     val syncIntervalMinutes: StateFlow<Long>
+
     /** Whether the periodic sync job requires an unmetered connection. */
     val syncOnlyOnUnmetered: StateFlow<Boolean>
 
-    fun setServerConfig(serverUrl: String, username: String, appPassword: String)
+    fun setServerConfig(
+        serverUrl: String,
+        username: String,
+        appPassword: String,
+    )
 
     fun clearServerConfig()
 

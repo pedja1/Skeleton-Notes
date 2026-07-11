@@ -27,7 +27,6 @@ import org.skynetsoftware.skeletonnotes.settings.SettingsActivity
  * Main activity that displays the grid of notes with search, and filter controls.
  */
 class MainActivity : ComponentActivity() {
-
     private lateinit var adapter: NoteAdapter
 
     private val mainViewMode by viewModels<MainViewModel>(factoryProducer = { MainViewModel.Factory })
@@ -49,13 +48,14 @@ class MainActivity : ComponentActivity() {
         gridView.layoutManager =
             StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
 
-        adapter = NoteAdapter(lifecycleScope, onNoteClick = { note ->
-            val intent = Intent(this, NoteDetailActivity::class.java)
-            intent.putExtra(NoteDetailActivity.EXTRA_NOTE_ID, note.id)
-            startActivity(intent)
-        }, onTagClick = { tag ->
-            binding.searchInput.setText("#$tag")
-        })
+        adapter =
+            NoteAdapter(lifecycleScope, onNoteClick = { note ->
+                val intent = Intent(this, NoteDetailActivity::class.java)
+                intent.putExtra(NoteDetailActivity.EXTRA_NOTE_ID, note.id)
+                startActivity(intent)
+            }, onTagClick = { tag ->
+                binding.searchInput.setText("#$tag")
+            })
         gridView.adapter = adapter
 
         binding.toolbar.toolbarAddNote.setOnClickListener {
@@ -118,7 +118,7 @@ class MainActivity : ComponentActivity() {
                     if (it.showTrashed || it.showArchived) {
                         filterIcon.setColorFilter(
                             ContextCompat.getColor(this@MainActivity, R.color.filter_active),
-                            PorterDuff.Mode.SRC_IN
+                            PorterDuff.Mode.SRC_IN,
                         )
                     } else {
                         filterIcon.clearColorFilter()
@@ -135,13 +135,13 @@ class MainActivity : ComponentActivity() {
             checkboxTrash.isChecked = mainViewMode.filter.value.showTrashed
             checkboxArchived.isChecked = mainViewMode.filter.value.showArchived
 
-            AlertDialog.Builder(this)
+            AlertDialog
+                .Builder(this)
                 .setTitle(R.string.filter_title)
                 .setView(dialogBinding.root)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     mainViewMode.setFilter(checkboxArchived.isChecked, checkboxTrash.isChecked)
-                }
-                .setNegativeButton(android.R.string.cancel, null)
+                }.setNegativeButton(android.R.string.cancel, null)
                 .show()
         }
     }

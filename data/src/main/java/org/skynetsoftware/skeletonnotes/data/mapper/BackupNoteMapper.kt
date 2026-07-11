@@ -7,12 +7,6 @@ import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 
-/**
- * JSON (de)serialization for the local backup archive's `notes.json`. Unlike the Nextcloud
- * format, this preserves each attachment's [Attachment.mimeType] so imports round-trip losslessly.
- * The sync-internal `remoteLastModified` is intentionally not serialized; imported notes start fresh.
- */
-
 /** Serializes notes to the JSON array stored as `notes.json` in the backup archive. */
 internal fun List<NoteWithAttachments>.toJsonString(): String {
     val array = JSONArray()
@@ -47,45 +41,47 @@ internal fun List<NoteWithAttachments>.toJsonString(): String {
 }
 
 /** Parses the backup archive's `notes.json` back into notes with their attachment metadata. */
-internal fun JSONArray.toNotes(): List<NoteWithAttachments> {
-    return buildList {
+internal fun JSONArray.toNotes(): List<NoteWithAttachments> =
+    buildList {
         for (i in 0 until length()) {
             val obj = getJSONObject(i)
             val noteId = obj.getString("id")
             val attachmentsArray = obj.optJSONArray("attachments") ?: JSONArray()
-            val attachments = buildList {
-                for (j in 0 until attachmentsArray.length()) {
-                    val att = attachmentsArray.getJSONObject(j)
-                    add(
-                        Attachment(
-                            id = att.getString("id"),
-                            noteId = noteId,
-                            uri = "",
-                            mimeType = att.optString("mimeType").takeIf { it.isNotEmpty() },
-                        ),
-                    )
+            val attachments =
+                buildList {
+                    for (j in 0 until attachmentsArray.length()) {
+                        val att = attachmentsArray.getJSONObject(j)
+                        add(
+                            Attachment(
+                                id = att.getString("id"),
+                                noteId = noteId,
+                                uri = "",
+                                mimeType = att.optString("mimeType").takeIf { it.isNotEmpty() },
+                            ),
+                        )
+                    }
                 }
-            }
             val tagsArray = obj.optJSONArray("tags") ?: JSONArray()
-            val tags = buildSet {
-                for (j in 0 until tagsArray.length()) {
-                    add(tagsArray.getString(j))
+            val tags =
+                buildSet {
+                    for (j in 0 until tagsArray.length()) {
+                        add(tagsArray.getString(j))
+                    }
                 }
-            }
             add(
                 NoteWithAttachments(
-                    note = Note(
-                        id = noteId,
-                        title = obj.optString("title").takeIf { it.isNotEmpty() },
-                        content = obj.getString("content"),
-                        createdAt = obj.getLong("createdAt"),
-                        modifiedAt = obj.getLong("modifiedAt"),
-                        tags = tags,
-                        status = NoteStatus.fromValue(obj.optInt("status", NoteStatus.ACTIVE.value)),
-                    ),
+                    note =
+                        Note(
+                            id = noteId,
+                            title = obj.optString("title").takeIf { it.isNotEmpty() },
+                            content = obj.getString("content"),
+                            createdAt = obj.getLong("createdAt"),
+                            modifiedAt = obj.getLong("modifiedAt"),
+                            tags = tags,
+                            status = NoteStatus.fromValue(obj.optInt("status", NoteStatus.ACTIVE.value)),
+                        ),
                     attachments = attachments,
                 ),
             )
         }
     }
-}

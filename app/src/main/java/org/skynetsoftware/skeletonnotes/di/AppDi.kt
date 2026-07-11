@@ -35,7 +35,10 @@ object AppDi {
      *
      * @param inMemoryDatabase when `true` the data layer uses an in-memory database.
      */
-    fun init(application: Application, inMemoryDatabase: Boolean = false) {
+    fun init(
+        application: Application,
+        inMemoryDatabase: Boolean = false,
+    ) {
         install(ProductionAppGraph(application, inMemoryDatabase))
     }
 

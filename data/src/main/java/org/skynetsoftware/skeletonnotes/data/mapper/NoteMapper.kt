@@ -22,22 +22,22 @@ import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 /**
  * Converts this [Cursor] to a [Note] entity.
  */
-internal fun Cursor.toNote(): Note {
-    return Note(
+internal fun Cursor.toNote(): Note =
+    Note(
         id = getString(getColumnIndexOrThrow(COLUMN_ID)),
         title = getStringOrNull(getColumnIndexOrThrow(COLUMN_TITLE)),
         content = getString(getColumnIndexOrThrow(COLUMN_CONTENT)),
         createdAt = getLong(getColumnIndexOrThrow(COLUMN_CREATED)),
         modifiedAt = getLong(getColumnIndexOrThrow(COLUMN_MODIFIED)),
-        tags = getStringOrNull(getColumnIndexOrThrow(COLUMN_TAGS))
-            ?.splitToSequence(",")
-            .orEmpty()
-            .filter { it.isNotBlank() }
-            .toSet(),
+        tags =
+            getStringOrNull(getColumnIndexOrThrow(COLUMN_TAGS))
+                ?.splitToSequence(",")
+                .orEmpty()
+                .filter { it.isNotBlank() }
+                .toSet(),
         status = NoteStatus.fromValue(getInt(getColumnIndexOrThrow(COLUMN_STATUS))),
         remoteLastModified = getLong(getColumnIndexOrThrow(COLUMN_REMOTE_LAST_MODIFIED)),
     )
-}
 
 /**
  * Converts this [Cursor] (result of a note+attachments join query) to a [NoteWithAttachments].
@@ -101,19 +101,18 @@ internal fun Cursor.toAttachmentFromJoin(): Attachment? {
  * Converts this [Cursor] to a list of [Note] entities.
  * The cursor must be positioned before the first row.
  */
-internal fun Cursor.toNotes(): List<Note> {
-    return buildList {
+internal fun Cursor.toNotes(): List<Note> =
+    buildList {
         while (moveToNext()) {
             add(toNote())
         }
     }
-}
 
 /**
  * Converts this [Note] to a [ContentValues] map suitable for SQLite insert/update operations.
  */
-internal fun Note.toContentValues(): ContentValues {
-    return ContentValues().apply {
+internal fun Note.toContentValues(): ContentValues =
+    ContentValues().apply {
         put(COLUMN_ID, id)
         put(COLUMN_TITLE, title)
         put(COLUMN_CONTENT, content)
@@ -123,22 +122,19 @@ internal fun Note.toContentValues(): ContentValues {
         put(COLUMN_STATUS, status.value)
         put(COLUMN_REMOTE_LAST_MODIFIED, remoteLastModified)
     }
-}
 
 /**
  * Converts this [Attachment] to a [ContentValues] map suitable for SQLite insert/update operations.
  */
-internal fun Attachment.toContentValues(): ContentValues {
-    return ContentValues().apply {
+internal fun Attachment.toContentValues(): ContentValues =
+    ContentValues().apply {
         put(COLUMN_ID, id)
         put(COLUMN_NOTE_ID, noteId)
         put(COLUMN_URI, uri)
         put(COLUMN_MIME_TYPE, mimeType)
     }
-}
 
 /**
  * Returns the string value at the given column [index], or null if the column is SQL NULL.
  */
-private fun Cursor.getStringOrNull(index: Int): String? =
-    if (isNull(index)) null else getString(index)
+private fun Cursor.getStringOrNull(index: Int): String? = if (isNull(index)) null else getString(index)

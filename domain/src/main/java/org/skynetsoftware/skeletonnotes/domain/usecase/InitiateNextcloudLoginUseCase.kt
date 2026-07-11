@@ -17,7 +17,6 @@ class InitiateNextcloudLoginUseCase(
      * @param serverUrl the Nextcloud server URL (e.g. "https://cloud.example.com")
      * @return [Result] containing [NextcloudInitiateLoginResult] with token, endpoint, and login URL
      */
-    suspend operator fun invoke(serverUrl: String): Result<NextcloudInitiateLoginResult> {
-        return nextcloudRepository.initiateLogin(serverUrl)
-    }
+    suspend operator fun invoke(serverUrl: String): Result<NextcloudInitiateLoginResult> =
+        nextcloudRepository.initiateLogin(serverUrl)
 }

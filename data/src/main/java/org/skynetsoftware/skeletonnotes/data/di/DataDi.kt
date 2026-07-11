@@ -25,7 +25,6 @@ import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
  * Must be initialized via [init] before accessing any dependencies.
  */
 object DataDi {
-
     private lateinit var application: Application
     private var inMemoryDatabase: Boolean = false
 
@@ -35,7 +34,10 @@ object DataDi {
      * @param inMemoryDatabase when `true` the database is created in memory instead of on
      * disk, used by instrumented tests for isolation.
      */
-    fun init(application: Application, inMemoryDatabase: Boolean = false) {
+    fun init(
+        application: Application,
+        inMemoryDatabase: Boolean = false,
+    ) {
         this.application = application
         this.inMemoryDatabase = inMemoryDatabase
     }
@@ -52,11 +54,12 @@ object DataDi {
     private val nextcloudConfigStore: NextcloudConfigStore by lazy { NextcloudConfigStoreImpl.from(application) }
 
     private val nextcloudApi: NextcloudApi by lazy {
-        val versionName = try {
-            application.packageManager.getPackageInfo(application.packageName, 0).versionName ?: "dev"
-        } catch (_: Exception) {
-            "dev"
-        }
+        val versionName =
+            try {
+                application.packageManager.getPackageInfo(application.packageName, 0).versionName ?: "dev"
+            } catch (_: Exception) {
+                "dev"
+            }
         NextcloudApiImpl(nextcloudConfigStore, versionName)
     }
 
@@ -68,11 +71,13 @@ object DataDi {
         BackupRepositoryImpl(notesRepository, attachmentFileStorage)
     }
 
-    val nextcloudRepository: NextcloudRepository by lazy { NextcloudRepositoryImpl(nextcloudApi, nextcloudConfigStore, attachmentFileStorage) }
+    val nextcloudRepository: NextcloudRepository by lazy {
+        NextcloudRepositoryImpl(nextcloudApi, nextcloudConfigStore, attachmentFileStorage)
+    }
 
     val settingsRepository: SettingsRepository by lazy {
         SettingsRepositoryImpl(
-            nextcloudConfigStore
+            nextcloudConfigStore,
         )
     }
 }

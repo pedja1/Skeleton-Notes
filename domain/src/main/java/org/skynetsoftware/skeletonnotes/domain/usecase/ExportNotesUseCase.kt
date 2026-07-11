@@ -7,7 +7,9 @@ import java.io.OutputStream
 /**
  * Use case for exporting all notes and their attachments to a ZIP archive.
  */
-class ExportNotesUseCase(private val backupRepository: BackupRepository) {
+class ExportNotesUseCase(
+    private val backupRepository: BackupRepository,
+) {
     /**
      * Exports all notes to [outputStream].
      *

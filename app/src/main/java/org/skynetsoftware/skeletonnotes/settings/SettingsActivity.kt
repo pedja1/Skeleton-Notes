@@ -22,8 +22,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.databinding.ActivitySettingsBinding
-import org.skynetsoftware.skeletonnotes.databinding.DialogNextcloudServerUrlBinding
 import org.skynetsoftware.skeletonnotes.databinding.DialogImportConflictBinding
+import org.skynetsoftware.skeletonnotes.databinding.DialogNextcloudServerUrlBinding
 import org.skynetsoftware.skeletonnotes.databinding.ItemSettingsClickableBinding
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.Settings
@@ -36,7 +36,6 @@ import java.util.Date
  * with dynamically populated items of different types.
  */
 class SettingsActivity : ComponentActivity() {
-
     companion object {
         private val LAST_SYNC_FORMAT = SimpleDateFormat.getDateTimeInstance()
         private val EXPORT_FILE_TIMESTAMP_FORMAT = SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US)
@@ -48,17 +47,19 @@ class SettingsActivity : ComponentActivity() {
     private var showNextcloudServerUrlDialog: AlertDialog? = null
     private var conflictDialog: AlertDialog? = null
 
-    private val exportLauncher = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("application/zip"),
-    ) { uri ->
-        uri?.let { settingsViewModel.export(it) }
-    }
+    private val exportLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.CreateDocument("application/zip"),
+        ) { uri ->
+            uri?.let { settingsViewModel.export(it) }
+        }
 
-    private val importLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        uri?.let { settingsViewModel.import(it) }
-    }
+    private val importLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.OpenDocument(),
+        ) { uri ->
+            uri?.let { settingsViewModel.import(it) }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -142,16 +143,17 @@ class SettingsActivity : ComponentActivity() {
                 Toast.makeText(this, getString(R.string.export_success, event.count), Toast.LENGTH_SHORT).show()
 
             is DataTransferEvent.ImportSuccess ->
-                Toast.makeText(
-                    this,
-                    getString(
-                        R.string.import_success,
-                        event.summary.imported,
-                        event.summary.overwritten,
-                        event.summary.skipped,
-                    ),
-                    Toast.LENGTH_LONG,
-                ).show()
+                Toast
+                    .makeText(
+                        this,
+                        getString(
+                            R.string.import_success,
+                            event.summary.imported,
+                            event.summary.overwritten,
+                            event.summary.skipped,
+                        ),
+                        Toast.LENGTH_LONG,
+                    ).show()
 
             DataTransferEvent.Error ->
                 Toast.makeText(this, R.string.data_transfer_error, Toast.LENGTH_SHORT).show()
@@ -171,22 +173,21 @@ class SettingsActivity : ComponentActivity() {
         conflictDialog?.dismiss()
         val binding = DialogImportConflictBinding.inflate(layoutInflater)
         val applyToAll = binding.applyToAll
-        conflictDialog = AlertDialog.Builder(this)
-            .setTitle(R.string.import_conflict_title)
-            .setMessage(getString(R.string.import_conflict_message, title))
-            .setView(binding.root)
-            .setCancelable(false)
-            .setPositiveButton(R.string.import_conflict_overwrite) { _, _ ->
-                settingsViewModel.onConflictResolved(ConflictResolution.OVERWRITE, applyToAll.isChecked)
-            }
-            .setNeutralButton(R.string.import_conflict_keep_both) { _, _ ->
-                settingsViewModel.onConflictResolved(ConflictResolution.KEEP_BOTH, applyToAll.isChecked)
-            }
-            .setNegativeButton(R.string.import_conflict_keep_existing) { _, _ ->
-                settingsViewModel.onConflictResolved(ConflictResolution.KEEP_EXISTING, applyToAll.isChecked)
-            }
-            .setOnDismissListener { conflictDialog = null }
-            .show()
+        conflictDialog =
+            AlertDialog
+                .Builder(this)
+                .setTitle(R.string.import_conflict_title)
+                .setMessage(getString(R.string.import_conflict_message, title))
+                .setView(binding.root)
+                .setCancelable(false)
+                .setPositiveButton(R.string.import_conflict_overwrite) { _, _ ->
+                    settingsViewModel.onConflictResolved(ConflictResolution.OVERWRITE, applyToAll.isChecked)
+                }.setNeutralButton(R.string.import_conflict_keep_both) { _, _ ->
+                    settingsViewModel.onConflictResolved(ConflictResolution.KEEP_BOTH, applyToAll.isChecked)
+                }.setNegativeButton(R.string.import_conflict_keep_existing) { _, _ ->
+                    settingsViewModel.onConflictResolved(ConflictResolution.KEEP_EXISTING, applyToAll.isChecked)
+                }.setOnDismissListener { conflictDialog = null }
+                .show()
     }
 
     private fun handleAuthEvent(event: NextcloudAuthEvent) {
@@ -227,9 +228,10 @@ class SettingsActivity : ComponentActivity() {
     }
 
     private fun launchExternalBrowser(url: Uri) {
-        val intent = Intent(Intent.ACTION_VIEW, url).apply {
-            addCategory(Intent.CATEGORY_BROWSABLE)
-        }
+        val intent =
+            Intent(Intent.ACTION_VIEW, url).apply {
+                addCategory(Intent.CATEGORY_BROWSABLE)
+            }
         if (intent.resolveActivity(packageManager) != null) {
             startActivity(intent)
         } else {
@@ -259,8 +261,10 @@ class SettingsActivity : ComponentActivity() {
             showSyncIntervalDialog()
         }
 
-        binding.itemNextcloudSyncOnlyOnUnmetered.itemTitle.text = getString(R.string.settings_item_sync_only_on_unmetered_title)
-        binding.itemNextcloudSyncOnlyOnUnmetered.itemSubtitle.text = getString(R.string.settings_item_sync_only_on_unmetered_subtitle)
+        binding.itemNextcloudSyncOnlyOnUnmetered.itemTitle.text =
+            getString(R.string.settings_item_sync_only_on_unmetered_title)
+        binding.itemNextcloudSyncOnlyOnUnmetered.itemSubtitle.text =
+            getString(R.string.settings_item_sync_only_on_unmetered_subtitle)
         binding.itemNextcloudSyncOnlyOnUnmetered.itemSubtitle.visibility = View.VISIBLE
         binding.itemNextcloudSyncOnlyOnUnmetered.itemSwitch.setOnCheckedChangeListener { _, checked ->
             settingsViewModel.setSyncOnlyOnUnmetered(checked)
@@ -300,26 +304,30 @@ class SettingsActivity : ComponentActivity() {
                 getString(R.string.settings_item_connect_to_nextcloud_subtitle)
         } else {
             binding.itemNextcloudConnect.itemTitle.text = getString(R.string.settings_item_nextcloud_connected_title)
-            binding.itemNextcloudConnect.itemSubtitle.text = getString(
-                R.string.settings_item_nextcloud_connected_subtitle,
-                nextcloudConnectionInfo.username,
-                nextcloudConnectionInfo.serverUrl
-            )
+            binding.itemNextcloudConnect.itemSubtitle.text =
+                getString(
+                    R.string.settings_item_nextcloud_connected_subtitle,
+                    nextcloudConnectionInfo.username,
+                    nextcloudConnectionInfo.serverUrl,
+                )
         }
         if (settings.nextcloudLastSyncTimestamp <= 0L) {
-            binding.itemNextcloudSyncNow.itemSubtitle.text = getString(
-                R.string.settings_item_nextcloud_last_sync,
-                getString(R.string.settings_item_nextcloud_last_sync_never)
-            )
+            binding.itemNextcloudSyncNow.itemSubtitle.text =
+                getString(
+                    R.string.settings_item_nextcloud_last_sync,
+                    getString(R.string.settings_item_nextcloud_last_sync_never),
+                )
         } else {
-            binding.itemNextcloudSyncNow.itemSubtitle.text = getString(
-                R.string.settings_item_nextcloud_last_sync,
-                LAST_SYNC_FORMAT.format(settings.nextcloudLastSyncTimestamp)
-            )
+            binding.itemNextcloudSyncNow.itemSubtitle.text =
+                getString(
+                    R.string.settings_item_nextcloud_last_sync,
+                    LAST_SYNC_FORMAT.format(settings.nextcloudLastSyncTimestamp),
+                )
         }
         binding.itemNextcloudPeriodicSync.itemSwitch.isChecked = settings.nextcloudPeriodicSyncEnabled
         val intervalLabel = syncIntervalLabel(settings.nextcloudSyncIntervalMinutes)
-        binding.itemNextcloudSyncInterval.itemSubtitle.text = getString(R.string.settings_item_sync_interval_subtitle, intervalLabel)
+        binding.itemNextcloudSyncInterval.itemSubtitle.text =
+            getString(R.string.settings_item_sync_interval_subtitle, intervalLabel)
         binding.itemNextcloudSyncOnlyOnUnmetered.itemSwitch.isChecked = settings.nextcloudSyncOnlyOnUnmetered
     }
 
@@ -328,11 +336,12 @@ class SettingsActivity : ComponentActivity() {
             is NextcloudLoginState.Connected -> {
                 binding.itemNextcloudConnect.itemTitle.text =
                     getString(R.string.settings_item_nextcloud_connected_title)
-                binding.itemNextcloudConnect.itemSubtitle.text = getString(
-                    R.string.settings_item_nextcloud_connected_subtitle,
-                    nextcloudLoginState.nextcloudConnectionInfo.username,
-                    nextcloudLoginState.nextcloudConnectionInfo.serverUrl
-                )
+                binding.itemNextcloudConnect.itemSubtitle.text =
+                    getString(
+                        R.string.settings_item_nextcloud_connected_subtitle,
+                        nextcloudLoginState.nextcloudConnectionInfo.username,
+                        nextcloudLoginState.nextcloudConnectionInfo.serverUrl,
+                    )
                 binding.itemNextcloudConnect.progressBar.visibility = View.GONE
                 binding.itemNextcloudConnect.itemArrow.visibility = View.VISIBLE
                 binding.itemNextcloudConnect.root.isEnabled = true
@@ -386,7 +395,7 @@ class SettingsActivity : ComponentActivity() {
     }
 
     private fun setNextcloudSyncOptionsVisible(visible: Boolean) {
-        if(visible) {
+        if (visible) {
             binding.itemNextcloudSyncNow.root.visibility = View.VISIBLE
             binding.itemNextcloudPeriodicSync.root.visibility = View.VISIBLE
             binding.itemNextcloudSyncInterval.root.visibility = View.VISIBLE
@@ -402,30 +411,32 @@ class SettingsActivity : ComponentActivity() {
     private fun showSyncIntervalDialog() {
         val options = syncIntervalOptions()
         val labels = options.map { (_, label) -> label }.toTypedArray()
-        AlertDialog.Builder(this)
+        AlertDialog
+            .Builder(this)
             .setTitle(R.string.settings_sync_interval_dialog_title)
             .setItems(labels) { _, which ->
                 settingsViewModel.setSyncInterval(options[which].first)
-            }
-            .show()
+            }.show()
     }
 
-    private fun syncIntervalOptions(): List<Pair<Long, String>> = listOf(
-        15L to getString(R.string.settings_sync_interval_15min),
-        60L to getString(R.string.settings_sync_interval_1h),
-        360L to getString(R.string.settings_sync_interval_6h),
-        1440L to getString(R.string.settings_sync_interval_24h),
-    )
+    private fun syncIntervalOptions(): List<Pair<Long, String>> =
+        listOf(
+            15L to getString(R.string.settings_sync_interval_15min),
+            60L to getString(R.string.settings_sync_interval_1h),
+            360L to getString(R.string.settings_sync_interval_6h),
+            1440L to getString(R.string.settings_sync_interval_24h),
+        )
 
-    private fun syncIntervalLabel(minutes: Long): String = when (minutes) {
-        15L -> getString(R.string.settings_sync_interval_15min)
-        60L -> getString(R.string.settings_sync_interval_1h)
-        1440L -> getString(R.string.settings_sync_interval_24h)
-        else -> getString(R.string.settings_sync_interval_6h)
-    }
+    private fun syncIntervalLabel(minutes: Long): String =
+        when (minutes) {
+            15L -> getString(R.string.settings_sync_interval_15min)
+            60L -> getString(R.string.settings_sync_interval_1h)
+            1440L -> getString(R.string.settings_sync_interval_24h)
+            else -> getString(R.string.settings_sync_interval_6h)
+        }
 
     private fun showNextcloudServerUrlDialog(nextcloudServerUrl: String?) {
-        if(showNextcloudServerUrlDialog?.isShowing == true) {
+        if (showNextcloudServerUrlDialog?.isShowing == true) {
             return
         }
         val dialogBinding = DialogNextcloudServerUrlBinding.inflate(layoutInflater)
@@ -433,17 +444,16 @@ class SettingsActivity : ComponentActivity() {
 
         nextcloudServerUrl?.let { nextcloudServerUrlEditText.setText(it) }
 
-        showNextcloudServerUrlDialog = AlertDialog.Builder(this)
-            .setTitle(R.string.nextcloud_server_url_title)
-            .setView(dialogBinding.root)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                settingsViewModel.initiateNextcloudLogin(nextcloudServerUrlEditText.text.toString())
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .setOnDismissListener {
-                showNextcloudServerUrlDialog = null
-            }
-            .show()
+        showNextcloudServerUrlDialog =
+            AlertDialog
+                .Builder(this)
+                .setTitle(R.string.nextcloud_server_url_title)
+                .setView(dialogBinding.root)
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    settingsViewModel.initiateNextcloudLogin(nextcloudServerUrlEditText.text.toString())
+                }.setNegativeButton(android.R.string.cancel, null)
+                .setOnDismissListener {
+                    showNextcloudServerUrlDialog = null
+                }.show()
     }
-
 }

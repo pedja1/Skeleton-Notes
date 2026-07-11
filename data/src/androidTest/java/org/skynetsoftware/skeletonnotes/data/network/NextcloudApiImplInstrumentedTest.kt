@@ -1,5 +1,6 @@
 package org.skynetsoftware.skeletonnotes.data.network
 
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +14,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import java.io.ByteArrayOutputStream
@@ -26,7 +26,6 @@ import java.io.File
  */
 @RunWith(AndroidJUnit4::class)
 class NextcloudApiImplInstrumentedTest {
-
     private lateinit var mockWebServer: MockWebServer
     private lateinit var configStore: FakeNextcloudConfigStore
     private lateinit var api: NextcloudApiImpl
@@ -48,148 +47,153 @@ class NextcloudApiImplInstrumentedTest {
     }
 
     @Test
-    fun listDirectoryParsesNormalResponseOnAndroidParser() = runBlocking {
-        enqueueSyncFolderSuccess()
-        mockWebServer.enqueue(
-            MockResponse()
-                .setResponseCode(207)
-                .setBody(propfindWithFiles())
-                .setHeader("Content-Type", "application/xml; charset=utf-8")
-        )
-
-        val result = api.listDirectory("")
-
-        // The hardened parser must not throw on Android; a legitimate response parses successfully.
-        assertTrue(result is Result.Success)
-        val files = (result as Result.Success).data
-        assertEquals(2, files.size)
-        assertEquals("note1.md", files[0].filename)
-        assertEquals("note2.md", files[1].filename)
-    }
-
-    @Test
-    fun listDirectoryDoesNotLeakXxePayloadOnAndroidParser() = runBlocking {
-        val secretFile = File.createTempFile("xxe-secret", ".txt")
-        secretFile.writeText("TOP_SECRET_CONTENTS")
-        try {
+    fun listDirectoryParsesNormalResponseOnAndroidParser() =
+        runBlocking {
             enqueueSyncFolderSuccess()
             mockWebServer.enqueue(
                 MockResponse()
                     .setResponseCode(207)
-                    .setBody(propfindWithXxe(secretFile.absolutePath))
-                    .setHeader("Content-Type", "application/xml; charset=utf-8")
+                    .setBody(propfindWithFiles())
+                    .setHeader("Content-Type", "application/xml; charset=utf-8"),
             )
 
             val result = api.listDirectory("")
 
-            val leaked = (result as? Result.Success)?.data.orEmpty()
-                .any { it.filename.contains("TOP_SECRET_CONTENTS") }
-            assertFalse("XXE payload must not leak local file contents", leaked)
-        } finally {
-            secretFile.delete()
+            // The hardened parser must not throw on Android; a legitimate response parses successfully.
+            assertTrue(result is Result.Success)
+            val files = (result as Result.Success).data
+            assertEquals(2, files.size)
+            assertEquals("note1.md", files[0].filename)
+            assertEquals("note2.md", files[1].filename)
         }
-    }
 
     @Test
-    fun uploadFileStreamsRequestBody() = runBlocking {
-        mockWebServer.enqueue(MockResponse().setResponseCode(201))
+    fun listDirectoryDoesNotLeakXxePayloadOnAndroidParser() =
+        runBlocking {
+            val secretFile = File.createTempFile("xxe-secret", ".txt")
+            secretFile.writeText("TOP_SECRET_CONTENTS")
+            try {
+                enqueueSyncFolderSuccess()
+                mockWebServer.enqueue(
+                    MockResponse()
+                        .setResponseCode(207)
+                        .setBody(propfindWithXxe(secretFile.absolutePath))
+                        .setHeader("Content-Type", "application/xml; charset=utf-8"),
+                )
 
-        val result = api.uploadFile(
-            path = "note1/att1_photo.png",
-            inputStream = "streamed-body".byteInputStream(),
-            contentLength = "streamed-body".length.toLong(),
-            contentType = "application/octet-stream",
-        )
+                val result = api.listDirectory("")
 
-        assertTrue(result is Result.Success)
-        val upload = mockWebServer.takeRequest()
-        assertEquals("PUT", upload.method)
-        assertEquals("streamed-body", upload.body.readUtf8())
-    }
+                val leaked =
+                    (result as? Result.Success)
+                        ?.data
+                        .orEmpty()
+                        .any { it.filename.contains("TOP_SECRET_CONTENTS") }
+                assertFalse("XXE payload must not leak local file contents", leaked)
+            } finally {
+                secretFile.delete()
+            }
+        }
 
     @Test
-    fun downloadFileStreamsResponseBody() = runBlocking {
-        val outputStream = ByteArrayOutputStream()
-        mockWebServer.enqueue(
-            MockResponse()
-                .setResponseCode(200)
-                .setBody("download-body"),
-        )
+    fun uploadFileStreamsRequestBody() =
+        runBlocking {
+            mockWebServer.enqueue(MockResponse().setResponseCode(201))
 
-        val result = api.downloadFile("note1/att1_photo.png", outputStream)
+            val result =
+                api.uploadFile(
+                    path = "note1/att1_photo.png",
+                    inputStream = "streamed-body".byteInputStream(),
+                    contentLength = "streamed-body".length.toLong(),
+                    contentType = "application/octet-stream",
+                )
 
-        assertTrue(result is Result.Success)
-        assertEquals("download-body", outputStream.toString())
-    }
+            assertTrue(result is Result.Success)
+            val upload = mockWebServer.takeRequest()
+            assertEquals("PUT", upload.method)
+            assertEquals("streamed-body", upload.body.readUtf8())
+        }
+
+    @Test
+    fun downloadFileStreamsResponseBody() =
+        runBlocking {
+            val outputStream = ByteArrayOutputStream()
+            mockWebServer.enqueue(
+                MockResponse()
+                    .setResponseCode(200)
+                    .setBody("download-body"),
+            )
+
+            val result = api.downloadFile("note1/att1_photo.png", outputStream)
+
+            assertTrue(result is Result.Success)
+            assertEquals("download-body", outputStream.toString())
+        }
 
     private fun enqueueSyncFolderSuccess() {
         mockWebServer.enqueue(
             MockResponse()
                 .setResponseCode(207)
                 .setBody(syncFolderPropfind())
-                .setHeader("Content-Type", "application/xml; charset=utf-8")
+                .setHeader("Content-Type", "application/xml; charset=utf-8"),
         )
     }
 
-    private fun syncFolderPropfind(): String {
-        return """
-            <?xml version="1.0" encoding="utf-8"?>
-            <d:multistatus xmlns:d="DAV:">
-              <d:response>
-                <d:href>/remote.php/dav/files/testuser/.skeleton_notes/</d:href>
-                <d:propstat>
-                  <d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop>
-                  <d:status>HTTP/1.1 200 OK</d:status>
-                </d:propstat>
-              </d:response>
-            </d:multistatus>
+    private fun syncFolderPropfind(): String =
+        """
+        <?xml version="1.0" encoding="utf-8"?>
+        <d:multistatus xmlns:d="DAV:">
+          <d:response>
+            <d:href>/remote.php/dav/files/testuser/.skeleton_notes/</d:href>
+            <d:propstat>
+              <d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop>
+              <d:status>HTTP/1.1 200 OK</d:status>
+            </d:propstat>
+          </d:response>
+        </d:multistatus>
         """.trimIndent()
-    }
 
-    private fun propfindWithFiles(): String {
-        return """
-            <?xml version="1.0" encoding="utf-8"?>
-            <d:multistatus xmlns:d="DAV:">
-              <d:response>
-                <d:href>/remote.php/dav/files/testuser/.skeleton_notes/</d:href>
-                <d:propstat>
-                  <d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop>
-                  <d:status>HTTP/1.1 200 OK</d:status>
-                </d:propstat>
-              </d:response>
-              <d:response>
-                <d:href>/remote.php/dav/files/testuser/.skeleton_notes/note1.md</d:href>
-                <d:propstat>
-                  <d:prop><d:getlastmodified>Mon, 01 Jan 2024 12:00:00 GMT</d:getlastmodified></d:prop>
-                  <d:status>HTTP/1.1 200 OK</d:status>
-                </d:propstat>
-              </d:response>
-              <d:response>
-                <d:href>/remote.php/dav/files/testuser/.skeleton_notes/note2.md</d:href>
-                <d:propstat>
-                  <d:prop><d:getlastmodified>Wed, 15 May 2024 08:30:00 GMT</d:getlastmodified></d:prop>
-                  <d:status>HTTP/1.1 200 OK</d:status>
-                </d:propstat>
-              </d:response>
-            </d:multistatus>
+    private fun propfindWithFiles(): String =
+        """
+        <?xml version="1.0" encoding="utf-8"?>
+        <d:multistatus xmlns:d="DAV:">
+          <d:response>
+            <d:href>/remote.php/dav/files/testuser/.skeleton_notes/</d:href>
+            <d:propstat>
+              <d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop>
+              <d:status>HTTP/1.1 200 OK</d:status>
+            </d:propstat>
+          </d:response>
+          <d:response>
+            <d:href>/remote.php/dav/files/testuser/.skeleton_notes/note1.md</d:href>
+            <d:propstat>
+              <d:prop><d:getlastmodified>Mon, 01 Jan 2024 12:00:00 GMT</d:getlastmodified></d:prop>
+              <d:status>HTTP/1.1 200 OK</d:status>
+            </d:propstat>
+          </d:response>
+          <d:response>
+            <d:href>/remote.php/dav/files/testuser/.skeleton_notes/note2.md</d:href>
+            <d:propstat>
+              <d:prop><d:getlastmodified>Wed, 15 May 2024 08:30:00 GMT</d:getlastmodified></d:prop>
+              <d:status>HTTP/1.1 200 OK</d:status>
+            </d:propstat>
+          </d:response>
+        </d:multistatus>
         """.trimIndent()
-    }
 
-    private fun propfindWithXxe(secretFilePath: String): String {
-        return """
-            <?xml version="1.0" encoding="utf-8"?>
-            <!DOCTYPE multistatus [ <!ENTITY xxe SYSTEM "file://$secretFilePath"> ]>
-            <d:multistatus xmlns:d="DAV:">
-              <d:response>
-                <d:href>/remote.php/dav/files/testuser/.skeleton_notes/&xxe;.md</d:href>
-                <d:propstat>
-                  <d:prop><d:getlastmodified>Mon, 01 Jan 2024 12:00:00 GMT</d:getlastmodified></d:prop>
-                  <d:status>HTTP/1.1 200 OK</d:status>
-                </d:propstat>
-              </d:response>
-            </d:multistatus>
+    private fun propfindWithXxe(secretFilePath: String): String =
+        """
+        <?xml version="1.0" encoding="utf-8"?>
+        <!DOCTYPE multistatus [ <!ENTITY xxe SYSTEM "file://$secretFilePath"> ]>
+        <d:multistatus xmlns:d="DAV:">
+          <d:response>
+            <d:href>/remote.php/dav/files/testuser/.skeleton_notes/&xxe;.md</d:href>
+            <d:propstat>
+              <d:prop><d:getlastmodified>Mon, 01 Jan 2024 12:00:00 GMT</d:getlastmodified></d:prop>
+              <d:status>HTTP/1.1 200 OK</d:status>
+            </d:propstat>
+          </d:response>
+        </d:multistatus>
         """.trimIndent()
-    }
 
     private class FakeNextcloudConfigStore : NextcloudConfigStore {
         val serverUrlFlow = MutableStateFlow<String?>(null)
@@ -210,11 +214,20 @@ class NextcloudApiImplInstrumentedTest {
         override val syncIntervalMinutes: StateFlow<Long> = syncIntervalMinutesFlow
         override val syncOnlyOnUnmetered: StateFlow<Boolean> = syncOnlyOnUnmeteredFlow
 
-        override fun setServerConfig(serverUrl: String, username: String, appPassword: String) {}
+        override fun setServerConfig(
+            serverUrl: String,
+            username: String,
+            appPassword: String,
+        ) {}
+
         override fun clearServerConfig() {}
+
         override fun setPeriodicSyncEnabled(periodicSyncEnabled: Boolean) {}
+
         override fun setLastSyncTimestamp(lastSyncTimestamp: Long) {}
+
         override fun setSyncIntervalMinutes(minutes: Long) {}
+
         override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
     }
 }

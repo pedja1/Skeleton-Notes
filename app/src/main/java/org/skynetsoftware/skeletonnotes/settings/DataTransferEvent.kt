@@ -14,10 +14,14 @@ enum class DataOperation { NONE, EXPORT, IMPORT }
  */
 sealed interface DataTransferEvent {
     /** Export finished; [count] notes were written to the archive. */
-    data class ExportSuccess(val count: Int) : DataTransferEvent
+    data class ExportSuccess(
+        val count: Int,
+    ) : DataTransferEvent
 
     /** Import finished with the given [summary]. */
-    data class ImportSuccess(val summary: ImportSummary) : DataTransferEvent
+    data class ImportSuccess(
+        val summary: ImportSummary,
+    ) : DataTransferEvent
 
     /** An export or import failed. */
     data object Error : DataTransferEvent
@@ -27,4 +31,7 @@ sealed interface DataTransferEvent {
  * An incoming note ([incoming]) collides with an [existing] local note; the activity must prompt
  * the user and report the choice back via [SettingsViewModel.onConflictResolved].
  */
-data class ImportConflictPrompt(val existing: Note, val incoming: Note)
+data class ImportConflictPrompt(
+    val existing: Note,
+    val incoming: Note,
+)

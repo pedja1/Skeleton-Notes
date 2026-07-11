@@ -15,7 +15,9 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
  * [getAllNotesUseCase] which is backed by a repository that always fails. Used to drive the
  * main screen into its error state without corrupting the (in-memory) database.
  */
-class FakeAppGraph(private val delegate: AppGraph) : AppGraph by delegate {
+class FakeAppGraph(
+    private val delegate: AppGraph,
+) : AppGraph by delegate {
     override val getAllNotesUseCase: GetAllNotesUseCase =
         GetAllNotesUseCase(FailingNotesRepository())
 }
@@ -27,19 +29,18 @@ private class FailingNotesRepository : NotesRepository {
     override fun getAllNotesFlow(): Flow<Result<List<Note>>> =
         flowOf(Result.Failure(IllegalStateException("database corrupted")))
 
-    override fun getAllNotes(): Result<List<Note>> =
-        Result.Failure(IllegalStateException("database corrupted"))
+    override suspend fun getAllNotes(): Result<List<Note>> = Result.Failure(IllegalStateException("database corrupted"))
 
     override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> =
         flowOf(Result.Failure(IllegalStateException("database corrupted")))
 
-    override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> =
+    override suspend fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> =
         Result.Failure(IllegalStateException("database corrupted"))
 
     override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> =
         flowOf(Result.Failure(IllegalStateException("database corrupted")))
 
-    override fun getNoteById(id: String): Result<NoteWithAttachments> =
+    override suspend fun getNoteById(id: String): Result<NoteWithAttachments> =
         Result.Failure(IllegalStateException("database corrupted"))
 
     override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit> =
@@ -62,4 +63,6 @@ private class FailingNotesRepository : NotesRepository {
  * The [Application] under test, useful for building a [org.skynetsoftware.skeletonnotes.di.ProductionAppGraph].
  */
 val testApplication: Application
-    get() = androidx.test.core.app.ApplicationProvider.getApplicationContext()
+    get() =
+        androidx.test.core.app.ApplicationProvider
+            .getApplicationContext()

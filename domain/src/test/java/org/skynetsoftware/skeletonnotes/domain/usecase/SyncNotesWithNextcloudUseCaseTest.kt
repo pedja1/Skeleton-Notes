@@ -94,7 +94,12 @@ class SyncNotesWithNextcloudUseCaseTest {
 
             assertTrue(result is Result.Success)
             assertTrue(notesRepo.savedNoteWithAttachments.isNotEmpty())
-            assertEquals("note1", notesRepo.savedNoteWithAttachments.first().note.id)
+            assertEquals(
+                "note1",
+                notesRepo.savedNoteWithAttachments
+                    .first()
+                    .note.id,
+            )
         }
 
     @Test
@@ -170,7 +175,12 @@ class SyncNotesWithNextcloudUseCaseTest {
             // deleted and trashed on the same sync that first pushes it.
             assertTrue(notesRepo.trashedNoteIds.isEmpty())
             // Its remoteLastModified is refreshed to the server's post-upload mtime.
-            assertEquals(3000L, notesRepo.savedNoteWithAttachments.last().note.remoteLastModified)
+            assertEquals(
+                3000L,
+                notesRepo.savedNoteWithAttachments
+                    .last()
+                    .note.remoteLastModified,
+            )
         }
 
     @Test
@@ -206,7 +216,12 @@ class SyncNotesWithNextcloudUseCaseTest {
             assertTrue(ncRepo.uploadedNotes.isNotEmpty())
             // The saved remoteLastModified must be the server's post-upload mtime, not the
             // stale pre-upload value, otherwise the next sync would see a spurious conflict.
-            assertEquals(4000L, notesRepo.savedNoteWithAttachments.last().note.remoteLastModified)
+            assertEquals(
+                4000L,
+                notesRepo.savedNoteWithAttachments
+                    .last()
+                    .note.remoteLastModified,
+            )
         }
 
     @Test
@@ -249,7 +264,12 @@ class SyncNotesWithNextcloudUseCaseTest {
             assertTrue(result is Result.Success)
             assertTrue((result as Result.Success).data is SyncResult.Success)
             assertTrue(notesRepo.savedNoteWithAttachments.isNotEmpty())
-            assertTrue(notesRepo.savedNoteWithAttachments.first().attachments.isEmpty())
+            assertTrue(
+                notesRepo.savedNoteWithAttachments
+                    .first()
+                    .attachments
+                    .isEmpty(),
+            )
         }
 
     @Test
@@ -277,7 +297,12 @@ class SyncNotesWithNextcloudUseCaseTest {
 
             assertTrue(result is Result.Success)
             assertTrue(notesRepo.savedNoteWithAttachments.isNotEmpty())
-            assertEquals(NoteStatus.ACTIVE, notesRepo.savedNoteWithAttachments.first().note.status)
+            assertEquals(
+                NoteStatus.ACTIVE,
+                notesRepo.savedNoteWithAttachments
+                    .first()
+                    .note.status,
+            )
         }
 
     @Test
@@ -320,7 +345,12 @@ class SyncNotesWithNextcloudUseCaseTest {
             assertTrue(result is Result.Success)
             assertTrue((result as Result.Success).data is SyncResult.Success)
             assertTrue(notesRepo.savedNoteWithAttachments.isNotEmpty())
-            assertEquals("remote updated", notesRepo.savedNoteWithAttachments.first().note.content)
+            assertEquals(
+                "remote updated",
+                notesRepo.savedNoteWithAttachments
+                    .first()
+                    .note.content,
+            )
         }
 
     @Test
@@ -390,7 +420,12 @@ class SyncNotesWithNextcloudUseCaseTest {
 
             val saved = notesRepo.savedNoteWithAttachments.first()
             assertEquals(1, saved.attachments.size)
-            assertTrue(saved.attachments.first().uri.isNotBlank())
+            assertTrue(
+                saved.attachments
+                    .first()
+                    .uri
+                    .isNotBlank(),
+            )
             assertEquals(1, ncRepo.downloadAttachmentStreamCallCount)
         }
 
@@ -564,9 +599,8 @@ class SyncNotesWithNextcloudUseCaseTest {
     private fun createUseCase(
         notesRepo: FakeNotesRepo,
         ncRepo: FakeNextcloudRepo,
-    ): SyncNotesWithNextcloudUseCase {
-        return SyncNotesWithNextcloudUseCase(notesRepo, ncRepo, FakeSettingsRepository(), FakeAttachmentFileStorage())
-    }
+    ): SyncNotesWithNextcloudUseCase =
+        SyncNotesWithNextcloudUseCase(notesRepo, ncRepo, FakeSettingsRepository(), FakeAttachmentFileStorage())
 
     private class FakeNotesRepo(
         private val notes: List<Note> = emptyList(),
@@ -577,12 +611,12 @@ class SyncNotesWithNextcloudUseCaseTest {
 
         override fun getAllNotesFlow() = flowOf(Result.Success(notes))
 
-        override fun getAllNotes(): Result<List<Note>> = Result.Success(notes)
+        override suspend fun getAllNotes(): Result<List<Note>> = Result.Success(notes)
 
         override fun getAllNotesWithAttachmentsFlow() =
             flowOf(Result.Success(notes.map { NoteWithAttachments(it, attachments.filter { a -> a.noteId == it.id }) }))
 
-        override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> =
+        override suspend fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> =
             Result.Success(notes.map { NoteWithAttachments(it, attachments.filter { a -> a.noteId == it.id }) })
 
         override fun getNoteByIdFlow(id: String) =
@@ -595,7 +629,7 @@ class SyncNotesWithNextcloudUseCaseTest {
                 ),
             )
 
-        override fun getNoteById(id: String): Result<NoteWithAttachments> =
+        override suspend fun getNoteById(id: String): Result<NoteWithAttachments> =
             notes.find { it.id == id }?.let {
                 Result.Success(NoteWithAttachments(it, attachments.filter { a -> a.noteId == id }))
             } ?: Result.Failure(Exception("not found"))
@@ -650,13 +684,12 @@ class SyncNotesWithNextcloudUseCaseTest {
             return if (uploadCalled) Result.Success(afterUploadFiles) else Result.Success(remoteFiles)
         }
 
-        override suspend fun downloadNote(uuid: String): Result<NextcloudNote> {
-            return if (downloadedNote != null) {
+        override suspend fun downloadNote(uuid: String): Result<NextcloudNote> =
+            if (downloadedNote != null) {
                 Result.Success(downloadedNote)
             } else {
                 Result.Failure(Exception("Not found"))
             }
-        }
 
         override suspend fun uploadNote(note: NextcloudNote): Result<Unit> {
             uploadedNotes.add(note)
@@ -713,9 +746,7 @@ class SyncNotesWithNextcloudUseCaseTest {
             source: String,
             attachmentId: String,
             mimeType: String?,
-        ): String {
-            return "/fake/$attachmentId"
-        }
+        ): String = "/fake/$attachmentId"
 
         override fun writeStream(
             attachmentId: String,

@@ -24,13 +24,15 @@ import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelpe
 
 @RunWith(AndroidJUnit4::class)
 class SkeletonNotesDatabaseHelperTest {
-
     private lateinit var databaseHelper: SkeletonNotesDatabaseHelper
     private lateinit var database: SQLiteDatabase
 
     @Before
     fun setUp() {
-        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val context =
+            androidx.test.platform.app.InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
         databaseHelper = SkeletonNotesDatabaseHelper(context.applicationContext as android.app.Application)
         database = databaseHelper.writableDatabase
     }
@@ -38,7 +40,10 @@ class SkeletonNotesDatabaseHelperTest {
     @After
     fun tearDown() {
         database.close()
-        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val context =
+            androidx.test.platform.app.InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
         context.deleteDatabase("skeleton-notes")
     }
 
@@ -49,10 +54,11 @@ class SkeletonNotesDatabaseHelperTest {
 
     @Test
     fun notesTableExists() {
-        val cursor = database.rawQuery(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='$TABLE_NOTES'",
-            null
-        )
+        val cursor =
+            database.rawQuery(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='$TABLE_NOTES'",
+                null,
+            )
         assertTrue(cursor.moveToFirst())
         assertEquals(TABLE_NOTES, cursor.getString(0))
         cursor.close()
@@ -60,10 +66,11 @@ class SkeletonNotesDatabaseHelperTest {
 
     @Test
     fun attachmentsTableExists() {
-        val cursor = database.rawQuery(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='$TABLE_ATTACHMENTS'",
-            null
-        )
+        val cursor =
+            database.rawQuery(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='$TABLE_ATTACHMENTS'",
+                null,
+            )
         assertTrue(cursor.moveToFirst())
         assertEquals(TABLE_ATTACHMENTS, cursor.getString(0))
         cursor.close()
@@ -103,12 +110,14 @@ class SkeletonNotesDatabaseHelperTest {
         assertTrue(columns.contains(COLUMN_MIME_TYPE))
     }
 
-
     @Test
     fun onUpgradeDoesNotCrash() {
         database.close()
         databaseHelper.close()
-        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val context =
+            androidx.test.platform.app.InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
         context.deleteDatabase("skeleton-notes")
 
         val v1Db = context.openOrCreateDatabase("skeleton-notes", 0, null)
@@ -124,7 +133,7 @@ class SkeletonNotesDatabaseHelperTest {
                 $COLUMN_TAGS TEXT,
                 PRIMARY KEY($COLUMN_ID)
             )
-            """.trimIndent()
+            """.trimIndent(),
         )
         v1Db.execSQL(
             """
@@ -134,7 +143,7 @@ class SkeletonNotesDatabaseHelperTest {
                 $COLUMN_URI TEXT NOT NULL,
                 PRIMARY KEY($COLUMN_ID)
             )
-            """.trimIndent()
+            """.trimIndent(),
         )
         v1Db.close()
 

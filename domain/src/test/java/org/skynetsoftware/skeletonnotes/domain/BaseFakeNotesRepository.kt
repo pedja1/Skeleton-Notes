@@ -12,19 +12,19 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
  * responses. Test-specific fakes can override only the methods they care about.
  */
 open class BaseFakeNotesRepository : NotesRepository {
-    override fun getAllNotes(): Result<List<Note>> = Result.Success(emptyList())
+    override suspend fun getAllNotes(): Result<List<Note>> = Result.Success(emptyList())
 
     override fun getAllNotesFlow(): Flow<Result<List<Note>>> = flowOf(Result.Success(emptyList()))
 
     override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> =
         flowOf(Result.Success(emptyList()))
 
-    override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> = Result.Success(emptyList())
+    override suspend fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> = Result.Success(emptyList())
 
     override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> =
         flowOf(Result.Success(NoteWithAttachments(Note(id, null, "", 0, 0, emptySet()), emptyList())))
 
-    override fun getNoteById(id: String): Result<NoteWithAttachments> =
+    override suspend fun getNoteById(id: String): Result<NoteWithAttachments> =
         Result.Success(NoteWithAttachments(Note(id, null, "", 0, 0, emptySet()), emptyList()))
 
     override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit> = Result.Success(Unit)

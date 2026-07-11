@@ -13,7 +13,9 @@ sealed interface NextcloudPollStatus {
      * Login completed. Credentials have been persisted internally and the
      * (password-free) [info] describes the established connection.
      */
-    data class Authenticated(val info: NextcloudConnectionInfo) : NextcloudPollStatus
+    data class Authenticated(
+        val info: NextcloudConnectionInfo,
+    ) : NextcloudPollStatus
 
     /**
      * Login not completed yet; the caller should poll again after a delay.

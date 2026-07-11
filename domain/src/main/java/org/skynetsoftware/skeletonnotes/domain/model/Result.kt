@@ -8,10 +8,14 @@ sealed class Result<T> {
     /**
      * Represents a successful result containing the produced [data].
      */
-    data class Success<T>(val data: T) : Result<T>()
+    data class Success<T>(
+        val data: T,
+    ) : Result<T>()
 
     /**
      * Represents a failed result containing the [throwable] that caused the failure.
      */
-    data class Failure<T>(val throwable: Throwable) : Result<T>()
+    data class Failure<T>(
+        val throwable: Throwable,
+    ) : Result<T>()
 }

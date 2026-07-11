@@ -7,7 +7,9 @@ import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import java.util.UUID
 
-class CreateAttachmentUseCase(private val attachmentFileStorage: AttachmentFileStorage) {
+class CreateAttachmentUseCase(
+    private val attachmentFileStorage: AttachmentFileStorage,
+) {
     suspend operator fun invoke(
         noteId: String,
         sourceUri: String,

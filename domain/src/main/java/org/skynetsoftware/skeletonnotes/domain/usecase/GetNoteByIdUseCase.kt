@@ -7,7 +7,9 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 /**
  * Use case for retrieving a single note with its attachments by ID.
  */
-class GetNoteByIdUseCase(private val notesRepository: NotesRepository) {
+class GetNoteByIdUseCase(
+    private val notesRepository: NotesRepository,
+) {
     /**
      * Retrieves the note and its attachments for the given [id].
      *

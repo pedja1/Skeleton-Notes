@@ -6,7 +6,9 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 /**
  * Use case for moving a note to trash (soft-delete) by ID.
  */
-class MoveToTrashUseCase(private val notesRepository: NotesRepository) {
+class MoveToTrashUseCase(
+    private val notesRepository: NotesRepository,
+) {
     /**
      * Moves the note identified by [id] to trash.
      *

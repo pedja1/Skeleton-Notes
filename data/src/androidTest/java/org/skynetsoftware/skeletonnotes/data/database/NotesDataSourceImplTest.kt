@@ -21,7 +21,6 @@ import kotlin.time.Duration.Companion.seconds
 
 @RunWith(AndroidJUnit4::class)
 class NotesDataSourceImplTest {
-
     private lateinit var databaseHelper: SkeletonNotesDatabaseHelper
     private lateinit var database: SQLiteDatabase
 
@@ -40,135 +39,228 @@ class NotesDataSourceImplTest {
     }
 
     @Test
-    fun saveNoteThenGetNoteByIdReturnsSavedNote() = runTest(timeout = 5.seconds) {
-        val dataSource = NotesDataSourceImpl(databaseHelper)
-        val id = UUID.randomUUID().toString()
-        val note = Note(id = id, title = "Title", content = "Content", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet())
+    fun saveNoteThenGetNoteByIdReturnsSavedNote() =
+        runTest(timeout = 5.seconds) {
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+            val id = UUID.randomUUID().toString()
+            val note =
+                Note(
+                    id = id,
+                    title = "Title",
+                    content = "Content",
+                    createdAt = 1000L,
+                    modifiedAt = 1000L,
+                    tags = emptySet(),
+                )
 
-        val saveResult = dataSource.saveNote(NoteWithAttachments(note, emptyList()))
-        assertTrue(saveResult is Result.Success)
+            val saveResult = dataSource.saveNote(NoteWithAttachments(note, emptyList()))
+            assertTrue(saveResult is Result.Success)
 
-        val getResult = dataSource.getNoteById(id)
-        assertTrue(getResult is Result.Success)
-        val loaded = (getResult as Result.Success).data.note
-        assertEquals(id, loaded.id)
-        assertEquals("Title", loaded.title)
-        assertEquals("Content", loaded.content)
-    }
-
-    @Test
-    fun getAllNotesFlowReturnsSavedNotes() = runTest(timeout = 5.seconds) {
-        val dataSource = NotesDataSourceImpl(databaseHelper)
-        val first = Note(id = UUID.randomUUID().toString(), title = "First", content = "One", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet())
-        val second = Note(id = UUID.randomUUID().toString(), title = "Second", content = "Two", createdAt = 2000L, modifiedAt = 2000L, tags = emptySet())
-        dataSource.saveNote(NoteWithAttachments(first, emptyList()))
-        dataSource.saveNote(NoteWithAttachments(second, emptyList()))
-
-        val result = dataSource.getAllNotesFlow().first()
-        assertTrue(result is Result.Success)
-        val ids = (result as Result.Success).data.map { it.id }
-        assertTrue(ids.contains(first.id))
-        assertTrue(ids.contains(second.id))
-    }
+            val getResult = dataSource.getNoteById(id)
+            assertTrue(getResult is Result.Success)
+            val loaded = (getResult as Result.Success).data.note
+            assertEquals(id, loaded.id)
+            assertEquals("Title", loaded.title)
+            assertEquals("Content", loaded.content)
+        }
 
     @Test
-    fun getAllNotesWithAttachmentsFlowGroupsAttachmentsPerNoteAndKeepsMimeType() = runTest(timeout = 5.seconds) {
-        val dataSource = NotesDataSourceImpl(databaseHelper)
+    fun getAllNotesFlowReturnsSavedNotes() =
+        runTest(timeout = 5.seconds) {
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+            val first =
+                Note(
+                    id = UUID.randomUUID().toString(),
+                    title = "First",
+                    content = "One",
+                    createdAt = 1000L,
+                    modifiedAt = 1000L,
+                    tags = emptySet(),
+                )
+            val second =
+                Note(
+                    id = UUID.randomUUID().toString(),
+                    title = "Second",
+                    content = "Two",
+                    createdAt = 2000L,
+                    modifiedAt = 2000L,
+                    tags = emptySet(),
+                )
+            dataSource.saveNote(NoteWithAttachments(first, emptyList()))
+            dataSource.saveNote(NoteWithAttachments(second, emptyList()))
 
-        val withImages = Note(id = UUID.randomUUID().toString(), title = "WithImages", content = "c", createdAt = 1000L, modifiedAt = 2000L, tags = emptySet())
-        val image1 = Attachment(id = UUID.randomUUID().toString(), noteId = withImages.id, uri = "/tmp/a", mimeType = "image/jpeg")
-        val image2 = Attachment(id = UUID.randomUUID().toString(), noteId = withImages.id, uri = "/tmp/b", mimeType = "image/png")
-        val withoutAttachments = Note(id = UUID.randomUUID().toString(), title = "Empty", content = "c", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet())
-
-        dataSource.saveNote(NoteWithAttachments(withImages, listOf(image1, image2)))
-        dataSource.saveNote(NoteWithAttachments(withoutAttachments, emptyList()))
-
-        val result = dataSource.getAllNotesWithAttachmentsFlow().first()
-        assertTrue(result is Result.Success)
-        val data = (result as Result.Success).data
-
-        val loadedWithImages = data.first { it.note.id == withImages.id }
-        assertEquals(2, loadedWithImages.attachments.size)
-        assertEquals(setOf("image/jpeg", "image/png"), loadedWithImages.attachments.mapNotNull { it.mimeType }.toSet())
-
-        val loadedEmpty = data.first { it.note.id == withoutAttachments.id }
-        assertTrue(loadedEmpty.attachments.isEmpty())
-    }
+            val result = dataSource.getAllNotesFlow().first()
+            assertTrue(result is Result.Success)
+            val ids = (result as Result.Success).data.map { it.id }
+            assertTrue(ids.contains(first.id))
+            assertTrue(ids.contains(second.id))
+        }
 
     @Test
-    fun saveNoteWithExistingIdUpdatesNote() = runTest(timeout = 5.seconds) {
-        val dataSource = NotesDataSourceImpl(databaseHelper)
-        val id = UUID.randomUUID().toString()
-        dataSource.saveNote(
-            NoteWithAttachments(
-                Note(id = id, title = "Original", content = "Original content", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
-                emptyList()
+    fun getAllNotesWithAttachmentsFlowGroupsAttachmentsPerNoteAndKeepsMimeType() =
+        runTest(timeout = 5.seconds) {
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+
+            val withImages =
+                Note(
+                    id = UUID.randomUUID().toString(),
+                    title = "WithImages",
+                    content = "c",
+                    createdAt = 1000L,
+                    modifiedAt = 2000L,
+                    tags = emptySet(),
+                )
+            val image1 =
+                Attachment(
+                    id = UUID.randomUUID().toString(),
+                    noteId = withImages.id,
+                    uri = "/tmp/a",
+                    mimeType = "image/jpeg",
+                )
+            val image2 =
+                Attachment(
+                    id = UUID.randomUUID().toString(),
+                    noteId = withImages.id,
+                    uri = "/tmp/b",
+                    mimeType = "image/png",
+                )
+            val withoutAttachments =
+                Note(
+                    id = UUID.randomUUID().toString(),
+                    title = "Empty",
+                    content = "c",
+                    createdAt = 1000L,
+                    modifiedAt = 1000L,
+                    tags = emptySet(),
+                )
+
+            dataSource.saveNote(NoteWithAttachments(withImages, listOf(image1, image2)))
+            dataSource.saveNote(NoteWithAttachments(withoutAttachments, emptyList()))
+
+            val result = dataSource.getAllNotesWithAttachmentsFlow().first()
+            assertTrue(result is Result.Success)
+            val data = (result as Result.Success).data
+
+            val loadedWithImages = data.first { it.note.id == withImages.id }
+            assertEquals(2, loadedWithImages.attachments.size)
+            assertEquals(
+                setOf("image/jpeg", "image/png"),
+                loadedWithImages.attachments.mapNotNull { it.mimeType }.toSet(),
             )
-        )
-        dataSource.saveNote(
-            NoteWithAttachments(
-                Note(id = id, title = "Updated", content = "Updated content", createdAt = 1000L, modifiedAt = 2000L, tags = emptySet()),
-                emptyList()
+
+            val loadedEmpty = data.first { it.note.id == withoutAttachments.id }
+            assertTrue(loadedEmpty.attachments.isEmpty())
+        }
+
+    @Test
+    fun saveNoteWithExistingIdUpdatesNote() =
+        runTest(timeout = 5.seconds) {
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+            val id = UUID.randomUUID().toString()
+            dataSource.saveNote(
+                NoteWithAttachments(
+                    Note(
+                        id = id,
+                        title = "Original",
+                        content = "Original content",
+                        createdAt = 1000L,
+                        modifiedAt = 1000L,
+                        tags = emptySet(),
+                    ),
+                    emptyList(),
+                ),
             )
-        )
-
-        val result = dataSource.getNoteById(id)
-        assertTrue(result is Result.Success)
-        assertEquals("Updated", (result as Result.Success).data.note.title)
-
-        val all = dataSource.getAllNotesFlow().first()
-        assertEquals(1, ((all as Result.Success).data.filter { it.id == id }).size)
-    }
-
-    @Test
-    fun deleteNoteRemovesIt() = runTest(timeout = 5.seconds) {
-        val dataSource = NotesDataSourceImpl(databaseHelper)
-        val id = UUID.randomUUID().toString()
-        dataSource.saveNote(
-            NoteWithAttachments(
-                Note(id = id, title = "ToDelete", content = "Content", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()),
-                emptyList()
+            dataSource.saveNote(
+                NoteWithAttachments(
+                    Note(
+                        id = id,
+                        title = "Updated",
+                        content = "Updated content",
+                        createdAt = 1000L,
+                        modifiedAt = 2000L,
+                        tags = emptySet(),
+                    ),
+                    emptyList(),
+                ),
             )
-        )
 
-        val deleteResult = dataSource.deleteNote(id)
-        assertTrue(deleteResult is Result.Success)
+            val result = dataSource.getNoteById(id)
+            assertTrue(result is Result.Success)
+            assertEquals("Updated", (result as Result.Success).data.note.title)
 
-        val all = dataSource.getAllNotesFlow().first()
-        assertTrue((all as Result.Success).data.none { it.id == id })
-    }
-
-    @Test
-    fun getAllNotesFlowReturnsFailureWhenDatabaseCorrupted() = runTest(timeout = 5.seconds) {
-        database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
-        val dataSource = NotesDataSourceImpl(databaseHelper)
-        val result = dataSource.getAllNotesFlow().first()
-        assertTrue(result is Result.Failure)
-    }
+            val all = dataSource.getAllNotesFlow().first()
+            assertEquals(1, ((all as Result.Success).data.filter { it.id == id }).size)
+        }
 
     @Test
-    fun getNoteByIdReturnsFailureWhenDatabaseCorrupted() = runTest(timeout = 5.seconds) {
-        database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
-        val dataSource = NotesDataSourceImpl(databaseHelper)
-        val result = dataSource.getNoteById("nonexistent")
-        assertTrue(result is Result.Failure)
-    }
+    fun deleteNoteRemovesIt() =
+        runTest(timeout = 5.seconds) {
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+            val id = UUID.randomUUID().toString()
+            dataSource.saveNote(
+                NoteWithAttachments(
+                    Note(
+                        id = id,
+                        title = "ToDelete",
+                        content = "Content",
+                        createdAt = 1000L,
+                        modifiedAt = 1000L,
+                        tags = emptySet(),
+                    ),
+                    emptyList(),
+                ),
+            )
+
+            val deleteResult = dataSource.deleteNote(id)
+            assertTrue(deleteResult is Result.Success)
+
+            val all = dataSource.getAllNotesFlow().first()
+            assertTrue((all as Result.Success).data.none { it.id == id })
+        }
 
     @Test
-    fun saveNoteReturnsFailureWhenDatabaseCorrupted() = runTest(timeout = 5.seconds) {
-        database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
-        val dataSource = NotesDataSourceImpl(databaseHelper)
-        val note = Note(id = "", title = "Test", content = "Content", createdAt = 1000L, modifiedAt = 1000L, tags = emptySet())
-        val noteWithAttachments = NoteWithAttachments(note = note, attachments = emptyList())
-        val result = dataSource.saveNote(noteWithAttachments)
-        assertTrue(result is Result.Failure)
-    }
+    fun getAllNotesFlowReturnsFailureWhenDatabaseCorrupted() =
+        runTest(timeout = 5.seconds) {
+            database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+            val result = dataSource.getAllNotesFlow().first()
+            assertTrue(result is Result.Failure)
+        }
 
     @Test
-    fun deleteNoteReturnsFailureWhenDatabaseCorrupted() = runTest(timeout = 5.seconds) {
-        database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
-        val dataSource = NotesDataSourceImpl(databaseHelper)
-        val result = dataSource.deleteNote("nonexistent")
-        assertTrue(result is Result.Failure)
-    }
+    fun getNoteByIdReturnsFailureWhenDatabaseCorrupted() =
+        runTest(timeout = 5.seconds) {
+            database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+            val result = dataSource.getNoteById("nonexistent")
+            assertTrue(result is Result.Failure)
+        }
+
+    @Test
+    fun saveNoteReturnsFailureWhenDatabaseCorrupted() =
+        runTest(timeout = 5.seconds) {
+            database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+            val note =
+                Note(
+                    id = "",
+                    title = "Test",
+                    content = "Content",
+                    createdAt = 1000L,
+                    modifiedAt = 1000L,
+                    tags = emptySet(),
+                )
+            val noteWithAttachments = NoteWithAttachments(note = note, attachments = emptyList())
+            val result = dataSource.saveNote(noteWithAttachments)
+            assertTrue(result is Result.Failure)
+        }
+
+    @Test
+    fun deleteNoteReturnsFailureWhenDatabaseCorrupted() =
+        runTest(timeout = 5.seconds) {
+            database.execSQL("DROP TABLE IF EXISTS ${SkeletonNotesDatabaseHelper.TABLE_NOTES}")
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+            val result = dataSource.deleteNote("nonexistent")
+            assertTrue(result is Result.Failure)
+        }
 }

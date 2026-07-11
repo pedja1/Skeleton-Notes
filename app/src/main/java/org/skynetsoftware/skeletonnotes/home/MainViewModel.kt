@@ -26,19 +26,19 @@ class MainViewModel(
     private val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase,
     private val getAllNotesUseCase: GetAllNotesUseCase,
 ) : ViewModel() {
-
     companion object {
         /**
          * Factory for creating [MainViewModel] instances with the required dependencies.
          */
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                MainViewModel(
-                    searchAndFilterNotesUseCase = AppDi.searchAndFilterNotesUseCase,
-                    getAllNotesUseCase = AppDi.getAllNotesUseCase,
-                )
+        val Factory: ViewModelProvider.Factory =
+            viewModelFactory {
+                initializer {
+                    MainViewModel(
+                        searchAndFilterNotesUseCase = AppDi.searchAndFilterNotesUseCase,
+                        getAllNotesUseCase = AppDi.getAllNotesUseCase,
+                    )
+                }
             }
-        }
     }
 
     /**
@@ -46,34 +46,41 @@ class MainViewModel(
      */
     sealed class UiState {
         /** The notes list is being loaded. */
-        object Loading: UiState()
+        object Loading : UiState()
+
         /** The notes list has been successfully loaded. */
-        data class Notes(val notes: List<NoteWithAttachments>): UiState()
+        data class Notes(
+            val notes: List<NoteWithAttachments>,
+        ) : UiState()
+
         /** An error occurred while loading the notes list. */
-        object Error: UiState()
+        object Error : UiState()
     }
 
     private val _filter = MutableStateFlow(Filter(query = "", showTrashed = false, showArchived = false))
     val filter: StateFlow<Filter> get() = _filter.asStateFlow()
 
-    val uiState: StateFlow<UiState> = combine(getAllNotesUseCase(), filter) { notes, filter  ->
-        when(notes) {
-            is Result.Failure<List<NoteWithAttachments>> -> UiState.Error
-            is Result.Success<List<NoteWithAttachments>> -> {
-                UiState.Notes(searchAndFilterNotesUseCase(notes.data, filter))
+    val uiState: StateFlow<UiState> =
+        combine(getAllNotesUseCase(), filter) { notes, filter ->
+            when (notes) {
+                is Result.Failure<List<NoteWithAttachments>> -> UiState.Error
+                is Result.Success<List<NoteWithAttachments>> -> {
+                    UiState.Notes(searchAndFilterNotesUseCase(notes.data, filter))
+                }
             }
-        }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, UiState.Loading)
+        }.stateIn(viewModelScope, SharingStarted.Lazily, UiState.Loading)
 
     /**
      * Sets filter.
      */
-    fun setFilter(showArchived: Boolean, showTrashed: Boolean) {
+    fun setFilter(
+        showArchived: Boolean,
+        showTrashed: Boolean,
+    ) {
         _filter.value = _filter.value.copy(showTrashed = showTrashed, showArchived = showArchived)
     }
 
     fun setQuery(query: String) {
         _filter.value = _filter.value.copy(query = query)
     }
-
 }

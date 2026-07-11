@@ -13,8 +13,9 @@ import java.io.InputStream
  * Manages local storage of attachment files. Copies content:// URIs
  * to internal storage so files are available for sync and across reboots.
  */
-internal class AttachmentStorageImpl(private val context: Context) : AttachmentFileStorage {
-
+internal class AttachmentStorageImpl(
+    private val context: Context,
+) : AttachmentFileStorage {
     private val attachmentsDir: File by lazy {
         File(context.filesDir, "attachments").apply { mkdirs() }
     }
@@ -28,11 +29,16 @@ internal class AttachmentStorageImpl(private val context: Context) : AttachmentF
      * @return the local file absolute path
      */
     @SuppressLint("UseKtx")
-    override fun copyToStorage(source: String, attachmentId: String, mimeType: String?): String {
+    override fun copyToStorage(
+        source: String,
+        attachmentId: String,
+        mimeType: String?,
+    ): String {
         val sourceUri = Uri.parse(source)
-        val ext = mimeType
-            ?.let { MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }
-            ?.let { ".$it" }
+        val ext =
+            mimeType
+                ?.let { MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }
+                ?.let { ".$it" }
         val file = attachmentFile(attachmentId, ext)
         val source = context.contentResolver.openInputStream(sourceUri) ?: error("Failed to open source")
         source.use { input ->
@@ -50,9 +56,10 @@ internal class AttachmentStorageImpl(private val context: Context) : AttachmentF
      */
     override fun getFile(attachmentId: String): File {
         require(isSafeAttachmentId(attachmentId)) { "Unsafe attachment id" }
-        return attachmentsDir.listFiles { f ->
-            f.name == attachmentId || f.name.startsWith("$attachmentId.")
-        }?.firstOrNull() ?: File(attachmentsDir, attachmentId)
+        return attachmentsDir
+            .listFiles { f ->
+                f.name == attachmentId || f.name.startsWith("$attachmentId.")
+            }?.firstOrNull() ?: File(attachmentsDir, attachmentId)
     }
 
     /**
@@ -62,15 +69,20 @@ internal class AttachmentStorageImpl(private val context: Context) : AttachmentF
      * @param inputStream the file content to copy
      * @return the local file absolute path
      */
-    override fun writeStream(attachmentId: String, inputStream: InputStream): String {
-        return openWriteStream(attachmentId).use { target ->
+    override fun writeStream(
+        attachmentId: String,
+        inputStream: InputStream,
+    ): String =
+        openWriteStream(attachmentId).use { target ->
             inputStream.copyTo(target.outputStream)
             target.path
         }
-    }
 
     /** Opens internal storage for caller-managed streaming into [attachmentId]. */
-    override fun openWriteStream(attachmentId: String, extension: String?): AttachmentWriteTarget {
+    override fun openWriteStream(
+        attachmentId: String,
+        extension: String?,
+    ): AttachmentWriteTarget {
         val file = attachmentFile(attachmentId, extension)
         return AttachmentWriteTarget(file.absolutePath, file.outputStream())
     }
@@ -83,7 +95,10 @@ internal class AttachmentStorageImpl(private val context: Context) : AttachmentF
     }
 
     /** Returns a file for [attachmentId] (plus optional [extension]) after enforcing attachment-directory containment. */
-    private fun attachmentFile(attachmentId: String, extension: String? = null): File {
+    private fun attachmentFile(
+        attachmentId: String,
+        extension: String? = null,
+    ): File {
         require(isSafeAttachmentId(attachmentId)) { "Unsafe attachment id" }
         val filename = "$attachmentId${extension.orEmpty()}"
         val directory = attachmentsDir.canonicalFile
@@ -93,10 +108,9 @@ internal class AttachmentStorageImpl(private val context: Context) : AttachmentF
     }
 
     /** Returns true when [attachmentId] can only name a direct child file. */
-    private fun isSafeAttachmentId(attachmentId: String): Boolean {
-        return attachmentId.isNotBlank() &&
+    private fun isSafeAttachmentId(attachmentId: String): Boolean =
+        attachmentId.isNotBlank() &&
             !attachmentId.contains('/') &&
             !attachmentId.contains('\\') &&
             !attachmentId.contains("..")
-    }
 }

@@ -13,8 +13,9 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
  * Implementation of [NotesRepository] that delegates to a [NotesDataSource]
  * and switches to [Dispatchers.IO] for all operations.
  */
-internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource) : NotesRepository {
-
+internal class NotesRepositoryImpl(
+    private val notesDataSource: NotesDataSource,
+) : NotesRepository {
     /**
      * @see NotesRepository.getNoteByIdFlow
      * @see NotesDataSource.getAllNotesFlow
@@ -25,7 +26,8 @@ internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource)
      * @see NotesRepository.getAllNotes
      * @see NotesDataSource.getAllNotes
      */
-    override fun getAllNotes(): Result<List<Note>> = notesDataSource.getAllNotes()
+    override suspend fun getAllNotes(): Result<List<Note>> =
+        withContext(Dispatchers.IO) { notesDataSource.getAllNotes() }
 
     /**
      * @see NotesRepository.getAllNotesWithAttachmentsFlow
@@ -38,8 +40,10 @@ internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource)
      * @see NotesRepository.getAllNotesWithAttachments
      * @see NotesDataSource.getAllNotesWithAttachments
      */
-    override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> =
-        notesDataSource.getAllNotesWithAttachments()
+    override suspend fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> =
+        withContext(Dispatchers.IO) {
+            notesDataSource.getAllNotesWithAttachments()
+        }
 
     /**
      * @see NotesRepository.getNoteByIdFlow
@@ -51,45 +55,51 @@ internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource)
      * @see NotesRepository.getNoteById
      * @see NotesDataSource.getNoteById
      */
-    override fun getNoteById(id: String): Result<NoteWithAttachments> = notesDataSource.getNoteById(id)
+    override suspend fun getNoteById(id: String): Result<NoteWithAttachments> =
+        withContext(Dispatchers.IO) { notesDataSource.getNoteById(id) }
 
     /**
      * @see NotesRepository.saveNote
      * @see NotesDataSource.saveNote
      */
-    override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit> = withContext(Dispatchers.IO) {
-        notesDataSource.saveNote(noteWithAttachments)
-    }
+    override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            notesDataSource.saveNote(noteWithAttachments)
+        }
 
     /**
      * @see NotesRepository.deleteNote
      * @see NotesDataSource.deleteNote
      */
-    override suspend fun deleteNote(id: String): Result<Unit> = withContext(Dispatchers.IO) {
-        notesDataSource.deleteNote(id)
-    }
+    override suspend fun deleteNote(id: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            notesDataSource.deleteNote(id)
+        }
 
     /**
      * @see NotesRepository.moveToTrash
      * @see NotesDataSource.moveToTrash
      */
-    override suspend fun moveToTrash(id: String): Result<Unit> = withContext(Dispatchers.IO) {
-        notesDataSource.moveToTrash(id)
-    }
+    override suspend fun moveToTrash(id: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            notesDataSource.moveToTrash(id)
+        }
 
     /**
      * @see NotesRepository.archiveNote
      * @see NotesDataSource.archiveNote
      */
-    override suspend fun archiveNote(id: String): Result<Unit> = withContext(Dispatchers.IO) {
-        notesDataSource.archiveNote(id)
-    }
+    override suspend fun archiveNote(id: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            notesDataSource.archiveNote(id)
+        }
 
     /**
      * @see NotesRepository.restoreNote
      * @see NotesDataSource.restoreNote
      */
-    override suspend fun restoreNote(id: String): Result<Unit> = withContext(Dispatchers.IO) {
-        notesDataSource.restoreNote(id)
-    }
+    override suspend fun restoreNote(id: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            notesDataSource.restoreNote(id)
+        }
 }

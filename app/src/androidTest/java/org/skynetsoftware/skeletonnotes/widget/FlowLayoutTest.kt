@@ -17,7 +17,6 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class FlowLayoutTest {
-
     private lateinit var context: Context
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
 
@@ -26,7 +25,11 @@ class FlowLayoutTest {
         context = instrumentation.targetContext
     }
 
-    private fun cellParams(width: Int, height: Int, margin: Int = 0): ViewGroup.MarginLayoutParams =
+    private fun cellParams(
+        width: Int,
+        height: Int,
+        margin: Int = 0,
+    ): ViewGroup.MarginLayoutParams =
         ViewGroup.MarginLayoutParams(width, height).apply { setMargins(margin, margin, margin, margin) }
 
     private fun buildFlow(

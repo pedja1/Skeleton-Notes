@@ -54,7 +54,6 @@ class SettingsViewModel(
     private val exportNotes: ExportNotesUseCase,
     private val importNotes: ImportNotesUseCase,
 ) : ViewModel() {
-
     companion object {
         /** Interval between login poll requests. */
         private const val POLL_INTERVAL_MS = 2_000L
@@ -62,21 +61,22 @@ class SettingsViewModel(
         /** Overall polling budget; the poll token is valid for 20 minutes server-side. */
         private const val POLL_TIMEOUT_MS = 10 * 60 * 1000L
 
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                SettingsViewModel(
-                    getSettings = AppDi.getSettingsUseCase,
-                    setPeriodicSyncEnabled = AppDi.setPeriodicSyncEnabledUseCase,
-                    setSyncInterval = AppDi.setSyncIntervalUseCase,
-                    setSyncOnlyOnUnmetered = AppDi.setSyncOnlyOnUnmeteredUseCase,
-                    initiateNextcloudLogin = AppDi.initiateNextcloudLoginUseCase,
-                    pollNextcloudLogin = AppDi.pollNextcloudLoginUseCase,
-                    scheduler = AppDi.nextcloudSyncScheduler,
-                    exportNotes = AppDi.exportNotesUseCase,
-                    importNotes = AppDi.importNotesUseCase,
-                )
+        val Factory: ViewModelProvider.Factory =
+            viewModelFactory {
+                initializer {
+                    SettingsViewModel(
+                        getSettings = AppDi.getSettingsUseCase,
+                        setPeriodicSyncEnabled = AppDi.setPeriodicSyncEnabledUseCase,
+                        setSyncInterval = AppDi.setSyncIntervalUseCase,
+                        setSyncOnlyOnUnmetered = AppDi.setSyncOnlyOnUnmeteredUseCase,
+                        initiateNextcloudLogin = AppDi.initiateNextcloudLoginUseCase,
+                        pollNextcloudLogin = AppDi.pollNextcloudLoginUseCase,
+                        scheduler = AppDi.nextcloudSyncScheduler,
+                        exportNotes = AppDi.exportNotesUseCase,
+                        importNotes = AppDi.importNotesUseCase,
+                    )
+                }
             }
-        }
     }
 
     val settings: Flow<Settings> = getSettings()
@@ -100,6 +100,7 @@ class SettingsViewModel(
 
     /** Current import conflict that needs a user choice, or `null` when no prompt is pending. */
     private val _pendingConflict = MutableStateFlow<ImportConflictPrompt?>(null)
+
     /** Lifecycle-resilient import conflict prompt state rendered by [SettingsActivity]. */
     val pendingConflict: StateFlow<ImportConflictPrompt?> = _pendingConflict.asStateFlow()
 
@@ -176,26 +177,31 @@ class SettingsViewModel(
      * [NextcloudLoginState.Connected] and emits [NextcloudAuthEvent.LoginSucceeded]
      * so the activity can dismiss the Custom Tab.
      */
-    private fun startPolling(token: String, endpoint: String) {
+    private fun startPolling(
+        token: String,
+        endpoint: String,
+    ) {
         pollingJob?.cancel()
-        pollingJob = viewModelScope.launch {
-            val authenticated = withTimeoutOrNull(POLL_TIMEOUT_MS.milliseconds) {
-                while (isActive) {
-                    val status = pollNextcloudLogin.invoke(token, endpoint)
-                    if (status is NextcloudPollStatus.Authenticated) {
-                        return@withTimeoutOrNull status.info
+        pollingJob =
+            viewModelScope.launch {
+                val authenticated =
+                    withTimeoutOrNull(POLL_TIMEOUT_MS.milliseconds) {
+                        while (isActive) {
+                            val status = pollNextcloudLogin.invoke(token, endpoint)
+                            if (status is NextcloudPollStatus.Authenticated) {
+                                return@withTimeoutOrNull status.info
+                            }
+                            delay(POLL_INTERVAL_MS.milliseconds)
+                        }
+                        null
                     }
-                    delay(POLL_INTERVAL_MS.milliseconds)
+                if (authenticated != null) {
+                    _nextcloudLoginState.value = NextcloudLoginState.Connected(authenticated)
+                    _authEvents.tryEmit(NextcloudAuthEvent.LoginSucceeded)
+                } else {
+                    _nextcloudLoginState.value = NextcloudLoginState.LoginError
                 }
-                null
             }
-            if (authenticated != null) {
-                _nextcloudLoginState.value = NextcloudLoginState.Connected(authenticated)
-                _authEvents.tryEmit(NextcloudAuthEvent.LoginSucceeded)
-            } else {
-                _nextcloudLoginState.value = NextcloudLoginState.LoginError
-            }
-        }
     }
 
     /**
@@ -227,19 +233,21 @@ class SettingsViewModel(
         if (_dataOperation.value != DataOperation.NONE) return
         _dataOperation.value = DataOperation.EXPORT
         viewModelScope.launch {
-            val event = try {
-                val outputStream = AppDi.application.contentResolver.openOutputStream(uri)
-                    ?: error("Cannot open output stream")
-                outputStream.use { stream ->
-                    when (val result = exportNotes(stream)) {
-                        is Result.Success -> DataTransferEvent.ExportSuccess(result.data)
-                        is Result.Failure -> DataTransferEvent.Error
+            val event =
+                try {
+                    val outputStream =
+                        AppDi.application.contentResolver.openOutputStream(uri)
+                            ?: error("Cannot open output stream")
+                    outputStream.use { stream ->
+                        when (val result = exportNotes(stream)) {
+                            is Result.Success -> DataTransferEvent.ExportSuccess(result.data)
+                            is Result.Failure -> DataTransferEvent.Error
+                        }
                     }
+                } catch (t: Throwable) {
+                    Log.w("export", null, t)
+                    DataTransferEvent.Error
                 }
-            } catch (t: Throwable) {
-                Log.w("export", null, t)
-                DataTransferEvent.Error
-            }
             _dataOperation.value = DataOperation.NONE
             _dataTransferEvents.emit(event)
         }
@@ -256,19 +264,26 @@ class SettingsViewModel(
         _dataOperation.value = DataOperation.IMPORT
         applyToAllResolution = null
         viewModelScope.launch {
-            val event = try {
-                val inputStream = AppDi.application.contentResolver.openInputStream(uri)
-                    ?: error("Cannot open input stream")
-                inputStream.use { stream ->
-                    when (val result = importNotes(stream) { existing, incoming -> resolveConflict(existing, incoming) }) {
-                        is Result.Success -> DataTransferEvent.ImportSuccess(result.data)
-                        is Result.Failure -> DataTransferEvent.Error
+            val event =
+                try {
+                    val inputStream =
+                        AppDi.application.contentResolver.openInputStream(uri)
+                            ?: error("Cannot open input stream")
+                    inputStream.use { stream ->
+                        when (
+                            val result =
+                                importNotes(
+                                    stream,
+                                ) { existing, incoming -> resolveConflict(existing, incoming) }
+                        ) {
+                            is Result.Success -> DataTransferEvent.ImportSuccess(result.data)
+                            is Result.Failure -> DataTransferEvent.Error
+                        }
                     }
+                } catch (t: Throwable) {
+                    Log.w("export", null, t)
+                    DataTransferEvent.Error
                 }
-            } catch (t: Throwable) {
-                Log.w("export", null, t)
-                DataTransferEvent.Error
-            }
             conflictDeferred = null
             _pendingConflict.value = null
             _dataOperation.value = DataOperation.NONE
@@ -277,7 +292,10 @@ class SettingsViewModel(
     }
 
     /** Records the active conflict, then suspends until [onConflictResolved] supplies a choice. */
-    internal suspend fun resolveConflict(existing: Note, incoming: Note): ConflictResolution {
+    internal suspend fun resolveConflict(
+        existing: Note,
+        incoming: Note,
+    ): ConflictResolution {
         applyToAllResolution?.let { return it }
         val deferred = CompletableDeferred<ConflictResolution>()
         conflictDeferred = deferred
@@ -289,7 +307,10 @@ class SettingsViewModel(
      * Delivers the user's choice for the current import conflict. When [applyToAll] is true the
      * same [resolution] is applied to every subsequent conflict without prompting again.
      */
-    fun onConflictResolved(resolution: ConflictResolution, applyToAll: Boolean) {
+    fun onConflictResolved(
+        resolution: ConflictResolution,
+        applyToAll: Boolean,
+    ) {
         if (applyToAll) applyToAllResolution = resolution
         conflictDeferred?.complete(resolution)
         conflictDeferred = null

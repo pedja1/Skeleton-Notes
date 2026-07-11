@@ -6,7 +6,9 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 /**
  * Use case for archiving a note by ID.
  */
-class ArchiveNoteUseCase(private val notesRepository: NotesRepository) {
+class ArchiveNoteUseCase(
+    private val notesRepository: NotesRepository,
+) {
     /**
      * Archives the note identified by [id].
      *

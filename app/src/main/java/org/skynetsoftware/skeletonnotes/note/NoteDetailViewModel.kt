@@ -42,11 +42,9 @@ class NoteDetailViewModel(
     private val moveToTrashUseCase: MoveToTrashUseCase,
     private val archiveNoteUseCase: ArchiveNoteUseCase,
     private val restoreNoteUseCase: RestoreNoteUseCase,
-    private val createAttachment: CreateAttachmentUseCase
+    private val createAttachment: CreateAttachmentUseCase,
 ) : ViewModel() {
-
     companion object {
-
         private const val TAG = "NoteDetailsViewModel"
 
         /**
@@ -54,21 +52,22 @@ class NoteDetailViewModel(
          * When [noteId] is null, a new UUID is generated and the ViewModel starts in
          * [UiState.NewNote] without querying the repository.
          */
-        fun Factory(noteId: String?): ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                NoteDetailViewModel(
-                    noteId = noteId ?: UUID.randomUUID().toString(),
-                    isNewNote = noteId == null,
-                    getNoteByIdUseCase = AppDi.getNoteByIdUseCase,
-                    saveNoteUseCase = AppDi.saveNoteUseCase,
-                    deleteNoteUseCase = AppDi.deleteNoteUseCase,
-                    moveToTrashUseCase = AppDi.moveToTrashUseCase,
-                    archiveNoteUseCase = AppDi.archiveNoteUseCase,
-                    restoreNoteUseCase = AppDi.restoreNoteUseCase,
-                    createAttachment = AppDi.createAttachmentUseCase,
-                )
+        fun Factory(noteId: String?): ViewModelProvider.Factory =
+            viewModelFactory {
+                initializer {
+                    NoteDetailViewModel(
+                        noteId = noteId ?: UUID.randomUUID().toString(),
+                        isNewNote = noteId == null,
+                        getNoteByIdUseCase = AppDi.getNoteByIdUseCase,
+                        saveNoteUseCase = AppDi.saveNoteUseCase,
+                        deleteNoteUseCase = AppDi.deleteNoteUseCase,
+                        moveToTrashUseCase = AppDi.moveToTrashUseCase,
+                        archiveNoteUseCase = AppDi.archiveNoteUseCase,
+                        restoreNoteUseCase = AppDi.restoreNoteUseCase,
+                        createAttachment = AppDi.createAttachmentUseCase,
+                    )
+                }
             }
-        }
     }
 
     /**
@@ -79,7 +78,10 @@ class NoteDetailViewModel(
         object NewNote : UiState()
 
         /** An existing note has been loaded. */
-        data class NoteLoaded(val note: Note, val attachments: List<Attachment>) : UiState()
+        data class NoteLoaded(
+            val note: Note,
+            val attachments: List<Attachment>,
+        ) : UiState()
 
         /** The note is being saved. */
         object Saving : UiState()
@@ -100,7 +102,9 @@ class NoteDetailViewModel(
         object Restored : UiState()
 
         /** An error occurred. */
-        data class Error(val throwable: Throwable) : UiState()
+        data class Error(
+            val throwable: Throwable,
+        ) : UiState()
     }
 
     private val _uiState = MutableStateFlow<UiState>(UiState.NewNote)
@@ -148,7 +152,11 @@ class NoteDetailViewModel(
      * across inline elements and hide it from the extractor).
      * On success emits [UiState.Saved], on failure emits [UiState.Error].
      */
-    fun saveNote(title: String?, content: String, plainTextContent: String) {
+    fun saveNote(
+        title: String?,
+        content: String,
+        plainTextContent: String,
+    ) {
         if (uiState.value is UiState.Error) return
         if (!isNewNote && title == loadedNote?.title && content == loadedNote?.content) {
             _uiState.value = UiState.Saved
@@ -159,16 +167,17 @@ class NoteDetailViewModel(
             val tags = TagExtractor.extractTags(plainTextContent)
             val now = System.currentTimeMillis()
             val existing = loadedNote
-            val note = Note(
-                id = noteId,
-                title = title,
-                content = content,
-                createdAt = existing?.createdAt ?: now,
-                modifiedAt = now,
-                tags = tags,
-                status = existing?.status ?: NoteStatus.ACTIVE,
-                remoteLastModified = existing?.remoteLastModified ?: 0L,
-            )
+            val note =
+                Note(
+                    id = noteId,
+                    title = title,
+                    content = content,
+                    createdAt = existing?.createdAt ?: now,
+                    modifiedAt = now,
+                    tags = tags,
+                    status = existing?.status ?: NoteStatus.ACTIVE,
+                    remoteLastModified = existing?.remoteLastModified ?: 0L,
+                )
             val attachmentsWithNoteId = attachments.value.map { it.copy(noteId = noteId) }
             when (val result = saveNoteUseCase(NoteWithAttachments(note, attachmentsWithNoteId))) {
                 is Result.Success -> {
@@ -264,26 +273,26 @@ class NoteDetailViewModel(
      */
     fun noteStatus(): NoteStatus? = loadedNote?.status
 
-    fun onAttachmentPicked(uri: Uri?) = viewModelScope.launch {
-        if (uri == null) return@launch
+    fun onAttachmentPicked(uri: Uri?) =
+        viewModelScope.launch {
+            if (uri == null) return@launch
 
-        val createAttachmentResult = createAttachment(
-            noteId = noteId,
-            sourceUri = uri.toString(),
-            mimeType = AppDi.application.contentResolver.getType(uri)
-        )
-        when(createAttachmentResult) {
-            is Result.Failure<Attachment> -> {
-                Log.w(TAG, null, createAttachmentResult.throwable)
-                _showToast.emit(AppDi.application.getString(R.string.note_details_error_adding_attachment))
-            }
-            is Result.Success<Attachment> -> {
-                val mutableAttachments = attachments.value.toMutableList()
-                mutableAttachments.add(createAttachmentResult.data)
-                _attachments.value = mutableAttachments
+            val createAttachmentResult =
+                createAttachment(
+                    noteId = noteId,
+                    sourceUri = uri.toString(),
+                    mimeType = AppDi.application.contentResolver.getType(uri),
+                )
+            when (createAttachmentResult) {
+                is Result.Failure<Attachment> -> {
+                    Log.w(TAG, null, createAttachmentResult.throwable)
+                    _showToast.emit(AppDi.application.getString(R.string.note_details_error_adding_attachment))
+                }
+                is Result.Success<Attachment> -> {
+                    val mutableAttachments = attachments.value.toMutableList()
+                    mutableAttachments.add(createAttachmentResult.data)
+                    _attachments.value = mutableAttachments
+                }
             }
         }
-
-
-    }
 }

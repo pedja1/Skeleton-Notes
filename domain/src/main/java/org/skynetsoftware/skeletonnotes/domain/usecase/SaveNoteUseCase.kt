@@ -7,7 +7,9 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 /**
  * Use case for saving (creating or updating) a note with its attachments.
  */
-class SaveNoteUseCase(private val notesRepository: NotesRepository) {
+class SaveNoteUseCase(
+    private val notesRepository: NotesRepository,
+) {
     /**
      * Saves the given [noteWithAttachments] and returns the resulting note ID.
      *

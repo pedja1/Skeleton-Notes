@@ -34,7 +34,6 @@ import org.skynetsoftware.skeletonnotes.util.bindImages
  * styles (H1/H2/Paragraph), and file/image attachment.
  */
 class NoteDetailActivity : ComponentActivity() {
-
     companion object {
         const val EXTRA_NOTE_ID = "extra_note_id"
     }
@@ -42,18 +41,19 @@ class NoteDetailActivity : ComponentActivity() {
     private val viewModel by viewModels<NoteDetailViewModel>(factoryProducer = {
         NoteDetailViewModel.Factory(
             intent.getStringExtra(
-                EXTRA_NOTE_ID
-            )
+                EXTRA_NOTE_ID,
+            ),
         )
     })
 
     private lateinit var binding: ActivityNoteDetailBinding
 
-    private val pickAttachmentLauncher = registerForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri ->
-        viewModel.onAttachmentPicked(uri)
-    }
+    private val pickAttachmentLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.GetContent(),
+        ) { uri ->
+            viewModel.onAttachmentPicked(uri)
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,7 +68,7 @@ class NoteDetailActivity : ComponentActivity() {
                 systemBars.left,
                 systemBars.top,
                 systemBars.right,
-                maxOf(systemBars.bottom, ime.bottom)
+                maxOf(systemBars.bottom, ime.bottom),
             )
             insets
         }
@@ -81,11 +81,14 @@ class NoteDetailActivity : ComponentActivity() {
         observeAttachments()
         observeToasts()
 
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                saveAndFinish()
-            }
-        })
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    saveAndFinish()
+                }
+            },
+        )
     }
 
     private fun setupViews() {
@@ -125,11 +128,12 @@ class NoteDetailActivity : ComponentActivity() {
                             binding.toolbar.toolbarOverflow.visibility = View.VISIBLE
                             binding.toolbar.toolbarOverflow.setOnClickListener { showOverflowMenu() }
                             binding.editNoteTitle.setText(state.note.title ?: "")
-                            binding.editNoteContent.text = SpannableStringBuilder(
-                                MarkdownFormatter.fromMarkdown(
-                                    state.note.content
+                            binding.editNoteContent.text =
+                                SpannableStringBuilder(
+                                    MarkdownFormatter.fromMarkdown(
+                                        state.note.content,
+                                    ),
                                 )
-                            )
                         }
 
                         NoteDetailViewModel.UiState.Saved -> finish()
@@ -138,11 +142,12 @@ class NoteDetailActivity : ComponentActivity() {
                         NoteDetailViewModel.UiState.Archived -> finish()
                         NoteDetailViewModel.UiState.Restored -> finish()
                         is NoteDetailViewModel.UiState.Error -> {
-                            Toast.makeText(
-                                this@NoteDetailActivity,
-                                state.throwable.message ?: getString(R.string.notes_list_error),
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Toast
+                                .makeText(
+                                    this@NoteDetailActivity,
+                                    state.throwable.message ?: getString(R.string.notes_list_error),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                         }
 
                         NoteDetailViewModel.UiState.Saving -> {}
@@ -156,10 +161,11 @@ class NoteDetailActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.attachments.collect { attachments ->
-                    //TODO display other non-image attachments
-                    val imagePaths = attachments
-                        .filter { it.mimeType?.startsWith("image/") == true }
-                        .map { it.uri }
+                    // TODO display other non-image attachments
+                    val imagePaths =
+                        attachments
+                            .filter { it.mimeType?.startsWith("image/") == true }
+                            .map { it.uri }
                     binding.noteImages.bindImages(imagePaths, lifecycleScope)
                 }
             }
@@ -177,10 +183,15 @@ class NoteDetailActivity : ComponentActivity() {
     }
 
     private fun saveAndFinish() {
-        val title = binding.editNoteTitle.text?.toString()?.trim()?.ifEmpty { null }
-        val content = binding.editNoteContent.text?.let {
-            MarkdownFormatter.toMarkdown(it)
-        } ?: ""
+        val title =
+            binding.editNoteTitle.text
+                ?.toString()
+                ?.trim()
+                ?.ifEmpty { null }
+        val content =
+            binding.editNoteContent.text?.let {
+                MarkdownFormatter.toMarkdown(it)
+            } ?: ""
         val plainText = binding.editNoteContent.text?.toString() ?: ""
         if (viewModel.isNewNote() && title == null && content.isBlank()) {
             finish()
@@ -190,13 +201,13 @@ class NoteDetailActivity : ComponentActivity() {
     }
 
     private fun showDeleteConfirmation() {
-        AlertDialog.Builder(this)
+        AlertDialog
+            .Builder(this)
             .setTitle(R.string.delete_note_confirm_title)
             .setMessage(R.string.delete_note_confirm_message)
             .setPositiveButton(R.string.delete_note_confirm_positive) { _, _ ->
                 viewModel.deleteNote()
-            }
-            .setNegativeButton(R.string.delete_note_confirm_negative, null)
+            }.setNegativeButton(R.string.delete_note_confirm_negative, null)
             .show()
     }
 
@@ -280,7 +291,7 @@ class NoteDetailActivity : ComponentActivity() {
                 span,
                 selectionStart,
                 selectionEnd.coerceAtLeast(selectionStart),
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
             )
         }
     }
@@ -297,14 +308,18 @@ class NoteDetailActivity : ComponentActivity() {
         val selectionStart = binding.editNoteContent.selectionStart.coerceAtLeast(0)
         val selectionEnd = binding.editNoteContent.selectionEnd.coerceAtLeast(0)
 
-        val paragraphStart = text.lastIndexOf('\n', (selectionStart - 1).coerceAtLeast(0))
-            .let { if (it < 0) 0 else it + 1 }
+        val paragraphStart =
+            text
+                .lastIndexOf('\n', (selectionStart - 1).coerceAtLeast(0))
+                .let { if (it < 0) 0 else it + 1 }
         val paragraphEnd = text.indexOf('\n', selectionEnd).let { if (it < 0) text.length else it }
         if (paragraphStart >= paragraphEnd) return
 
-        spannable.getSpans(paragraphStart, paragraphEnd, RelativeSizeSpan::class.java)
+        spannable
+            .getSpans(paragraphStart, paragraphEnd, RelativeSizeSpan::class.java)
             .forEach { spannable.removeSpan(it) }
-        spannable.getSpans(paragraphStart, paragraphEnd, StyleSpan::class.java)
+        spannable
+            .getSpans(paragraphStart, paragraphEnd, StyleSpan::class.java)
             .filter { it.style == Typeface.BOLD }
             .forEach { spannable.removeSpan(it) }
 
@@ -314,13 +329,13 @@ class NoteDetailActivity : ComponentActivity() {
                 RelativeSizeSpan(scale),
                 paragraphStart,
                 paragraphEnd,
-                Spannable.SPAN_EXCLUSIVE_INCLUSIVE
+                Spannable.SPAN_EXCLUSIVE_INCLUSIVE,
             )
             spannable.setSpan(
                 StyleSpan(Typeface.BOLD),
                 paragraphStart,
                 paragraphEnd,
-                Spannable.SPAN_EXCLUSIVE_INCLUSIVE
+                Spannable.SPAN_EXCLUSIVE_INCLUSIVE,
             )
         }
     }

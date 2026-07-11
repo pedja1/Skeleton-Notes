@@ -20,7 +20,6 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class ImageGridLayoutTest {
-
     private lateinit var context: Context
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val gap: Int
@@ -41,11 +40,12 @@ class ImageGridLayoutTest {
             grid = ImageGridLayout(context)
             aspects.forEachIndexed { i, aspect ->
                 val cell = ImageView(context)
-                cell.layoutParams = ImageGridLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    aspect,
-                )
+                cell.layoutParams =
+                    ImageGridLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        aspect,
+                    )
                 if (i in goneIndices) cell.visibility = View.GONE
                 grid.addView(cell)
             }

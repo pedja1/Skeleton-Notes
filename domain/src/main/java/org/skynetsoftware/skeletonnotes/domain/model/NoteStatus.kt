@@ -7,7 +7,9 @@ package org.skynetsoftware.skeletonnotes.domain.model
  * @property TRASH the note has been moved to trash (soft-deleted)
  * @property ARCHIVE the note has been archived
  */
-enum class NoteStatus(val value: Int) {
+enum class NoteStatus(
+    val value: Int,
+) {
     ACTIVE(0),
     TRASH(1),
     ARCHIVE(2),
@@ -18,8 +20,6 @@ enum class NoteStatus(val value: Int) {
         /**
          * Converts value to NoteStatus. Fallback to ACTIVE if value is unknown
          */
-        fun fromValue(value: Int): NoteStatus {
-            return entries.find { it.value == value } ?: ACTIVE
-        }
+        fun fromValue(value: Int): NoteStatus = entries.find { it.value == value } ?: ACTIVE
     }
 }

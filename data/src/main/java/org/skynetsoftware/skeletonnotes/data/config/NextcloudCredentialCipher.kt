@@ -19,7 +19,6 @@ import javax.crypto.spec.GCMParameterSpec
  * [android.content.SharedPreferences].
  */
 internal class NextcloudCredentialCipher {
-
     companion object {
         private const val TAG = "NextcloudCipher"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
@@ -34,8 +33,8 @@ internal class NextcloudCredentialCipher {
      * Encrypts [plaintext] and returns a Base64 string containing the GCM IV followed by the
      * ciphertext, or `null` if encryption fails.
      */
-    fun encrypt(plaintext: String): String? {
-        return try {
+    fun encrypt(plaintext: String): String? =
+        try {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
             val iv = cipher.iv
@@ -48,7 +47,6 @@ internal class NextcloudCredentialCipher {
             Log.e(TAG, "encrypt error", t)
             null
         }
-    }
 
     /**
      * Decrypts a Base64 string produced by [encrypt], returning the original plaintext, or `null`
@@ -80,14 +78,15 @@ internal class NextcloudCredentialCipher {
         (keyStore.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
 
         val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
-        val spec = KeyGenParameterSpec.Builder(
-            KEY_ALIAS,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
-        )
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setKeySize(KEY_SIZE_BITS)
-            .build()
+        val spec =
+            KeyGenParameterSpec
+                .Builder(
+                    KEY_ALIAS,
+                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+                ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                .setKeySize(KEY_SIZE_BITS)
+                .build()
         keyGenerator.init(spec)
         return keyGenerator.generateKey()
     }

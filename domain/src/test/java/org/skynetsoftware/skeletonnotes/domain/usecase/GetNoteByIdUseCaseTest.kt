@@ -72,7 +72,7 @@ class GetNoteByIdUseCaseTest {
         private val attachments: List<Attachment>,
         private val shouldFail: Boolean = false,
     ) : BaseFakeNotesRepository() {
-        override fun getNoteById(id: String): Result<NoteWithAttachments> {
+        override suspend fun getNoteById(id: String): Result<NoteWithAttachments> {
             if (shouldFail) return Result.Failure(RuntimeException("Not found"))
             return Result.Success(NoteWithAttachments(note!!, attachments))
         }

@@ -27,13 +27,15 @@ import org.skynetsoftware.skeletonnotes.domain.model.Note
 
 @RunWith(AndroidJUnit4::class)
 class NoteMapperInstrumentedTest {
-
     private lateinit var databaseHelper: SkeletonNotesDatabaseHelper
     private lateinit var database: SQLiteDatabase
 
     @Before
     fun setUp() {
-        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val context =
+            androidx.test.platform.app.InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
         databaseHelper = SkeletonNotesDatabaseHelper(context.applicationContext as android.app.Application)
         database = databaseHelper.writableDatabase
     }
@@ -41,21 +43,25 @@ class NoteMapperInstrumentedTest {
     @After
     fun tearDown() {
         database.close()
-        val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+        val context =
+            androidx.test.platform.app.InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
         context.deleteDatabase("skeleton-notes")
     }
 
     @Test
     fun cursorToNoteConvertsCorrectly() {
         val noteId = "test-id-1"
-        val cv = Note(
-            id = noteId,
-            title = "Test Title",
-            content = "# Content",
-            createdAt = 1000L,
-            modifiedAt = 2000L,
-            tags = setOf("tag1", "tag2")
-        ).toContentValues()
+        val cv =
+            Note(
+                id = noteId,
+                title = "Test Title",
+                content = "# Content",
+                createdAt = 1000L,
+                modifiedAt = 2000L,
+                tags = setOf("tag1", "tag2"),
+            ).toContentValues()
         database.insert(TABLE_NOTES, null, cv)
 
         val cursor = database.rawQuery("SELECT * FROM $TABLE_NOTES WHERE $COLUMN_ID = ?", arrayOf(noteId))
@@ -75,14 +81,15 @@ class NoteMapperInstrumentedTest {
     @Test
     fun cursorToNoteReturnsEmptyTagsForNoteWithoutTags() {
         val noteId = "test-id-empty-tags"
-        val cv = Note(
-            id = noteId,
-            title = "Test Title",
-            content = "Content",
-            createdAt = 1000L,
-            modifiedAt = 1000L,
-            tags = emptySet()
-        ).toContentValues()
+        val cv =
+            Note(
+                id = noteId,
+                title = "Test Title",
+                content = "Content",
+                createdAt = 1000L,
+                modifiedAt = 1000L,
+                tags = emptySet(),
+            ).toContentValues()
         database.insert(TABLE_NOTES, null, cv)
 
         val cursor = database.rawQuery("SELECT * FROM $TABLE_NOTES WHERE $COLUMN_ID = ?", arrayOf(noteId))
@@ -97,14 +104,15 @@ class NoteMapperInstrumentedTest {
     @Test
     fun cursorToNoteHandlesNullTitle() {
         val noteId = "test-id-null-title"
-        val cv = Note(
-            id = noteId,
-            title = null,
-            content = "Content",
-            createdAt = 1000L,
-            modifiedAt = 1000L,
-            tags = emptySet()
-        ).toContentValues()
+        val cv =
+            Note(
+                id = noteId,
+                title = null,
+                content = "Content",
+                createdAt = 1000L,
+                modifiedAt = 1000L,
+                tags = emptySet(),
+            ).toContentValues()
         database.insert(TABLE_NOTES, null, cv)
 
         val cursor = database.rawQuery("SELECT * FROM $TABLE_NOTES WHERE $COLUMN_ID = ?", arrayOf(noteId))
@@ -148,19 +156,20 @@ class NoteMapperInstrumentedTest {
         database.insert(TABLE_ATTACHMENTS, null, Attachment("att-1", noteId, "file://photo.jpg").toContentValues())
         database.insert(TABLE_ATTACHMENTS, null, Attachment("att-2", noteId, "file://audio.mp3").toContentValues())
 
-        val cursor = database.rawQuery(
-            """
-            SELECT
-                $TABLE_NOTES.*,
-            $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
-            $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
-            $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI
-        FROM $TABLE_NOTES
-        LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
-        WHERE $TABLE_NOTES.$COLUMN_ID = ?
-            """.trimIndent(),
-            arrayOf(noteId)
-        )
+        val cursor =
+            database.rawQuery(
+                """
+                    SELECT
+                        $TABLE_NOTES.*,
+                    $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
+                    $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
+                    $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI
+                FROM $TABLE_NOTES
+                LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
+                WHERE $TABLE_NOTES.$COLUMN_ID = ?
+                """.trimIndent(),
+                arrayOf(noteId),
+            )
 
         val noteWithAttachments = cursor.toNoteWithAttachments()
         assertEquals("Note", noteWithAttachments.note.title)
@@ -176,19 +185,20 @@ class NoteMapperInstrumentedTest {
         val noteId = "note-no-att"
         database.insert(TABLE_NOTES, null, Note(noteId, "Note", "content", 1000L, 1000L, emptySet()).toContentValues())
 
-        val cursor = database.rawQuery(
-            """
-            SELECT
-                $TABLE_NOTES.*,
-            $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
-            $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
-            $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI
-        FROM $TABLE_NOTES
-        LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
-        WHERE $TABLE_NOTES.$COLUMN_ID = ?
-            """.trimIndent(),
-            arrayOf(noteId)
-        )
+        val cursor =
+            database.rawQuery(
+                """
+                    SELECT
+                        $TABLE_NOTES.*,
+                    $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
+                    $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
+                    $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI
+                FROM $TABLE_NOTES
+                LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
+                WHERE $TABLE_NOTES.$COLUMN_ID = ?
+                """.trimIndent(),
+                arrayOf(noteId),
+            )
 
         val noteWithAttachments = cursor.toNoteWithAttachments()
         assertEquals("Note", noteWithAttachments.note.title)
@@ -199,14 +209,15 @@ class NoteMapperInstrumentedTest {
 
     @Test
     fun noteToContentValuesContainsAllFields() {
-        val note = Note(
-            id = "my-id",
-            title = "My Title",
-            content = "# Content",
-            createdAt = 1000L,
-            modifiedAt = 2000L,
-            tags = setOf("kotlin", "android")
-        )
+        val note =
+            Note(
+                id = "my-id",
+                title = "My Title",
+                content = "# Content",
+                createdAt = 1000L,
+                modifiedAt = 2000L,
+                tags = setOf("kotlin", "android"),
+            )
 
         val cv = note.toContentValues()
 
@@ -220,14 +231,15 @@ class NoteMapperInstrumentedTest {
 
     @Test
     fun noteToContentValuesHandlesNullTitle() {
-        val note = Note(
-            id = "my-id-2",
-            title = null,
-            content = "Content",
-            createdAt = 1000L,
-            modifiedAt = 1000L,
-            tags = emptySet()
-        )
+        val note =
+            Note(
+                id = "my-id-2",
+                title = null,
+                content = "Content",
+                createdAt = 1000L,
+                modifiedAt = 1000L,
+                tags = emptySet(),
+            )
 
         val cv = note.toContentValues()
 
@@ -236,14 +248,15 @@ class NoteMapperInstrumentedTest {
 
     @Test
     fun noteToContentValuesHandlesEmptyTags() {
-        val note = Note(
-            id = "my-id-3",
-            title = "Title",
-            content = "Content",
-            createdAt = 1000L,
-            modifiedAt = 1000L,
-            tags = emptySet()
-        )
+        val note =
+            Note(
+                id = "my-id-3",
+                title = "Title",
+                content = "Content",
+                createdAt = 1000L,
+                modifiedAt = 1000L,
+                tags = emptySet(),
+            )
 
         val cv = note.toContentValues()
 

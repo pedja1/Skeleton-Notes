@@ -11,26 +11,28 @@ import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 
 class BackupNoteMapperTest {
-
     @Test
     fun `round trips all note fields`() {
-        val original = listOf(
-            NoteWithAttachments(
-                note = Note(
-                    id = "note-1",
-                    title = "Title",
-                    content = "# Markdown body",
-                    createdAt = 100L,
-                    modifiedAt = 200L,
-                    tags = setOf("work", "personal"),
-                    status = NoteStatus.ARCHIVE,
-                    remoteLastModified = 999L,
+        val original =
+            listOf(
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = "note-1",
+                            title = "Title",
+                            content = "# Markdown body",
+                            createdAt = 100L,
+                            modifiedAt = 200L,
+                            tags = setOf("work", "personal"),
+                            status = NoteStatus.ARCHIVE,
+                            remoteLastModified = 999L,
+                        ),
+                    attachments =
+                        listOf(
+                            Attachment(id = "att-1", noteId = "note-1", uri = "/tmp/att-1", mimeType = "image/jpeg"),
+                        ),
                 ),
-                attachments = listOf(
-                    Attachment(id = "att-1", noteId = "note-1", uri = "/tmp/att-1", mimeType = "image/jpeg"),
-                ),
-            ),
-        )
+            )
 
         val restored = JSONArray(original.toJsonString()).toNotes()
 
@@ -56,12 +58,13 @@ class BackupNoteMapperTest {
 
     @Test
     fun `blank title serializes and deserializes as null`() {
-        val notes = listOf(
-            NoteWithAttachments(
-                note = Note("id", null, "content", 0L, 0L, emptySet()),
-                attachments = emptyList(),
-            ),
-        )
+        val notes =
+            listOf(
+                NoteWithAttachments(
+                    note = Note("id", null, "content", 0L, 0L, emptySet()),
+                    attachments = emptyList(),
+                ),
+            )
 
         val restored = JSONArray(notes.toJsonString()).toNotes()
 
@@ -70,16 +73,23 @@ class BackupNoteMapperTest {
 
     @Test
     fun `attachment without mime type round trips as null`() {
-        val notes = listOf(
-            NoteWithAttachments(
-                note = Note("id", "t", "c", 0L, 0L, emptySet()),
-                attachments = listOf(Attachment(id = "a", noteId = "id", uri = "u", mimeType = null)),
-            ),
-        )
+        val notes =
+            listOf(
+                NoteWithAttachments(
+                    note = Note("id", "t", "c", 0L, 0L, emptySet()),
+                    attachments = listOf(Attachment(id = "a", noteId = "id", uri = "u", mimeType = null)),
+                ),
+            )
 
         val restored = JSONArray(notes.toJsonString()).toNotes()
 
-        assertNull(restored.single().attachments.single().mimeType)
+        assertNull(
+            restored
+                .single()
+                .attachments
+                .single()
+                .mimeType,
+        )
     }
 
     @Test

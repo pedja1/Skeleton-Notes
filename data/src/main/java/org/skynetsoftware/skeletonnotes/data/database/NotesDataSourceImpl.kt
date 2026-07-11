@@ -29,9 +29,8 @@ import java.util.concurrent.ConcurrentHashMap
  * Concrete [NotesDataSource] implementation backed by [SkeletonNotesDatabaseHelper].
  */
 internal class NotesDataSourceImpl(
-    private val skeletonNotesDatabaseHelper: SkeletonNotesDatabaseHelper
+    private val skeletonNotesDatabaseHelper: SkeletonNotesDatabaseHelper,
 ) : NotesDataSource {
-
     companion object {
         private const val TAG = "NotesDataSource"
     }
@@ -49,11 +48,10 @@ internal class NotesDataSourceImpl(
      * @see NotesDataSourceImpl.getAllNotes
      * Flow will emit new list when change is detected
      */
-    override fun getAllNotesFlow(): Flow<Result<List<Note>>> {
-        return getAllNotesChangedFlow.map {
+    override fun getAllNotesFlow(): Flow<Result<List<Note>>> =
+        getAllNotesChangedFlow.map {
             getAllNotes()
         }
-    }
 
     /**
      * @see NotesDataSource.getAllNotes
@@ -62,9 +60,11 @@ internal class NotesDataSourceImpl(
         var cursor: Cursor? = null
         return try {
             val database = skeletonNotesDatabaseHelper.writableDatabase
-            cursor = database.rawQuery(
-                "SELECT * FROM $TABLE_NOTES ORDER BY $COLUMN_MODIFIED DESC", null
-            )
+            cursor =
+                database.rawQuery(
+                    "SELECT * FROM $TABLE_NOTES ORDER BY $COLUMN_MODIFIED DESC",
+                    null,
+                )
             val notes = cursor.toNotes()
             Log.d(TAG, "getAllNotes: ${notes.size}")
             Result.Success(notes)
@@ -76,34 +76,33 @@ internal class NotesDataSourceImpl(
         }
     }
 
-
     /**
      * @see NotesDataSource.getAllNotesWithAttachmentsFlow
      */
-    override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> {
-        return getAllNotesChangedFlow.map {
+    override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> =
+        getAllNotesChangedFlow.map {
             getAllNotesWithAttachments()
         }
-    }
 
     override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> {
         var cursor: Cursor? = null
         return try {
             val database = skeletonNotesDatabaseHelper.writableDatabase
-            cursor = database.rawQuery(
-                """
-                SELECT
-                    $TABLE_NOTES.*,
-                    $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
-                    $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
-                    $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI,
-                    $TABLE_ATTACHMENTS.$COLUMN_MIME_TYPE AS ${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE
-                FROM $TABLE_NOTES
-                LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
-                ORDER BY $TABLE_NOTES.$COLUMN_MODIFIED DESC, $TABLE_NOTES.$COLUMN_ID
-                """.trimIndent(),
-                null
-            )
+            cursor =
+                database.rawQuery(
+                    """
+                    SELECT
+                        $TABLE_NOTES.*,
+                        $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
+                        $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
+                        $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI,
+                        $TABLE_ATTACHMENTS.$COLUMN_MIME_TYPE AS ${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE
+                    FROM $TABLE_NOTES
+                    LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
+                    ORDER BY $TABLE_NOTES.$COLUMN_MODIFIED DESC, $TABLE_NOTES.$COLUMN_ID
+                    """.trimIndent(),
+                    null,
+                )
             val notes = cursor.toNotesWithAttachments()
             Log.d(TAG, "getAllNotesWithAttachments: ${notes.size}")
             Result.Success(notes)
@@ -119,9 +118,10 @@ internal class NotesDataSourceImpl(
      * @see NotesDataSource.getNoteByIdFlow
      */
     override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> {
-        val flow = getNoteByIdFlows.getOrPut(id) {
-            MutableSharedFlow<Unit>(replay = 1).apply { tryEmit(Unit) }
-        }
+        val flow =
+            getNoteByIdFlows.getOrPut(id) {
+                MutableSharedFlow<Unit>(replay = 1).apply { tryEmit(Unit) }
+            }
         return flow.map {
             getNoteById(id)
         }
@@ -134,21 +134,22 @@ internal class NotesDataSourceImpl(
         var cursor: Cursor? = null
         return try {
             val database = skeletonNotesDatabaseHelper.writableDatabase
-            cursor = database.rawQuery(
-                """
-                SELECT
-                    $TABLE_NOTES.*,
-                    $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
-                    $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
-                    $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI,
-                    $TABLE_ATTACHMENTS.$COLUMN_MIME_TYPE AS ${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE
-                FROM $TABLE_NOTES
-                LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
-                WHERE $TABLE_NOTES.$COLUMN_ID = ?
-                ORDER BY $TABLE_NOTES.$COLUMN_MODIFIED DESC
-                """.trimIndent(),
-                arrayOf(id)
-            )
+            cursor =
+                database.rawQuery(
+                    """
+                    SELECT
+                        $TABLE_NOTES.*,
+                        $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
+                        $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
+                        $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI,
+                        $TABLE_ATTACHMENTS.$COLUMN_MIME_TYPE AS ${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE
+                    FROM $TABLE_NOTES
+                    LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
+                    WHERE $TABLE_NOTES.$COLUMN_ID = ?
+                    ORDER BY $TABLE_NOTES.$COLUMN_MODIFIED DESC
+                    """.trimIndent(),
+                    arrayOf(id),
+                )
             if (!cursor.moveToFirst()) {
                 return Result.Failure(IllegalStateException("Note not found: $id"))
             }
@@ -176,18 +177,19 @@ internal class NotesDataSourceImpl(
                 TABLE_NOTES,
                 null,
                 noteWithAttachments.note.toContentValues(),
-                SQLiteDatabase.CONFLICT_REPLACE
+                SQLiteDatabase.CONFLICT_REPLACE,
             )
             val newAttachmentIds = noteWithAttachments.attachments.map { it.id }.toSet()
             val existingAttachmentIds = mutableSetOf<String>()
-            database.rawQuery(
-                "SELECT $COLUMN_ID FROM $TABLE_ATTACHMENTS WHERE $COLUMN_NOTE_ID = ?",
-                arrayOf(noteWithAttachments.note.id)
-            ).use { cursor ->
-                while (cursor.moveToNext()) {
-                    existingAttachmentIds.add(cursor.getString(0))
+            database
+                .rawQuery(
+                    "SELECT $COLUMN_ID FROM $TABLE_ATTACHMENTS WHERE $COLUMN_NOTE_ID = ?",
+                    arrayOf(noteWithAttachments.note.id),
+                ).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        existingAttachmentIds.add(cursor.getString(0))
+                    }
                 }
-            }
             for (existingId in existingAttachmentIds) {
                 if (existingId !in newAttachmentIds) {
                     database.delete(TABLE_ATTACHMENTS, "$COLUMN_ID = ?", arrayOf(existingId))
@@ -198,7 +200,7 @@ internal class NotesDataSourceImpl(
                     TABLE_ATTACHMENTS,
                     null,
                     attachment.copy(noteId = noteWithAttachments.note.id).toContentValues(),
-                    SQLiteDatabase.CONFLICT_REPLACE
+                    SQLiteDatabase.CONFLICT_REPLACE,
                 )
             }
             database.setTransactionSuccessful()
@@ -238,12 +240,13 @@ internal class NotesDataSourceImpl(
     /**
      * @see NotesDataSource.moveToTrash
      */
-    override suspend fun moveToTrash(id: String): Result<Unit> {
-        return try {
+    override suspend fun moveToTrash(id: String): Result<Unit> =
+        try {
             val database = skeletonNotesDatabaseHelper.writableDatabase
-            val values = ContentValues().apply {
-                put(COLUMN_STATUS, NoteStatus.TRASH.value)
-            }
+            val values =
+                ContentValues().apply {
+                    put(COLUMN_STATUS, NoteStatus.TRASH.value)
+                }
             database.update(TABLE_NOTES, values, "$COLUMN_ID = ?", arrayOf(id))
             Log.d(TAG, "moveToTrash: $id")
             notifyNotesChanged(id)
@@ -252,17 +255,17 @@ internal class NotesDataSourceImpl(
             Log.e(TAG, null, t)
             Result.Failure(t)
         }
-    }
 
     /**
      * @see NotesDataSource.archiveNote
      */
-    override suspend fun archiveNote(id: String): Result<Unit> {
-        return try {
+    override suspend fun archiveNote(id: String): Result<Unit> =
+        try {
             val database = skeletonNotesDatabaseHelper.writableDatabase
-            val values = ContentValues().apply {
-                put(COLUMN_STATUS, NoteStatus.ARCHIVE.value)
-            }
+            val values =
+                ContentValues().apply {
+                    put(COLUMN_STATUS, NoteStatus.ARCHIVE.value)
+                }
             database.update(TABLE_NOTES, values, "$COLUMN_ID = ?", arrayOf(id))
             Log.d(TAG, "archiveNote: $id")
             notifyNotesChanged(id)
@@ -271,17 +274,17 @@ internal class NotesDataSourceImpl(
             Log.e(TAG, null, t)
             Result.Failure(t)
         }
-    }
 
     /**
      * @see NotesDataSource.restoreNote
      */
-    override suspend fun restoreNote(id: String): Result<Unit> {
-        return try {
+    override suspend fun restoreNote(id: String): Result<Unit> =
+        try {
             val database = skeletonNotesDatabaseHelper.writableDatabase
-            val values = ContentValues().apply {
-                put(COLUMN_STATUS, NoteStatus.ACTIVE.value)
-            }
+            val values =
+                ContentValues().apply {
+                    put(COLUMN_STATUS, NoteStatus.ACTIVE.value)
+                }
             database.update(TABLE_NOTES, values, "$COLUMN_ID = ?", arrayOf(id))
             Log.d(TAG, "restoreNote: $id")
             notifyNotesChanged(id)
@@ -290,7 +293,6 @@ internal class NotesDataSourceImpl(
             Log.e(TAG, null, t)
             Result.Failure(t)
         }
-    }
 
     /**
      * trigger re-read of all notes or note by id, for all functions that return Flow

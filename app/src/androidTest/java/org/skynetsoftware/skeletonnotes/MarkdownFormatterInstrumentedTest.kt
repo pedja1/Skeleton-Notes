@@ -15,7 +15,6 @@ import org.skynetsoftware.skeletonnotes.note.MarkdownFormatter
  */
 @RunWith(AndroidJUnit4::class)
 class MarkdownFormatterInstrumentedTest {
-
     private fun roundTrip(markdown: String): String =
         MarkdownFormatter.toMarkdown(MarkdownFormatter.fromMarkdown(markdown))
 
@@ -60,25 +59,27 @@ class MarkdownFormatterInstrumentedTest {
         val serialized = roundTrip("# Heading")
         assertTrue(
             "Heading must not contain inline bold markers, but was: $serialized",
-            !serialized.contains("**")
+            !serialized.contains("**"),
         )
     }
 
     @Test
     fun mixedDocumentRoundTrips() {
-        val markdown = "# Title\n" +
-            "a **bold** and *italic* line\n" +
-            "## Section\n" +
-            "plain text"
+        val markdown =
+            "# Title\n" +
+                "a **bold** and *italic* line\n" +
+                "## Section\n" +
+                "plain text"
         assertEquals(markdown, roundTrip(markdown))
     }
 
     @Test
     fun roundTripIsIdempotent() {
-        val markdown = "# Title\n" +
-            "**b** *i*\n" +
-            "## Sub\n" +
-            "plain"
+        val markdown =
+            "# Title\n" +
+                "**b** *i*\n" +
+                "## Sub\n" +
+                "plain"
         val once = roundTrip(markdown)
         val twice = roundTrip(once)
         assertEquals("Round trip must be stable", once, twice)
@@ -93,9 +94,10 @@ class MarkdownFormatterInstrumentedTest {
     @Test
     fun leadingHashInPlainParagraphIsEscaped() {
         // A plain paragraph beginning with '#' must not be misread as a heading on the next load.
-        val serialized = MarkdownFormatter.toMarkdown(
-            MarkdownFormatter.fromMarkdown("\\# not a heading")
-        )
+        val serialized =
+            MarkdownFormatter.toMarkdown(
+                MarkdownFormatter.fromMarkdown("\\# not a heading"),
+            )
         assertEquals("\\# not a heading", serialized)
     }
 }

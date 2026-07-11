@@ -24,13 +24,16 @@ import java.util.concurrent.ConcurrentHashMap
  * (main) dispatcher.
  */
 object ImageLoader {
-
     // Cap the cache at ~1/8 of the app's available heap, measured in KiB.
-    private val cache = object : LruCache<String, Bitmap>(
-        (Runtime.getRuntime().maxMemory() / 1024 / 8).toInt()
-    ) {
-        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
-    }
+    private val cache =
+        object : LruCache<String, Bitmap>(
+            (Runtime.getRuntime().maxMemory() / 1024 / 8).toInt(),
+        ) {
+            override fun sizeOf(
+                key: String,
+                value: Bitmap,
+            ): Int = value.byteCount / 1024
+        }
 
     // Intrinsic width/height ratio per file. Aspect is size-independent so it is keyed by path.
     private val aspectCache = ConcurrentHashMap<String, Float>()
@@ -51,11 +54,12 @@ object ImageLoader {
         aspectCache[path]?.let { return it }
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(path, options)
-        val ratio = if (options.outWidth > 0 && options.outHeight > 0) {
-            options.outWidth.toFloat() / options.outHeight.toFloat()
-        } else {
-            1f
-        }
+        val ratio =
+            if (options.outWidth > 0 && options.outHeight > 0) {
+                options.outWidth.toFloat() / options.outHeight.toFloat()
+            } else {
+                1f
+            }
         aspectCache[path] = ratio
         return ratio
     }
@@ -65,7 +69,13 @@ object ImageLoader {
      * previously started for [target] is cancelled first so recycled views never show a stale
      * image. If the file is missing or cannot be decoded, [target]'s image is cleared.
      */
-    fun load(target: ImageView, path: String, reqWidth: Int, reqHeight: Int, scope: CoroutineScope) {
+    fun load(
+        target: ImageView,
+        path: String,
+        reqWidth: Int,
+        reqHeight: Int,
+        scope: CoroutineScope,
+    ) {
         (target.getTag(R.id.image_loader_job_tag) as? Job)?.cancel()
 
         val key = "$path@${reqWidth}x$reqHeight"
@@ -75,22 +85,28 @@ object ImageLoader {
         }
 
         target.setImageDrawable(null)
-        val job = scope.launch {
-            val bitmap = withContext(Dispatchers.IO) {
-                if (!File(path).exists()) {
-                    null
-                } else {
-                    decodeSampled(path, reqWidth, reqHeight)?.also { cache.put(key, it) }
+        val job =
+            scope.launch {
+                val bitmap =
+                    withContext(Dispatchers.IO) {
+                        if (!File(path).exists()) {
+                            null
+                        } else {
+                            decodeSampled(path, reqWidth, reqHeight)?.also { cache.put(key, it) }
+                        }
+                    }
+                if (bitmap != null) {
+                    target.setImageBitmap(bitmap)
                 }
             }
-            if (bitmap != null) {
-                target.setImageBitmap(bitmap)
-            }
-        }
         target.setTag(R.id.image_loader_job_tag, job)
     }
 
-    private fun decodeSampled(path: String, reqWidth: Int, reqHeight: Int): Bitmap? {
+    private fun decodeSampled(
+        path: String,
+        reqWidth: Int,
+        reqHeight: Int,
+    ): Bitmap? {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(path, options)
         if (options.outWidth <= 0 || options.outHeight <= 0) return null
@@ -100,7 +116,12 @@ object ImageLoader {
         return BitmapFactory.decodeFile(path, options)
     }
 
-    private fun calculateInSampleSize(width: Int, height: Int, reqWidth: Int, reqHeight: Int): Int {
+    private fun calculateInSampleSize(
+        width: Int,
+        height: Int,
+        reqWidth: Int,
+        reqHeight: Int,
+    ): Int {
         if (reqWidth <= 0 || reqHeight <= 0) return 1
         var inSampleSize = 1
         while (height / (inSampleSize * 2) >= reqHeight && width / (inSampleSize * 2) >= reqWidth) {

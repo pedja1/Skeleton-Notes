@@ -23,7 +23,6 @@ class NextcloudSyncSchedulerImpl(
     context: Context,
     private val getSettings: GetSettingsUseCase,
 ) : NextcloudSyncScheduler {
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val jobScheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
     private val serviceComponent = ComponentName(context, NextcloudSyncJobService::class.java)
@@ -31,8 +30,10 @@ class NextcloudSyncSchedulerImpl(
     companion object {
         /** Job ID for the repeating periodic sync. Must be unique within the app. */
         const val PERIODIC_JOB_ID = 1001
+
         /** Job ID for the user-triggered one-off sync. */
         const val ONE_OFF_JOB_ID = 1002
+
         /** Android's minimum enforced job period (15 minutes). */
         private const val MIN_PERIOD_MS = 15L * 60 * 1000
     }
@@ -41,17 +42,20 @@ class NextcloudSyncSchedulerImpl(
         scope.launch {
             val settings = getSettings().first()
             if (settings.nextcloudPeriodicSyncEnabled && settings.nextcloudConnectionInfo != null) {
-                val networkType = if (settings.nextcloudSyncOnlyOnUnmetered) {
-                    JobInfo.NETWORK_TYPE_UNMETERED
-                } else {
-                    JobInfo.NETWORK_TYPE_ANY
-                }
+                val networkType =
+                    if (settings.nextcloudSyncOnlyOnUnmetered) {
+                        JobInfo.NETWORK_TYPE_UNMETERED
+                    } else {
+                        JobInfo.NETWORK_TYPE_ANY
+                    }
                 val periodMs = (settings.nextcloudSyncIntervalMinutes * 60 * 1000).coerceAtLeast(MIN_PERIOD_MS)
-                val jobInfo = JobInfo.Builder(PERIODIC_JOB_ID, serviceComponent)
-                    .setPeriodic(periodMs)
-                    .setRequiredNetworkType(networkType)
-                    .setPersisted(true)
-                    .build()
+                val jobInfo =
+                    JobInfo
+                        .Builder(PERIODIC_JOB_ID, serviceComponent)
+                        .setPeriodic(periodMs)
+                        .setRequiredNetworkType(networkType)
+                        .setPersisted(true)
+                        .build()
                 jobScheduler.schedule(jobInfo)
             } else {
                 jobScheduler.cancel(PERIODIC_JOB_ID)
@@ -60,8 +64,10 @@ class NextcloudSyncSchedulerImpl(
     }
 
     override fun syncNow() {
-        val builder = JobInfo.Builder(ONE_OFF_JOB_ID, serviceComponent)
-            .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+        val builder =
+            JobInfo
+                .Builder(ONE_OFF_JOB_ID, serviceComponent)
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setExpedited(true)
         } else {

@@ -63,7 +63,6 @@ class ProductionAppGraph(
     override val application: Application,
     inMemoryDatabase: Boolean = false,
 ) : AppGraph {
-
     init {
         DataDi.init(application, inMemoryDatabase)
         DomainDi.init(
@@ -95,7 +94,8 @@ class ProductionAppGraph(
 
     override val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase get() = DomainDi.searchAndFilterNotesUseCase
 
-    override val syncNotesWithNextcloudUseCase: SyncNotesWithNextcloudUseCase get() = DomainDi.syncNotesWithNextcloudUseCase
+    override val syncNotesWithNextcloudUseCase: SyncNotesWithNextcloudUseCase
+        get() = DomainDi.syncNotesWithNextcloudUseCase
 
     override val getSettingsUseCase: GetSettingsUseCase get() = DomainDi.getSettingsUseCase
 
@@ -103,9 +103,11 @@ class ProductionAppGraph(
 
     override val setSyncIntervalUseCase: SetSyncIntervalUseCase get() = DomainDi.setSyncIntervalUseCase
 
-    override val setSyncOnlyOnUnmeteredUseCase: SetSyncOnlyOnUnmeteredUseCase get() = DomainDi.setSyncOnlyOnUnmeteredUseCase
+    override val setSyncOnlyOnUnmeteredUseCase: SetSyncOnlyOnUnmeteredUseCase
+        get() = DomainDi.setSyncOnlyOnUnmeteredUseCase
 
-    override val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase get() = DomainDi.initiateNextcloudLoginUseCase
+    override val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase
+        get() = DomainDi.initiateNextcloudLoginUseCase
 
     override val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase get() = DomainDi.pollNextcloudLoginUseCase
 

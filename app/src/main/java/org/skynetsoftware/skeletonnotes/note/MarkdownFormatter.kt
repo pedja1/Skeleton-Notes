@@ -23,7 +23,6 @@ import org.skynetsoftware.skeletonnotes.note.MarkdownFormatter.toMarkdown
  * maintained, so the load/save round trip stays stable).
  */
 object MarkdownFormatter {
-
     /** Relative size for an H1, matching Android's internal `HEADING_SIZES[0]`. */
     const val H1_SCALE = 1.5f
 
@@ -35,7 +34,9 @@ object MarkdownFormatter {
     /** Matches the leading `#`..`######` of a heading line (before any inline parsing/unescaping). */
     private val HEADING_REGEX = Regex("^(#{1,6})\\s+(.*)$", RegexOption.DOT_MATCHES_ALL)
 
-    private enum class Emphasis(val marker: String) {
+    private enum class Emphasis(
+        val marker: String,
+    ) {
         BOLD("**"),
         ITALIC("*"),
     }
@@ -108,15 +109,24 @@ object MarkdownFormatter {
     }
 
     /** A parsed heading's text range and level, collected during parsing and applied afterwards. */
-    private data class HeadingRange(val start: Int, val end: Int, val level: Int)
+    private data class HeadingRange(
+        val start: Int,
+        val end: Int,
+        val level: Int,
+    )
 
-    private fun serializeParagraph(spanned: Spanned, start: Int, end: Int): String {
+    private fun serializeParagraph(
+        spanned: Spanned,
+        start: Int,
+        end: Int,
+    ): String {
         val level = headingLevelFor(spanned, start, end)
-        val prefix = when (level) {
-            1 -> "# "
-            2 -> "## "
-            else -> ""
-        }
+        val prefix =
+            when (level) {
+                1 -> "# "
+                2 -> "## "
+                else -> ""
+            }
         if (start == end) return prefix
         val inline = serializeInline(spanned, start, end, isHeading = level != 0)
         // A plain paragraph that happens to start with '#' would be misread as a heading on load.
@@ -124,9 +134,15 @@ object MarkdownFormatter {
         return prefix + escaped
     }
 
-    private fun headingLevelFor(spanned: Spanned, start: Int, end: Int): Int {
-        val sizeSpan = spanned.getSpans(start, end, RelativeSizeSpan::class.java)
-            .firstOrNull() ?: return 0
+    private fun headingLevelFor(
+        spanned: Spanned,
+        start: Int,
+        end: Int,
+    ): Int {
+        val sizeSpan =
+            spanned
+                .getSpans(start, end, RelativeSizeSpan::class.java)
+                .firstOrNull() ?: return 0
         return when {
             approxEquals(sizeSpan.sizeChange, H1_SCALE) -> 1
             approxEquals(sizeSpan.sizeChange, H2_SCALE) -> 2
@@ -140,7 +156,12 @@ object MarkdownFormatter {
      * nested way. When [isHeading] the whole-paragraph bold conveyed by the `#` prefix is skipped so
      * no redundant `**` is emitted inside the heading.
      */
-    private fun serializeInline(spanned: Spanned, start: Int, end: Int, isHeading: Boolean): String {
+    private fun serializeInline(
+        spanned: Spanned,
+        start: Int,
+        end: Int,
+        isHeading: Boolean,
+    ): String {
         val sb = StringBuilder()
         val open = ArrayDeque<Emphasis>()
         var i = start
@@ -158,7 +179,12 @@ object MarkdownFormatter {
         return sb.toString()
     }
 
-    private fun activeEmphasis(spanned: Spanned, from: Int, to: Int, isHeading: Boolean): Set<Emphasis> {
+    private fun activeEmphasis(
+        spanned: Spanned,
+        from: Int,
+        to: Int,
+        isHeading: Boolean,
+    ): Set<Emphasis> {
         val result = mutableSetOf<Emphasis>()
         for (span in spanned.getSpans(from, to, StyleSpan::class.java)) {
             when (span.style) {
@@ -177,7 +203,11 @@ object MarkdownFormatter {
      * Closes emphasis markers that are no longer active (and everything stacked above them), then
      * opens the newly active ones in [CANONICAL_ORDER], keeping the emitted markers validly nested.
      */
-    private fun adjustStack(sb: StringBuilder, open: ArrayDeque<Emphasis>, active: Set<Emphasis>) {
+    private fun adjustStack(
+        sb: StringBuilder,
+        open: ArrayDeque<Emphasis>,
+        active: Set<Emphasis>,
+    ) {
         val divergence = open.indexOfFirst { it !in active }
         if (divergence >= 0) {
             while (open.size > divergence) sb.append(open.removeLast().marker)
@@ -190,7 +220,11 @@ object MarkdownFormatter {
         }
     }
 
-    private fun escapeInline(spanned: Spanned, from: Int, to: Int): String {
+    private fun escapeInline(
+        spanned: Spanned,
+        from: Int,
+        to: Int,
+    ): String {
         val sb = StringBuilder(to - from)
         for (index in from until to) {
             val c = spanned[index]
@@ -200,34 +234,51 @@ object MarkdownFormatter {
         return sb.toString()
     }
 
-    private fun parseInline(text: String, builder: SpannableStringBuilder) {
+    private fun parseInline(
+        text: String,
+        builder: SpannableStringBuilder,
+    ) {
         val emphasis = EmphasisTracker()
         var i = 0
         while (i < text.length) {
-            i = when {
-                isEscape(text, i) -> appendEscaped(text, i, builder)
-                isBold(text, i) -> emphasis.toggleBold(builder, i)
-                text[i] == '*' -> emphasis.toggleItalic(builder, i)
-                else -> appendLiteral(text, i, builder)
-            }
+            i =
+                when {
+                    isEscape(text, i) -> appendEscaped(text, i, builder)
+                    isBold(text, i) -> emphasis.toggleBold(builder, i)
+                    text[i] == '*' -> emphasis.toggleItalic(builder, i)
+                    else -> appendLiteral(text, i, builder)
+                }
         }
     }
 
     /** True when [index] begins a backslash escape sequence (`\` followed by another char). */
-    private fun isEscape(text: String, index: Int) = text[index] == '\\' && index + 1 < text.length
+    private fun isEscape(
+        text: String,
+        index: Int,
+    ) = text[index] == '\\' && index + 1 < text.length
 
     /** True when [index] begins a bold marker (`**`). */
-    private fun isBold(text: String, index: Int) =
-        text[index] == '*' && index + 1 < text.length && text[index + 1] == '*'
+    private fun isBold(
+        text: String,
+        index: Int,
+    ) = text[index] == '*' && index + 1 < text.length && text[index + 1] == '*'
 
     /** Appends the character escaped by the backslash at [index] and returns the next index. */
-    private fun appendEscaped(text: String, index: Int, builder: SpannableStringBuilder): Int {
+    private fun appendEscaped(
+        text: String,
+        index: Int,
+        builder: SpannableStringBuilder,
+    ): Int {
         builder.append(text[index + 1])
         return index + 2
     }
 
     /** Appends the single literal character at [index] and returns the next index. */
-    private fun appendLiteral(text: String, index: Int, builder: SpannableStringBuilder): Int {
+    private fun appendLiteral(
+        text: String,
+        index: Int,
+        builder: SpannableStringBuilder,
+    ): Int {
         builder.append(text[index])
         return index + 1
     }
@@ -241,7 +292,10 @@ object MarkdownFormatter {
         private var italicStart = -1
 
         /** Handles a `**` marker at [index], opening or closing a bold run. Returns the next index. */
-        fun toggleBold(builder: SpannableStringBuilder, index: Int): Int {
+        fun toggleBold(
+            builder: SpannableStringBuilder,
+            index: Int,
+        ): Int {
             if (boldStart < 0) {
                 boldStart = builder.length
             } else {
@@ -249,7 +303,7 @@ object MarkdownFormatter {
                     StyleSpan(Typeface.BOLD),
                     boldStart,
                     builder.length,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
                 )
                 boldStart = -1
             }
@@ -257,7 +311,10 @@ object MarkdownFormatter {
         }
 
         /** Handles a `*` marker at [index], opening or closing an italic run. Returns the next index. */
-        fun toggleItalic(builder: SpannableStringBuilder, index: Int): Int {
+        fun toggleItalic(
+            builder: SpannableStringBuilder,
+            index: Int,
+        ): Int {
             if (italicStart < 0) {
                 italicStart = builder.length
             } else {
@@ -265,7 +322,7 @@ object MarkdownFormatter {
                     StyleSpan(Typeface.ITALIC),
                     italicStart,
                     builder.length,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
                 )
                 italicStart = -1
             }
@@ -273,5 +330,8 @@ object MarkdownFormatter {
         }
     }
 
-    private fun approxEquals(a: Float, b: Float) = kotlin.math.abs(a - b) < SCALE_TOLERANCE
+    private fun approxEquals(
+        a: Float,
+        b: Float,
+    ) = kotlin.math.abs(a - b) < SCALE_TOLERANCE
 }

@@ -10,7 +10,6 @@ import org.skynetsoftware.skeletonnotes.domain.model.Result
  * Allows [org.skynetsoftware.skeletonnotes.data.repository.NotesRepositoryImpl] to be tested with mocked data sources.
  */
 internal interface NotesDataSource {
-
     /**
      * Retrieves all notes as Flow.
      */

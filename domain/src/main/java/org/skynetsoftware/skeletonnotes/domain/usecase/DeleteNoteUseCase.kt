@@ -6,7 +6,9 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 /**
  * Use case for deleting a note and its attachments by ID.
  */
-class DeleteNoteUseCase(private val notesRepository: NotesRepository) {
+class DeleteNoteUseCase(
+    private val notesRepository: NotesRepository,
+) {
     /**
      * Deletes the note identified by [id] along with all its attachments.
      *

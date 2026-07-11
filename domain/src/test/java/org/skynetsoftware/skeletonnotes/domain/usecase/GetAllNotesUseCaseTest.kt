@@ -58,7 +58,9 @@ class GetAllNotesUseCaseTest {
             assertTrue(notesList.isEmpty())
         }
 
-    private class FakeNotesRepository(private val notes: List<Note>) : BaseFakeNotesRepository() {
+    private class FakeNotesRepository(
+        private val notes: List<Note>,
+    ) : BaseFakeNotesRepository() {
         override fun getAllNotesFlow(): Flow<Result<List<Note>>> =
             flow {
                 emit(Result.Success(notes))
@@ -74,7 +76,7 @@ class GetAllNotesUseCaseTest {
                 emit(getNoteById(id))
             }
 
-        override fun getNoteById(id: String): Result<NoteWithAttachments> =
+        override suspend fun getNoteById(id: String): Result<NoteWithAttachments> =
             Result.Success(NoteWithAttachments(note = notes.first { it.id == id }, attachments = emptyList()))
     }
 }

@@ -24,7 +24,6 @@ internal class NextcloudRepositoryImpl(
     private val nextcloudConfigStore: NextcloudConfigStore,
     private val attachmentFileStorage: AttachmentFileStorage,
 ) : NextcloudRepository {
-
     override suspend fun initiateLogin(serverUrl: String) = nextcloudApi.initiateLoginFlow(serverUrl)
 
     override suspend fun pollLogin(
@@ -32,8 +31,8 @@ internal class NextcloudRepositoryImpl(
         endpoint: String,
     ) = nextcloudApi.pollLogin(token, endpoint)
 
-    override fun connectionInfo(): Flow<NextcloudConnectionInfo?> {
-        return combine(
+    override fun connectionInfo(): Flow<NextcloudConnectionInfo?> =
+        combine(
             nextcloudConfigStore.serverUrl,
             nextcloudConfigStore.username,
         ) { serverUrl, username ->
@@ -43,26 +42,22 @@ internal class NextcloudRepositoryImpl(
                 null
             }
         }
-    }
 
     override fun logout() = nextcloudConfigStore.clearServerConfig()
 
     /**
      * Lists all note JSON files in .skeleton_notes/ via WebDAV PROPFIND.
      */
-    override suspend fun listFiles(): Result<List<NextcloudFileInfo>> {
-        return nextcloudApi.listDirectory("/")
-    }
+    override suspend fun listFiles(): Result<List<NextcloudFileInfo>> = nextcloudApi.listDirectory("/")
 
     /**
      * Downloads a note JSON file and deserializes it into a [NextcloudNote].
      */
-    override suspend fun downloadNote(uuid: String): Result<NextcloudNote> {
-        return when (val result = nextcloudApi.downloadFile("$uuid.json")) {
+    override suspend fun downloadNote(uuid: String): Result<NextcloudNote> =
+        when (val result = nextcloudApi.downloadFile("$uuid.json")) {
             is Result.Success -> Result.Success(JSONObject(result.data.toString(Charsets.UTF_8)).toNextcloudNote())
             is Result.Failure -> Result.Failure(result.throwable)
         }
-    }
 
     /**
      * Serializes a [NextcloudNote] to JSON and uploads it to the server.
@@ -79,9 +74,7 @@ internal class NextcloudRepositoryImpl(
     /**
      * Deletes a note JSON file from the server.
      */
-    override suspend fun deleteRemoteNote(uuid: String): Result<Unit> {
-        return nextcloudApi.deleteFile("$uuid.json")
-    }
+    override suspend fun deleteRemoteNote(uuid: String): Result<Unit> = nextcloudApi.deleteFile("$uuid.json")
 
     /**
      * Uploads an attachment file to the note's subdirectory on the server.
@@ -115,10 +108,11 @@ internal class NextcloudRepositoryImpl(
     ): Result<String> {
         val rawExt = filename.substringAfterLast('.', "")
         val extension = if (rawExt.isNotBlank() && rawExt != filename) ".$rawExt" else null
-        val path = attachmentFileStorage.openWriteStream(attachmentId, extension).use { target ->
-            nextcloudApi.downloadFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}", target.outputStream)
-            target.path
-        }
+        val path =
+            attachmentFileStorage.openWriteStream(attachmentId, extension).use { target ->
+                nextcloudApi.downloadFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}", target.outputStream)
+                target.path
+            }
         return Result.Success(path)
     }
 
@@ -129,9 +123,7 @@ internal class NextcloudRepositoryImpl(
         noteId: String,
         attachmentId: String,
         filename: String,
-    ): Result<Unit> {
-        return nextcloudApi.deleteFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}")
-    }
+    ): Result<Unit> = nextcloudApi.deleteFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}")
 
     /**
      * Reduces a filename to a single safe path segment, stripping any directory components and

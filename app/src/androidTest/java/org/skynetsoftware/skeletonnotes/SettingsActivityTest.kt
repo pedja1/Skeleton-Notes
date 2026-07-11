@@ -27,7 +27,6 @@ import org.skynetsoftware.skeletonnotes.settings.SettingsActivity
 
 @RunWith(AndroidJUnit4::class)
 class SettingsActivityTest {
-
     @After
     fun tearDown() {
         AppDi.install(ProductionAppGraph(testApplication, inMemoryDatabase = true))
@@ -115,18 +114,21 @@ class SettingsActivityTest {
         AppDi.install(fakeGraph)
 
         ActivityScenario.launch(SettingsActivity::class.java).use {
-            onView(allOf(
-                withId(R.id.item_title),
-                isDescendantOfA(withId(R.id.itemNextcloudConnect)),
-            )).check(matches(withText(R.string.settings_item_nextcloud_connected_title)))
+            onView(
+                allOf(
+                    withId(R.id.item_title),
+                    isDescendantOfA(withId(R.id.itemNextcloudConnect)),
+                ),
+            ).check(matches(withText(R.string.settings_item_nextcloud_connected_title)))
         }
     }
 
     @Test
     fun connectItemShowsErrorAfterFailedLogin() {
-        val ncRepo = FakeSettingsNextcloudRepository(
-            initiateResult = Result.Failure(Exception("connection failed")),
-        )
+        val ncRepo =
+            FakeSettingsNextcloudRepository(
+                initiateResult = Result.Failure(Exception("connection failed")),
+            )
         val settingsRepo = FakeSettingsRepository()
         val prodGraph = ProductionAppGraph(testApplication, inMemoryDatabase = true)
         val fakeGraph = FakeSettingsAppGraph(prodGraph, settingsRepo, ncRepo)
@@ -156,10 +158,12 @@ class SettingsActivityTest {
             onView(withId(R.id.nextcloudServerUrl)).perform(typeText("https://example.com"))
             onView(withText(android.R.string.ok)).perform(click())
 
-            onView(allOf(
-                withId(R.id.progressBar),
-                isDescendantOfA(withId(R.id.itemNextcloudConnect)),
-            )).check(matches(isDisplayed()))
+            onView(
+                allOf(
+                    withId(R.id.progressBar),
+                    isDescendantOfA(withId(R.id.itemNextcloudConnect)),
+                ),
+            ).check(matches(isDisplayed()))
 
             blocker.complete(Unit)
         }
@@ -174,12 +178,17 @@ class SettingsActivityTest {
         AppDi.install(fakeGraph)
 
         ActivityScenario.launch(SettingsActivity::class.java).use {
-            val neverText = InstrumentationRegistry.getInstrumentation()
-                .targetContext.getString(R.string.settings_item_nextcloud_last_sync_never)
-            onView(allOf(
-                withId(R.id.item_subtitle),
-                isDescendantOfA(withId(R.id.itemNextcloudSyncNow)),
-            )).check(matches(not(withText(containsString(neverText)))))
+            val neverText =
+                InstrumentationRegistry
+                    .getInstrumentation()
+                    .targetContext
+                    .getString(R.string.settings_item_nextcloud_last_sync_never)
+            onView(
+                allOf(
+                    withId(R.id.item_subtitle),
+                    isDescendantOfA(withId(R.id.itemNextcloudSyncNow)),
+                ),
+            ).check(matches(not(withText(containsString(neverText)))))
         }
     }
 
@@ -192,10 +201,12 @@ class SettingsActivityTest {
         AppDi.install(fakeGraph)
 
         ActivityScenario.launch(SettingsActivity::class.java).use {
-            onView(allOf(
-                withId(R.id.item_switch),
-                isDescendantOfA(withId(R.id.itemNextcloudPeriodicSync)),
-            )).check(matches(isChecked()))
+            onView(
+                allOf(
+                    withId(R.id.item_switch),
+                    isDescendantOfA(withId(R.id.itemNextcloudPeriodicSync)),
+                ),
+            ).check(matches(isChecked()))
         }
     }
 
@@ -208,10 +219,12 @@ class SettingsActivityTest {
         AppDi.install(fakeGraph)
 
         ActivityScenario.launch(SettingsActivity::class.java).use {
-            onView(allOf(
-                withId(R.id.item_switch),
-                isDescendantOfA(withId(R.id.itemNextcloudPeriodicSync)),
-            )).check(matches(not(isChecked())))
+            onView(
+                allOf(
+                    withId(R.id.item_switch),
+                    isDescendantOfA(withId(R.id.itemNextcloudPeriodicSync)),
+                ),
+            ).check(matches(not(isChecked())))
         }
     }
 
@@ -235,9 +248,10 @@ class SettingsActivityTest {
     @Test
     fun serverUrlDialogPreFillsExistingUrl() {
         val existingUrl = "https://my.nextcloud.org"
-        val ncRepo = FakeSettingsNextcloudRepository(
-            initiateResult = Result.Failure(Exception("connection failed")),
-        )
+        val ncRepo =
+            FakeSettingsNextcloudRepository(
+                initiateResult = Result.Failure(Exception("connection failed")),
+            )
         val settingsRepo = FakeSettingsRepository()
         val prodGraph = ProductionAppGraph(testApplication, inMemoryDatabase = true)
         val fakeGraph = FakeSettingsAppGraph(prodGraph, settingsRepo, ncRepo)

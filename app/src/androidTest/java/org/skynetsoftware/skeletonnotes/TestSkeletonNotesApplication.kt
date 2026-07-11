@@ -8,6 +8,5 @@ import org.skynetsoftware.skeletonnotes.di.ProductionAppGraph
  * backed by an in-memory database so tests never touch the on-disk database.
  */
 class TestSkeletonNotesApplication : SkeletonNotesApplication() {
-
     override fun createGraph(): AppGraph = ProductionAppGraph(this, inMemoryDatabase = true)
 }

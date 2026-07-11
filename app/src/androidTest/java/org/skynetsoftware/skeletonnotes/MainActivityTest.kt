@@ -13,11 +13,11 @@ import androidx.test.espresso.intent.matcher.IntentMatchers.hasExtra
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
-import org.hamcrest.CoreMatchers.allOf
-import org.hamcrest.CoreMatchers.not
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import org.hamcrest.CoreMatchers.allOf
+import org.hamcrest.CoreMatchers.not
 import org.junit.After
 import org.junit.Before
 import org.junit.FixMethodOrder
@@ -38,7 +38,6 @@ import java.util.UUID
 @RunWith(AndroidJUnit4::class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class MainActivityTest {
-
     @Before
     fun setUp() {
         Intents.init()
@@ -149,53 +148,56 @@ class MainActivityTest {
                 .perform(
                     RecyclerViewActions.actionOnItemAtPosition<RecyclerView.ViewHolder>(
                         0,
-                        click()
-                    )
+                        click(),
+                    ),
                 )
             intended(
                 allOf(
                     hasComponent(NoteDetailActivity::class.java.name),
-                    hasExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId)
-                )
+                    hasExtra(NoteDetailActivity.EXTRA_NOTE_ID, noteId),
+                ),
             )
         }
     }
 
-    private fun prePopulateNote(): String {
-        return runBlocking {
+    private fun prePopulateNote(): String =
+        runBlocking {
             val noteId = UUID.randomUUID().toString()
-            val note = NoteWithAttachments(
-                note = Note(
-                    id = noteId,
-                    title = "Test Note",
-                    content = "# Test Note\nContent",
-                    createdAt = System.currentTimeMillis(),
-                    modifiedAt = System.currentTimeMillis(),
-                    tags = emptySet()
-                ),
-                attachments = emptyList()
-            )
+            val note =
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = noteId,
+                            title = "Test Note",
+                            content = "# Test Note\nContent",
+                            createdAt = System.currentTimeMillis(),
+                            modifiedAt = System.currentTimeMillis(),
+                            tags = emptySet(),
+                        ),
+                    attachments = emptyList(),
+                )
             val result = DataDi.notesRepository.saveNote(note)
             require(result is Result.Success) {
                 "Failed to save note"
             }
             noteId
         }
-    }
 
     private fun prePopulateNotes() {
         runBlocking {
-            val note = NoteWithAttachments(
-                note = Note(
-                    id = UUID.randomUUID().toString(),
-                    title = "Test Note",
-                    content = "# Test Note\nContent",
-                    createdAt = System.currentTimeMillis(),
-                    modifiedAt = System.currentTimeMillis(),
-                    tags = emptySet()
-                ),
-                attachments = emptyList()
-            )
+            val note =
+                NoteWithAttachments(
+                    note =
+                        Note(
+                            id = UUID.randomUUID().toString(),
+                            title = "Test Note",
+                            content = "# Test Note\nContent",
+                            createdAt = System.currentTimeMillis(),
+                            modifiedAt = System.currentTimeMillis(),
+                            tags = emptySet(),
+                        ),
+                    attachments = emptyList(),
+                )
             DataDi.notesRepository.saveNote(note)
         }
     }

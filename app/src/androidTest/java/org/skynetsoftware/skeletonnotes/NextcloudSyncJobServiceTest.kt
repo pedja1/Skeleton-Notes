@@ -11,11 +11,11 @@ import org.junit.runner.RunWith
 import org.skynetsoftware.skeletonnotes.di.AppDi
 import org.skynetsoftware.skeletonnotes.di.AppGraph
 import org.skynetsoftware.skeletonnotes.di.ProductionAppGraph
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentWriteTarget
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
-import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
-import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentWriteTarget
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncResult
@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 @RunWith(AndroidJUnit4::class)
 class NextcloudSyncJobServiceTest {
-
     private lateinit var useCase: RecordingSyncUseCase
 
     @Before
@@ -79,12 +78,13 @@ class NextcloudSyncJobServiceTest {
      * Sync use case that records invocations and signals when it starts, without performing any
      * real work.
      */
-    private class RecordingSyncUseCase : SyncNotesWithNextcloudUseCase(
-        NoOpNotesRepository(),
-        FakeSettingsNextcloudRepository(),
-        FakeSettingsRepository(),
-        NoOpAttachmentFileStorage(),
-    ) {
+    private class RecordingSyncUseCase :
+        SyncNotesWithNextcloudUseCase(
+            NoOpNotesRepository(),
+            FakeSettingsNextcloudRepository(),
+            FakeSettingsRepository(),
+            NoOpAttachmentFileStorage(),
+        ) {
         val started = CountDownLatch(1)
         val invocations = AtomicInteger(0)
 
@@ -99,17 +99,19 @@ class NextcloudSyncJobServiceTest {
     private class NoOpNotesRepository : NotesRepository {
         override fun getAllNotesFlow(): Flow<Result<List<Note>>> = flowOf(Result.Success(emptyList()))
 
-        override fun getAllNotes(): Result<List<Note>> = Result.Success(emptyList())
+        override suspend fun getAllNotes(): Result<List<Note>> = Result.Success(emptyList())
 
         override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> =
             flowOf(Result.Success(emptyList()))
 
-        override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> = Result.Success(emptyList())
+        override suspend fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> =
+            Result.Success(emptyList())
 
         override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> =
             flowOf(Result.Failure(Exception("not found")))
 
-        override fun getNoteById(id: String): Result<NoteWithAttachments> = Result.Failure(Exception("not found"))
+        override suspend fun getNoteById(id: String): Result<NoteWithAttachments> =
+            Result.Failure(Exception("not found"))
 
         override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit> = Result.Success(Unit)
 
@@ -124,16 +126,21 @@ class NextcloudSyncJobServiceTest {
 
     /** No-op [org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage] used only to satisfy the sync use case constructor. */
     private class NoOpAttachmentFileStorage : AttachmentFileStorage {
-        override fun copyToStorage(source: String, attachmentId: String, mimeType: String?): String = ""
+        override fun copyToStorage(
+            source: String,
+            attachmentId: String,
+            mimeType: String?,
+        ): String = ""
 
         override fun writeStream(
             attachmentId: String,
             inputStream: InputStream,
         ): String = ""
 
-        override fun openWriteStream(attachmentId: String, extension: String?): AttachmentWriteTarget {
-            return AttachmentWriteTarget("", ByteArrayOutputStream())
-        }
+        override fun openWriteStream(
+            attachmentId: String,
+            extension: String?,
+        ): AttachmentWriteTarget = AttachmentWriteTarget("", ByteArrayOutputStream())
 
         override fun getFile(attachmentId: String): File = File("")
 

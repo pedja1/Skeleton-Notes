@@ -21,7 +21,6 @@ import org.skynetsoftware.skeletonnotes.di.AppDi
  * callbacks run on the main thread, so no additional synchronization is required.
  */
 class NextcloudSyncJobService : JobService() {
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val runner = SerialSyncRunner(scope) { AppDi.syncNotesWithNextcloudUseCase() }
 

@@ -99,12 +99,11 @@ open class SyncNotesWithNextcloudUseCase(
     /**
      * Lists the remote sync folder and keys the entries by note UUID (filename without .json).
      */
-    private suspend fun loadRemoteFileMap(): Result<Map<String, NextcloudFileInfo>> {
-        return when (val result = nextcloudRepository.listFiles()) {
+    private suspend fun loadRemoteFileMap(): Result<Map<String, NextcloudFileInfo>> =
+        when (val result = nextcloudRepository.listFiles()) {
             is Result.Success -> Result.Success(result.data.associateBy { it.filename.removeSuffix(".json") })
             is Result.Failure -> Result.Failure(result.throwable)
         }
-    }
 
     /**
      * Decides what to do with a single local note: delete remotely when trashed,
@@ -341,8 +340,8 @@ open class SyncNotesWithNextcloudUseCase(
         internal fun NextcloudNote.toNote(
             uuid: String,
             remoteLastModified: Long,
-        ): Note {
-            return Note(
+        ): Note =
+            Note(
                 id = uuid,
                 title = title,
                 content = content,
@@ -357,15 +356,14 @@ open class SyncNotesWithNextcloudUseCase(
                     },
                 remoteLastModified = remoteLastModified,
             )
-        }
 
         /**
          * Converts a local [Note] to a [NextcloudNote] for remote storage.
          *
          * @param attachments list of attachment references to include
          */
-        internal fun Note.toNextcloudNote(attachments: List<NextcloudAttachment>): NextcloudNote {
-            return NextcloudNote(
+        internal fun Note.toNextcloudNote(attachments: List<NextcloudAttachment>): NextcloudNote =
+            NextcloudNote(
                 id = id,
                 title = title,
                 content = content,
@@ -375,7 +373,6 @@ open class SyncNotesWithNextcloudUseCase(
                 status = status.name,
                 attachments = attachments,
             )
-        }
     }
 }
 
@@ -387,10 +384,14 @@ sealed class SyncResult {
     data object Success : SyncResult()
 
     /** Sync completed but some notes had conflicts that were skipped. */
-    data class HasConflicts(val conflicts: List<NoteConflict>) : SyncResult()
+    data class HasConflicts(
+        val conflicts: List<NoteConflict>,
+    ) : SyncResult()
 
     /** Sync failed due to an error. */
-    data class Error(val throwable: Throwable) : SyncResult()
+    data class Error(
+        val throwable: Throwable,
+    ) : SyncResult()
 }
 
 /**

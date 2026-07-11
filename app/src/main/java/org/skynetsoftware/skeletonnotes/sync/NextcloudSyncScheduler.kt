@@ -7,7 +7,6 @@ package org.skynetsoftware.skeletonnotes.sync
  * converges to the correct scheduler state without leaking jobs.
  */
 interface NextcloudSyncScheduler {
-
     /**
      * Reads the current settings and either schedules or cancels the periodic sync job
      * accordingly. Call whenever a setting that affects the job changes (toggle, interval,

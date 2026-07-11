@@ -15,8 +15,8 @@ class SearchAndFilterNotesUseCase {
     operator fun invoke(
         notes: List<NoteWithAttachments>,
         filter: Filter,
-    ): List<NoteWithAttachments> {
-        return notes.filter { noteWithAttachments ->
+    ): List<NoteWithAttachments> =
+        notes.filter { noteWithAttachments ->
             val note = noteWithAttachments.note
             val statusFilterMatches =
                 when (note.status) {
@@ -34,5 +34,4 @@ class SearchAndFilterNotesUseCase {
                 }
             statusFilterMatches && queryFilterMatches
         }
-    }
 }
