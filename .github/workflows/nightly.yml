@@ -25,7 +25,7 @@ jobs:
           HEAD=$(git rev-parse HEAD)
 
           RELEASE_COMMITS=$(gh api "repos/${GITHUB_REPOSITORY}/releases" \
-            --paginate --jq '.[].target_commitish')
+            --paginate --jq '.[] | select(.draft == false) | .target_commitish')
 
           if echo "$RELEASE_COMMITS" | grep -q "^${HEAD}$"; then
             echo "HEAD (${HEAD}) already has a release, skipping build"
@@ -82,6 +82,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.timestamp }}
           name: Nightly ${{ steps.version.outputs.timestamp }}
           body: Nightly build
+          draft: false
           prerelease: true
           target_commitish: ${{ github.sha }}
           files: |
