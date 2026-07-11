@@ -37,6 +37,15 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      - name: Compute version
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          TIMESTAMP=$(date -u +'%Y%m%d%H%M')
+          VERSION_CODE=$(git rev-list --count HEAD)
+          echo "VERSION_NAME=${TIMESTAMP}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
+          echo "versionName=${TIMESTAMP}, versionCode=${VERSION_CODE}"
+
       - name: Decode keystore
         if: steps.check.outputs.skip != 'true'
         run: |
@@ -58,9 +67,8 @@ jobs:
       - name: Create Gitea Nightly Release
         if: steps.check.outputs.skip != 'true'
         run: |
-          TIMESTAMP=$(date +'%Y%m%d%H%M')
           HEAD=$(git rev-parse HEAD)
-          echo "Nightly version: ${TIMESTAMP}"
+          echo "Nightly version: ${VERSION_NAME}"
 
           RELEASE_APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
           DEBUG_APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
@@ -70,7 +78,7 @@ jobs:
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d "{\"tag_name\": \"${TIMESTAMP}\", \"name\": \"Nightly ${TIMESTAMP}\", \"body\": \"Nightly build\", \"prerelease\": true, \"target_commitish\": \"${HEAD}\"}" \
+            -d "{\"tag_name\": \"${VERSION_NAME}\", \"name\": \"Nightly ${VERSION_NAME}\", \"body\": \"Nightly build\", \"prerelease\": true, \"target_commitish\": \"${HEAD}\"}" \
             "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases")
 
           RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')

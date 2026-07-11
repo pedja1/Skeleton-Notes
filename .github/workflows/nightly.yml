@@ -44,6 +44,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         if: steps.check.outputs.skip != 'true'
 
+      - name: Compute version
+        id: version
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          TIMESTAMP=$(date -u +'%Y%m%d%H%M')
+          VERSION_CODE=$(git rev-list --count HEAD)
+          echo "VERSION_NAME=${TIMESTAMP}" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
+          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
+          echo "versionName=${TIMESTAMP}, versionCode=${VERSION_CODE}"
+
       - name: Decode keystore
         if: steps.check.outputs.skip != 'true'
         run: |
@@ -61,14 +72,6 @@ jobs:
       - name: Build debug APK
         if: steps.check.outputs.skip != 'true'
         run: ./gradlew assembleDebug
-
-      - name: Compute nightly version
-        id: version
-        if: steps.check.outputs.skip != 'true'
-        run: |
-          TIMESTAMP=$(date -u +'%Y%m%d%H%M')
-          echo "Nightly version: ${TIMESTAMP}"
-          echo "timestamp=${TIMESTAMP}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Nightly Release
         if: steps.check.outputs.skip != 'true'
