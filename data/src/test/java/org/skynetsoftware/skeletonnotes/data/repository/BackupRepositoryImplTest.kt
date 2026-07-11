@@ -316,7 +316,7 @@ class BackupRepositoryImplTest {
             return file.absolutePath
         }
 
-        override fun copyToStorage(source: String, attachmentId: String): String =
+        override fun copyToStorage(source: String, attachmentId: String, mimeType: String?): String =
             writeBytes(attachmentId, File(source).readBytes())
 
         override fun writeStream(attachmentId: String, inputStream: InputStream): String {
@@ -333,7 +333,7 @@ class BackupRepositoryImplTest {
             return file.absolutePath
         }
 
-        override fun openWriteStream(attachmentId: String): AttachmentWriteTarget {
+        override fun openWriteStream(attachmentId: String, extension: String?): AttachmentWriteTarget {
             val file = File(dir, attachmentId)
             file.parentFile?.mkdirs()
             return AttachmentWriteTarget(file.absolutePath, file.outputStream())

@@ -3,6 +3,7 @@ package org.skynetsoftware.skeletonnotes.data.attachment
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
+import android.webkit.MimeTypeMap
 import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
 import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentWriteTarget
 import java.io.File
@@ -23,13 +24,16 @@ internal class AttachmentStorageImpl(private val context: Context) : AttachmentF
      *
      * @param source the source URI (content://, file://)
      * @param attachmentId the attachment ID to use as filename
-     * @param filename the original filename for reference
+     * @param mimeType mimeType of the source, to determine file extension
      * @return the local file absolute path
      */
     @SuppressLint("UseKtx")
-    override fun copyToStorage(source: String, attachmentId: String): String {
+    override fun copyToStorage(source: String, attachmentId: String, mimeType: String?): String {
         val sourceUri = Uri.parse(source)
-        val file = attachmentFile(attachmentId)
+        val ext = mimeType
+            ?.let { MimeTypeMap.getSingleton().getExtensionFromMimeType(it) }
+            ?.let { ".$it" }
+        val file = attachmentFile(attachmentId, ext)
         val source = context.contentResolver.openInputStream(sourceUri) ?: error("Failed to open source")
         source.use { input ->
             file.outputStream().use { output ->
@@ -41,10 +45,14 @@ internal class AttachmentStorageImpl(private val context: Context) : AttachmentF
     }
 
     /**
-     * Returns the local file for the given [attachmentId].
+     * Returns the local file for the given [attachmentId], resolving any extension
+     * the file may have been stored with (e.g. {uuid}.jpg).
      */
     override fun getFile(attachmentId: String): File {
-        return attachmentFile(attachmentId)
+        require(isSafeAttachmentId(attachmentId)) { "Unsafe attachment id" }
+        return attachmentsDir.listFiles { f ->
+            f.name == attachmentId || f.name.startsWith("$attachmentId.")
+        }?.firstOrNull() ?: File(attachmentsDir, attachmentId)
     }
 
     /**
@@ -62,8 +70,8 @@ internal class AttachmentStorageImpl(private val context: Context) : AttachmentF
     }
 
     /** Opens internal storage for caller-managed streaming into [attachmentId]. */
-    override fun openWriteStream(attachmentId: String): AttachmentWriteTarget {
-        val file = attachmentFile(attachmentId)
+    override fun openWriteStream(attachmentId: String, extension: String?): AttachmentWriteTarget {
+        val file = attachmentFile(attachmentId, extension)
         return AttachmentWriteTarget(file.absolutePath, file.outputStream())
     }
 
@@ -74,11 +82,12 @@ internal class AttachmentStorageImpl(private val context: Context) : AttachmentF
         attachmentFile(attachmentId).delete()
     }
 
-    /** Returns a file for [attachmentId] after enforcing attachment-directory containment. */
-    private fun attachmentFile(attachmentId: String): File {
+    /** Returns a file for [attachmentId] (plus optional [extension]) after enforcing attachment-directory containment. */
+    private fun attachmentFile(attachmentId: String, extension: String? = null): File {
         require(isSafeAttachmentId(attachmentId)) { "Unsafe attachment id" }
+        val filename = "$attachmentId${extension.orEmpty()}"
         val directory = attachmentsDir.canonicalFile
-        val file = File(directory, attachmentId).canonicalFile
+        val file = File(directory, filename).canonicalFile
         require(file.parentFile == directory) { "Unsafe attachment id" }
         return file
     }

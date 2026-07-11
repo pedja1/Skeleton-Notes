@@ -1,11 +1,10 @@
 package org.skynetsoftware.skeletonnotes.data.repository
 
-import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
-import org.skynetsoftware.skeletonnotes.data.mapper.jsonToNextcloudNote
-import org.skynetsoftware.skeletonnotes.data.mapper.nextcloudNoteToJson
+import org.skynetsoftware.skeletonnotes.data.mapper.toJson
+import org.skynetsoftware.skeletonnotes.data.mapper.toNextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudAttachment
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 
@@ -27,8 +26,8 @@ class NextcloudNoteMapperTest {
             ),
         )
 
-        val json = nextcloudNoteToJson(note)
-        val parsed = jsonToNextcloudNote(json)
+        val json = note.toJson()
+        val parsed = JSONObject(json).toNextcloudNote()
 
         assertTrue(json.contains("abc123"))
         assertTrue(json.contains("Test Note"))
@@ -55,8 +54,8 @@ class NextcloudNoteMapperTest {
             attachments = emptyList(),
         )
 
-        val json = nextcloudNoteToJson(note)
-        val parsed = jsonToNextcloudNote(json)
+        val json = note.toJson()
+        val parsed = JSONObject(json).toNextcloudNote()
 
         assertTrue(parsed.title == null || parsed.title == "")
         assertTrue(parsed.id == "abc")
@@ -65,7 +64,7 @@ class NextcloudNoteMapperTest {
     @Test
     fun nextcloudNoteWithMissingStatus() {
         val json = """{"id":"abc","title":"T","content":"c","createdAt":0,"modifiedAt":0,"tags":[],"attachments":[]}"""
-        val parsed = jsonToNextcloudNote(json)
+        val parsed = JSONObject(json).toNextcloudNote()
 
         assertTrue(parsed.id == "abc")
         assertTrue(parsed.status == "" || parsed.status == "ACTIVE")

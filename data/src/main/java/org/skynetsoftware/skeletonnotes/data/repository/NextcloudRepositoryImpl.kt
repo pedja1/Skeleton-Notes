@@ -2,9 +2,10 @@ package org.skynetsoftware.skeletonnotes.data.repository
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import org.json.JSONObject
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
-import org.skynetsoftware.skeletonnotes.data.mapper.jsonToNextcloudNote
-import org.skynetsoftware.skeletonnotes.data.mapper.nextcloudNoteToJson
+import org.skynetsoftware.skeletonnotes.data.mapper.toJson
+import org.skynetsoftware.skeletonnotes.data.mapper.toNextcloudNote
 import org.skynetsoftware.skeletonnotes.data.network.NextcloudApi
 import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
 import org.skynetsoftware.skeletonnotes.domain.model.Result
@@ -58,7 +59,7 @@ internal class NextcloudRepositoryImpl(
      */
     override suspend fun downloadNote(uuid: String): Result<NextcloudNote> {
         return when (val result = nextcloudApi.downloadFile("$uuid.json")) {
-            is Result.Success -> Result.Success(jsonToNextcloudNote(String(result.data, Charsets.UTF_8)))
+            is Result.Success -> Result.Success(JSONObject(result.data.toString(Charsets.UTF_8)).toNextcloudNote())
             is Result.Failure -> Result.Failure(result.throwable)
         }
     }
@@ -67,7 +68,7 @@ internal class NextcloudRepositoryImpl(
      * Serializes a [NextcloudNote] to JSON and uploads it to the server.
      */
     override suspend fun uploadNote(note: NextcloudNote): Result<Unit> {
-        val json = nextcloudNoteToJson(note)
+        val json = note.toJson()
         return nextcloudApi.uploadFile(
             "${note.id}.json",
             json.toByteArray(Charsets.UTF_8),
@@ -105,13 +106,16 @@ internal class NextcloudRepositoryImpl(
 
     /**
      * Downloads an attachment file from the note's subdirectory on the server.
+     * Returns the local file path.
      */
     override suspend fun downloadAttachment(
         noteId: String,
         attachmentId: String,
         filename: String,
     ): Result<String> {
-        val path = attachmentFileStorage.openWriteStream(attachmentId).use { target ->
+        val rawExt = filename.substringAfterLast('.', "")
+        val extension = if (rawExt.isNotBlank() && rawExt != filename) ".$rawExt" else null
+        val path = attachmentFileStorage.openWriteStream(attachmentId, extension).use { target ->
             nextcloudApi.downloadFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}", target.outputStream)
             target.path
         }

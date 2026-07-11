@@ -18,6 +18,7 @@ interface AttachmentFileStorage {
     fun copyToStorage(
         source: String,
         attachmentId: String,
+        mimeType: String? = null,
     ): String
 
     /**
@@ -35,8 +36,13 @@ interface AttachmentFileStorage {
     /**
      * Opens a caller-managed write stream for [attachmentId]. The caller must close the returned
      * [AttachmentWriteTarget] after the stream write finishes.
+     *
+     * @param extension optional file extension including the leading dot (e.g. ".jpg")
      */
-    fun openWriteStream(attachmentId: String): AttachmentWriteTarget
+    fun openWriteStream(
+        attachmentId: String,
+        extension: String? = null,
+    ): AttachmentWriteTarget
 
     /**
      * Returns the local [File] for the given [attachmentId].

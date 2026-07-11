@@ -360,9 +360,9 @@ class NoteDetailViewModelTest {
             moveToTrashUseCase = MoveToTrashUseCase(repository),
             archiveNoteUseCase = ArchiveNoteUseCase(repository),
             createAttachment = CreateAttachmentUseCase(object : AttachmentFileStorage {
-                override fun copyToStorage(source: String, attachmentId: String) = ""
+                override fun copyToStorage(source: String, attachmentId: String, mimeType: String?) = ""
                 override fun writeStream(attachmentId: String, inputStream: InputStream) = ""
-                override fun openWriteStream(attachmentId: String) =
+                override fun openWriteStream(attachmentId: String, extension: String?) =
                     AttachmentWriteTarget("", ByteArrayOutputStream())
                 override fun getFile(attachmentId: String) = File("")
                 override fun deleteFile(attachmentId: String) {}

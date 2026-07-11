@@ -122,14 +122,14 @@ class NextcloudSyncJobServiceTest {
 
     /** No-op [org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage] used only to satisfy the sync use case constructor. */
     private class NoOpAttachmentFileStorage : AttachmentFileStorage {
-        override fun copyToStorage(source: String, attachmentId: String): String = ""
+        override fun copyToStorage(source: String, attachmentId: String, mimeType: String?): String = ""
 
         override fun writeStream(
             attachmentId: String,
             inputStream: InputStream,
         ): String = ""
 
-        override fun openWriteStream(attachmentId: String): AttachmentWriteTarget {
+        override fun openWriteStream(attachmentId: String, extension: String?): AttachmentWriteTarget {
             return AttachmentWriteTarget("", ByteArrayOutputStream())
         }
 

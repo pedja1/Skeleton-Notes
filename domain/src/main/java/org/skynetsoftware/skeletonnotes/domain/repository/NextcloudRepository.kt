@@ -73,7 +73,8 @@ interface NextcloudRepository {
     ): Result<Unit>
 
     /**
-     * Downloads an attachment file from the note's subdirectory into [outputStream].
+     * Downloads an attachment file from the note's subdirectory into local storage.
+     * Returns the local file path.
      */
     suspend fun downloadAttachment(
         noteId: String,

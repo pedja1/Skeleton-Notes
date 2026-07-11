@@ -269,12 +269,12 @@ open class SyncNotesWithNextcloudUseCase(
                     }
 
                 if (filePath == null) continue
-                // TODO mime type is lost
                 mergedAttachments.add(
                     Attachment(
                         id = remoteAttachment.id,
                         noteId = uuid,
                         uri = filePath,
+                        mimeType = remoteAttachment.mimeType,
                     ),
                 )
             }
@@ -308,6 +308,7 @@ open class SyncNotesWithNextcloudUseCase(
                 NextcloudAttachment(
                     id = attachment.id,
                     filename = filename,
+                    mimeType = attachment.mimeType,
                 ),
             )
             val file = attachmentFileStorage.getFile(attachment.id)

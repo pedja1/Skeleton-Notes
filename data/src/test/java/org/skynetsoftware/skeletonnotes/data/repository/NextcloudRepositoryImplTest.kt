@@ -13,7 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
-import org.skynetsoftware.skeletonnotes.data.mapper.nextcloudNoteToJson
+import org.skynetsoftware.skeletonnotes.data.mapper.toJson
 import org.skynetsoftware.skeletonnotes.data.network.NextcloudApi
 import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
 import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentWriteTarget
@@ -120,7 +120,7 @@ class NextcloudRepositoryImplTest {
             status = "active",
             attachments = emptyList(),
         )
-        val json = nextcloudNoteToJson(note)
+        val json = note.toJson()
         api.downloadFileResult = Result.Success(json.toByteArray(Charsets.UTF_8))
 
         val result = repository.downloadNote("note1")
@@ -257,14 +257,14 @@ class NextcloudRepositoryImplTest {
 
         fun getWritten(attachmentId: String): ByteArray = written[attachmentId] ?: byteArrayOf()
 
-        override fun copyToStorage(source: String, attachmentId: String) = "/fake/$attachmentId"
+        override fun copyToStorage(source: String, attachmentId: String, mimeType: String?) = "/fake/$attachmentId"
 
         override fun writeStream(attachmentId: String, inputStream: InputStream): String {
             written[attachmentId] = inputStream.readBytes()
             return "/fake/$attachmentId"
         }
 
-        override fun openWriteStream(attachmentId: String): AttachmentWriteTarget {
+        override fun openWriteStream(attachmentId: String, extension: String?): AttachmentWriteTarget {
             val baos = object : java.io.ByteArrayOutputStream() {
                 override fun close() {
                     written[attachmentId] = toByteArray()
@@ -329,6 +329,7 @@ class NextcloudRepositoryImplTest {
             downloadStreamCalled = true
             return when (val result = downloadFileResult) {
                 is Result.Success -> {
+                    @Suppress("BlockingMethodInNonBlockingContext") // fine for tests
                     outputStream.write(result.data)
                     Result.Success(Unit)
                 }

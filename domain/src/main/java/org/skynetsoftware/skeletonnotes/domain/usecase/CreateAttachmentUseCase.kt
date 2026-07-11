@@ -16,7 +16,7 @@ class CreateAttachmentUseCase(private val attachmentFileStorage: AttachmentFileS
         withContext(Dispatchers.IO) {
             try {
                 val attachmentId = UUID.randomUUID().toString()
-                val localPath = attachmentFileStorage.copyToStorage(sourceUri, attachmentId)
+                val localPath = attachmentFileStorage.copyToStorage(sourceUri, attachmentId, mimeType)
 
                 val attachment =
                     Attachment(

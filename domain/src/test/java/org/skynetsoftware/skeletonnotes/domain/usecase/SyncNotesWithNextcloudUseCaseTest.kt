@@ -30,7 +30,6 @@ import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
 import java.io.File
 import java.io.InputStream
-import java.io.OutputStream
 import kotlin.coroutines.cancellation.CancellationException
 
 class SyncNotesWithNextcloudUseCaseTest {
@@ -711,15 +710,8 @@ class SyncNotesWithNextcloudUseCaseTest {
         override fun copyToStorage(
             source: String,
             attachmentId: String,
+            mimeType: String?,
         ): String {
-            return "/fake/$attachmentId"
-        }
-
-        fun writeBytes(
-            attachmentId: String,
-            bytes: ByteArray,
-        ): String {
-            files[attachmentId] = bytes
             return "/fake/$attachmentId"
         }
 
@@ -731,17 +723,10 @@ class SyncNotesWithNextcloudUseCaseTest {
             return "/fake/$attachmentId"
         }
 
-        private fun writeFrom(
+        override fun openWriteStream(
             attachmentId: String,
-            writer: (OutputStream) -> Unit,
-        ): String {
-            val outputStream = java.io.ByteArrayOutputStream()
-            writer(outputStream)
-            files[attachmentId] = outputStream.toByteArray()
-            return "/fake/$attachmentId"
-        }
-
-        override fun openWriteStream(attachmentId: String): AttachmentWriteTarget {
+            extension: String?,
+        ): AttachmentWriteTarget {
             val outputStream =
                 object : java.io.ByteArrayOutputStream() {
                     override fun close() {
