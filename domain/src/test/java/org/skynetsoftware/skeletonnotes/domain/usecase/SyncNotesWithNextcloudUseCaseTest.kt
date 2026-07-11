@@ -13,21 +13,24 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentWriteTarget
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudAttachment
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudConnectionInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiateLoginResult
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
-import org.skynetsoftware.skeletonnotes.domain.repository.AttachmentFileStorage
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
-import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 import kotlin.coroutines.cancellation.CancellationException
 
 class SyncNotesWithNextcloudUseCaseTest {
@@ -53,7 +56,7 @@ class SyncNotesWithNextcloudUseCaseTest {
                 FakeNextcloudRepo(
                     remoteFiles =
                         listOf(
-                            RemoteFileInfo("note1.json", 1000L),
+                            NextcloudFileInfo("note1.json", 1000L),
                         ),
                 )
             val useCase = createUseCase(notesRepo, ncRepo)
@@ -72,7 +75,7 @@ class SyncNotesWithNextcloudUseCaseTest {
                 FakeNextcloudRepo(
                     remoteFiles =
                         listOf(
-                            RemoteFileInfo("note1.json", 2000L),
+                            NextcloudFileInfo("note1.json", 2000L),
                         ),
                     downloadedNote =
                         NextcloudNote(
@@ -117,7 +120,7 @@ class SyncNotesWithNextcloudUseCaseTest {
                 FakeNextcloudRepo(
                     remoteFiles =
                         listOf(
-                            RemoteFileInfo("note1.json", 2500L),
+                            NextcloudFileInfo("note1.json", 2500L),
                         ),
                 )
             val useCase = createUseCase(notesRepo, ncRepo)
@@ -154,7 +157,7 @@ class SyncNotesWithNextcloudUseCaseTest {
                     remoteFiles = emptyList(),
                     afterUploadFiles =
                         listOf(
-                            RemoteFileInfo("note1.json", 3000L),
+                            NextcloudFileInfo("note1.json", 3000L),
                         ),
                 )
             val useCase = createUseCase(notesRepo, ncRepo)
@@ -192,9 +195,9 @@ class SyncNotesWithNextcloudUseCaseTest {
             val ncRepo =
                 FakeNextcloudRepo(
                     // Note already exists remotely with the previously-synced mtime.
-                    remoteFiles = listOf(RemoteFileInfo("note1.json", 2000L)),
+                    remoteFiles = listOf(NextcloudFileInfo("note1.json", 2000L)),
                     // After the push the server reports a newer mtime for the file.
-                    afterUploadFiles = listOf(RemoteFileInfo("note1.json", 4000L)),
+                    afterUploadFiles = listOf(NextcloudFileInfo("note1.json", 4000L)),
                 )
             val useCase = createUseCase(notesRepo, ncRepo)
 
@@ -226,7 +229,7 @@ class SyncNotesWithNextcloudUseCaseTest {
             val notesRepo = FakeNotesRepo(notes = emptyList())
             val ncRepo =
                 FakeNextcloudRepo(
-                    remoteFiles = listOf(RemoteFileInfo("note1.json", 2000L)),
+                    remoteFiles = listOf(NextcloudFileInfo("note1.json", 2000L)),
                     downloadedNote =
                         NextcloudNote(
                             id = "note1",
@@ -256,7 +259,7 @@ class SyncNotesWithNextcloudUseCaseTest {
             val notesRepo = FakeNotesRepo(notes = emptyList())
             val ncRepo =
                 FakeNextcloudRepo(
-                    remoteFiles = listOf(RemoteFileInfo("note1.json", 2000L)),
+                    remoteFiles = listOf(NextcloudFileInfo("note1.json", 2000L)),
                     downloadedNote =
                         NextcloudNote(
                             id = "note1",
@@ -298,7 +301,7 @@ class SyncNotesWithNextcloudUseCaseTest {
                 )
             val ncRepo =
                 FakeNextcloudRepo(
-                    remoteFiles = listOf(RemoteFileInfo("note1.json", 3000L)),
+                    remoteFiles = listOf(NextcloudFileInfo("note1.json", 3000L)),
                     downloadedNote =
                         NextcloudNote(
                             id = "note1",
@@ -328,7 +331,7 @@ class SyncNotesWithNextcloudUseCaseTest {
             val fileMtime = 5000L
             val ncRepo =
                 FakeNextcloudRepo(
-                    remoteFiles = listOf(RemoteFileInfo("note1.json", fileMtime)),
+                    remoteFiles = listOf(NextcloudFileInfo("note1.json", fileMtime)),
                     downloadedNote =
                         NextcloudNote(
                             id = "note1",
@@ -369,7 +372,7 @@ class SyncNotesWithNextcloudUseCaseTest {
                 )
             val ncRepo =
                 FakeNextcloudRepo(
-                    remoteFiles = listOf(RemoteFileInfo("note1.json", 3000L)),
+                    remoteFiles = listOf(NextcloudFileInfo("note1.json", 3000L)),
                     downloadedNote =
                         NextcloudNote(
                             id = "note1",
@@ -389,6 +392,7 @@ class SyncNotesWithNextcloudUseCaseTest {
             val saved = notesRepo.savedNoteWithAttachments.first()
             assertEquals(1, saved.attachments.size)
             assertTrue(saved.attachments.first().uri.isNotBlank())
+            assertEquals(1, ncRepo.downloadAttachmentStreamCallCount)
         }
 
     @Test
@@ -420,13 +424,14 @@ class SyncNotesWithNextcloudUseCaseTest {
             val ncRepo = FakeNextcloudRepo(remoteFiles = emptyList())
             val storage = FakeAttachmentFileStorage()
             val settingsRepository = FakeSettingsRepository()
-            val useCase = SyncNotesWithNextcloudUseCase(notesRepo, ncRepo, storage, settingsRepository)
+            val useCase = SyncNotesWithNextcloudUseCase(notesRepo, ncRepo, settingsRepository, storage)
 
             useCase()
 
             assertTrue(ncRepo.uploadedAttachments.isNotEmpty())
             assertEquals("note1", ncRepo.uploadedAttachments.first().first)
             assertEquals("att1", ncRepo.uploadedAttachments.first().second)
+            assertEquals(1, ncRepo.uploadAttachmentStreamCallCount)
         }
 
     @Test
@@ -450,7 +455,7 @@ class SyncNotesWithNextcloudUseCaseTest {
                 )
             val ncRepo =
                 FakeNextcloudRepo(
-                    remoteFiles = listOf(RemoteFileInfo("note1.json", 2000L)),
+                    remoteFiles = listOf(NextcloudFileInfo("note1.json", 2000L)),
                 )
             val useCase = createUseCase(notesRepo, ncRepo)
 
@@ -506,7 +511,7 @@ class SyncNotesWithNextcloudUseCaseTest {
             val ncRepo = FakeNextcloudRepo(remoteFiles = emptyList(), uploadNoteFails = true)
             val settingsRepository = FakeSettingsRepository()
             val useCase =
-                SyncNotesWithNextcloudUseCase(notesRepo, ncRepo, FakeAttachmentFileStorage(), settingsRepository)
+                SyncNotesWithNextcloudUseCase(notesRepo, ncRepo, settingsRepository, FakeAttachmentFileStorage())
 
             val result = useCase()
 
@@ -524,7 +529,7 @@ class SyncNotesWithNextcloudUseCaseTest {
             // cancelled while in flight.
             val ncRepo =
                 object : NextcloudRepository by FakeNextcloudRepo() {
-                    override suspend fun listRemoteFiles(): Result<List<RemoteFileInfo>> {
+                    override suspend fun listFiles(): Result<List<NextcloudFileInfo>> {
                         entered.complete(Unit)
                         awaitCancellation()
                     }
@@ -533,8 +538,8 @@ class SyncNotesWithNextcloudUseCaseTest {
                 SyncNotesWithNextcloudUseCase(
                     FakeNotesRepo(),
                     ncRepo,
-                    FakeAttachmentFileStorage(),
                     FakeSettingsRepository(),
+                    FakeAttachmentFileStorage(),
                 )
 
             var caught: Throwable? = null
@@ -561,7 +566,7 @@ class SyncNotesWithNextcloudUseCaseTest {
         notesRepo: FakeNotesRepo,
         ncRepo: FakeNextcloudRepo,
     ): SyncNotesWithNextcloudUseCase {
-        return SyncNotesWithNextcloudUseCase(notesRepo, ncRepo, FakeAttachmentFileStorage(), FakeSettingsRepository())
+        return SyncNotesWithNextcloudUseCase(notesRepo, ncRepo, FakeSettingsRepository(), FakeAttachmentFileStorage())
     }
 
     private class FakeNotesRepo(
@@ -577,6 +582,9 @@ class SyncNotesWithNextcloudUseCaseTest {
 
         override fun getAllNotesWithAttachmentsFlow() =
             flowOf(Result.Success(notes.map { NoteWithAttachments(it, attachments.filter { a -> a.noteId == it.id }) }))
+
+        override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> =
+            Result.Success(notes.map { NoteWithAttachments(it, attachments.filter { a -> a.noteId == it.id }) })
 
         override fun getNoteByIdFlow(id: String) =
             flowOf(
@@ -609,9 +617,9 @@ class SyncNotesWithNextcloudUseCaseTest {
     }
 
     private class FakeNextcloudRepo(
-        private val remoteFiles: List<RemoteFileInfo> = emptyList(),
+        private val remoteFiles: List<NextcloudFileInfo> = emptyList(),
         private val downloadedNote: NextcloudNote? = null,
-        private val afterUploadFiles: List<RemoteFileInfo> = emptyList(),
+        private val afterUploadFiles: List<NextcloudFileInfo> = emptyList(),
         private val listFails: Boolean = false,
         private val attachmentDownloadFails: Boolean = false,
         private val uploadNoteFails: Boolean = false,
@@ -619,6 +627,8 @@ class SyncNotesWithNextcloudUseCaseTest {
         val uploadedNotes = mutableListOf<NextcloudNote>()
         val uploadedAttachments = mutableListOf<Triple<String, String, String>>()
         val deletedDirectories = mutableListOf<String>()
+        var uploadAttachmentStreamCallCount = 0
+        var downloadAttachmentStreamCallCount = 0
         private var uploadCalled = false
 
         override suspend fun initiateLogin(serverUrl: String) = Result.Success(NextcloudInitiateLoginResult("", "", ""))
@@ -634,7 +644,7 @@ class SyncNotesWithNextcloudUseCaseTest {
 
         override fun logout() {}
 
-        override suspend fun listRemoteFiles(): Result<List<RemoteFileInfo>> {
+        override suspend fun listFiles(): Result<List<NextcloudFileInfo>> {
             if (listFails) return Result.Failure(Exception("listing failed"))
             return if (uploadCalled) Result.Success(afterUploadFiles) else Result.Success(remoteFiles)
         }
@@ -659,8 +669,11 @@ class SyncNotesWithNextcloudUseCaseTest {
             noteId: String,
             attachmentId: String,
             filename: String,
-            bytes: ByteArray,
+            inputStream: InputStream,
+            contentLength: Long,
         ): Result<Unit> {
+            uploadAttachmentStreamCallCount++
+            inputStream.readBytes()
             uploadedAttachments.add(Triple(noteId, attachmentId, filename))
             return Result.Success(Unit)
         }
@@ -669,14 +682,16 @@ class SyncNotesWithNextcloudUseCaseTest {
             noteId: String,
             attachmentId: String,
             filename: String,
-        ): Result<ByteArray> =
-            if (attachmentDownloadFails) {
+        ): Result<String> {
+            downloadAttachmentStreamCallCount++
+            return if (attachmentDownloadFails) {
                 Result.Failure(Exception("attachment download failed"))
             } else {
-                Result.Success(ByteArray(0))
+                Result.Success("/fake/$attachmentId")
             }
+        }
 
-        override suspend fun deleteRemoteAttachment(
+        override suspend fun deleteAttachment(
             noteId: String,
             attachmentId: String,
             filename: String,
@@ -684,7 +699,7 @@ class SyncNotesWithNextcloudUseCaseTest {
             Unit,
         )
 
-        override suspend fun deleteRemoteNoteDirectory(uuid: String): Result<Unit> {
+        override suspend fun deleteNoteDirectory(uuid: String): Result<Unit> {
             deletedDirectories.add(uuid)
             return Result.Success(Unit)
         }
@@ -693,12 +708,48 @@ class SyncNotesWithNextcloudUseCaseTest {
     private class FakeAttachmentFileStorage : AttachmentFileStorage {
         private val files = mutableMapOf<String, ByteArray>()
 
-        override fun writeBytes(
+        override fun copyToStorage(
+            source: String,
+            attachmentId: String,
+        ): String {
+            return "/fake/$attachmentId"
+        }
+
+        fun writeBytes(
             attachmentId: String,
             bytes: ByteArray,
         ): String {
             files[attachmentId] = bytes
             return "/fake/$attachmentId"
+        }
+
+        override fun writeStream(
+            attachmentId: String,
+            inputStream: InputStream,
+        ): String {
+            files[attachmentId] = inputStream.readBytes()
+            return "/fake/$attachmentId"
+        }
+
+        private fun writeFrom(
+            attachmentId: String,
+            writer: (OutputStream) -> Unit,
+        ): String {
+            val outputStream = java.io.ByteArrayOutputStream()
+            writer(outputStream)
+            files[attachmentId] = outputStream.toByteArray()
+            return "/fake/$attachmentId"
+        }
+
+        override fun openWriteStream(attachmentId: String): AttachmentWriteTarget {
+            val outputStream =
+                object : java.io.ByteArrayOutputStream() {
+                    override fun close() {
+                        files[attachmentId] = toByteArray()
+                        super.close()
+                    }
+                }
+            return AttachmentWriteTarget("/fake/$attachmentId", outputStream)
         }
 
         override fun getFile(attachmentId: String): File {

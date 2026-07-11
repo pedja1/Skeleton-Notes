@@ -1,7 +1,7 @@
 package org.skynetsoftware.skeletonnotes.data.di
 
 import android.app.Application
-import org.skynetsoftware.skeletonnotes.data.attachment.AttachmentStorageManager
+import org.skynetsoftware.skeletonnotes.data.attachment.AttachmentStorageImpl
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStoreImpl
 import org.skynetsoftware.skeletonnotes.data.database.NotesDataSource
@@ -10,10 +10,12 @@ import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelpe
 import org.skynetsoftware.skeletonnotes.data.di.DataDi.init
 import org.skynetsoftware.skeletonnotes.data.network.NextcloudApi
 import org.skynetsoftware.skeletonnotes.data.network.NextcloudApiImpl
+import org.skynetsoftware.skeletonnotes.data.repository.BackupRepositoryImpl
 import org.skynetsoftware.skeletonnotes.data.repository.NextcloudRepositoryImpl
 import org.skynetsoftware.skeletonnotes.data.repository.NotesRepositoryImpl
 import org.skynetsoftware.skeletonnotes.data.repository.SettingsRepositoryImpl
-import org.skynetsoftware.skeletonnotes.domain.repository.AttachmentFileStorage
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
+import org.skynetsoftware.skeletonnotes.domain.repository.BackupRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
@@ -51,11 +53,15 @@ object DataDi {
 
     private val nextcloudApi: NextcloudApi by lazy { NextcloudApiImpl(nextcloudConfigStore) }
 
-    val attachmentFileStorage: AttachmentFileStorage by lazy { AttachmentStorageManager(application) }
+    val attachmentFileStorage: AttachmentFileStorage by lazy { AttachmentStorageImpl(application) }
 
     val notesRepository: NotesRepository by lazy { NotesRepositoryImpl(notesDataSource) }
 
-    val nextcloudRepository: NextcloudRepository by lazy { NextcloudRepositoryImpl(nextcloudApi, nextcloudConfigStore) }
+    val backupRepository: BackupRepository by lazy {
+        BackupRepositoryImpl(notesRepository, attachmentFileStorage)
+    }
+
+    val nextcloudRepository: NextcloudRepository by lazy { NextcloudRepositoryImpl(nextcloudApi, nextcloudConfigStore, attachmentFileStorage) }
 
     val settingsRepository: SettingsRepository by lazy {
         SettingsRepositoryImpl(

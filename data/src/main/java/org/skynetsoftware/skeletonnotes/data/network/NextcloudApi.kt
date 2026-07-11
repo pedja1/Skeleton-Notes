@@ -1,9 +1,11 @@
 package org.skynetsoftware.skeletonnotes.data.network
 
 import org.skynetsoftware.skeletonnotes.domain.model.Result
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiateLoginResult
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
-import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
+import java.io.InputStream
+import java.io.OutputStream
 
 /**
  * Internal interface for raw HTTP operations against the Nextcloud server.
@@ -33,7 +35,7 @@ internal interface NextcloudApi {
      * @param path relative path inside the sync folder
      * @return list of [RemoteFileInfo] with filenames and last-modified timestamps
      */
-    suspend fun listDirectory(path: String): Result<List<RemoteFileInfo>>
+    suspend fun listDirectory(path: String): Result<List<NextcloudFileInfo>>
 
     /**
      * Downloads a file from .skeleton_notes/[path] via HTTP GET.
@@ -44,6 +46,14 @@ internal interface NextcloudApi {
     suspend fun downloadFile(path: String): Result<ByteArray>
 
     /**
+     * Downloads a file from .skeleton_notes/[path] via HTTP GET into [outputStream].
+     *
+     * @param path relative path inside the sync folder
+     * @param outputStream destination stream for raw file bytes
+     */
+    suspend fun downloadFile(path: String, outputStream: OutputStream): Result<Unit>
+
+    /**
      * Uploads a file to .skeleton_notes/[path] via HTTP PUT.
      *
      * @param path relative path inside the sync folder
@@ -51,6 +61,21 @@ internal interface NextcloudApi {
      * @param contentType MIME type for the Content-Type header
      */
     suspend fun uploadFile(path: String, content: ByteArray, contentType: String): Result<Unit>
+
+    /**
+     * Uploads a file stream to .skeleton_notes/[path] via HTTP PUT.
+     *
+     * @param path relative path inside the sync folder
+     * @param inputStream source stream for raw file bytes
+     * @param contentLength number of bytes to upload, or `-1` when unknown
+     * @param contentType MIME type for the Content-Type header
+     */
+    suspend fun uploadFile(
+        path: String,
+        inputStream: InputStream,
+        contentLength: Long,
+        contentType: String,
+    ): Result<Unit>
 
     /**
      * Deletes a file from .skeleton_notes/[path] via HTTP DELETE.

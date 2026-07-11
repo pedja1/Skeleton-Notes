@@ -10,7 +10,7 @@ import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiate
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
-import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
@@ -19,6 +19,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUse
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
 import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
+import java.io.InputStream
 
 /**
  * [SettingsRepository] implementation for instrumented tests that allows
@@ -97,7 +98,7 @@ class FakeSettingsNextcloudRepository(
 
     override fun logout() {}
 
-    override suspend fun listRemoteFiles(): Result<List<RemoteFileInfo>> = Result.Success(emptyList())
+    override suspend fun listFiles(): Result<List<NextcloudFileInfo>> = Result.Success(emptyList())
 
     override suspend fun downloadNote(uuid: String): Result<NextcloudNote> =
         Result.Failure(Exception("Not implemented"))
@@ -110,22 +111,23 @@ class FakeSettingsNextcloudRepository(
         noteId: String,
         attachmentId: String,
         filename: String,
-        bytes: ByteArray,
+        inputStream: InputStream,
+        contentLength: Long,
     ) = Result.Success(Unit)
 
     override suspend fun downloadAttachment(
         noteId: String,
         attachmentId: String,
         filename: String,
-    ): Result<ByteArray> = Result.Success(ByteArray(0))
+    ): Result<String> = Result.Success("")
 
-    override suspend fun deleteRemoteAttachment(
+    override suspend fun deleteAttachment(
         noteId: String,
         attachmentId: String,
         filename: String,
     ) = Result.Success(Unit)
 
-    override suspend fun deleteRemoteNoteDirectory(uuid: String) = Result.Success(Unit)
+    override suspend fun deleteNoteDirectory(uuid: String) = Result.Success(Unit)
 }
 
 /**

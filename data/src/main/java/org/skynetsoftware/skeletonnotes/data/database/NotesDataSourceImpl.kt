@@ -86,7 +86,7 @@ internal class NotesDataSourceImpl(
         }
     }
 
-    private fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> {
+    override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> {
         var cursor: Cursor? = null
         return try {
             val database = skeletonNotesDatabaseHelper.writableDatabase

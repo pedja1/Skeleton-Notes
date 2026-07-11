@@ -1,16 +1,16 @@
 package org.skynetsoftware.skeletonnotes.domain.usecase
 
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudAttachment
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
-import org.skynetsoftware.skeletonnotes.domain.repository.AttachmentFileStorage
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
-import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -21,8 +21,8 @@ import kotlin.coroutines.cancellation.CancellationException
 open class SyncNotesWithNextcloudUseCase(
     private val notesRepository: NotesRepository,
     private val nextcloudRepository: NextcloudRepository,
-    private val attachmentFileStorage: AttachmentFileStorage,
     private val settingsRepository: SettingsRepository,
+    private val attachmentFileStorage: AttachmentFileStorage,
 ) {
     /**
      * Runs a complete sync cycle using internally stored credentials.
@@ -99,8 +99,8 @@ open class SyncNotesWithNextcloudUseCase(
     /**
      * Lists the remote sync folder and keys the entries by note UUID (filename without .json).
      */
-    private suspend fun loadRemoteFileMap(): Result<Map<String, RemoteFileInfo>> {
-        return when (val result = nextcloudRepository.listRemoteFiles()) {
+    private suspend fun loadRemoteFileMap(): Result<Map<String, NextcloudFileInfo>> {
+        return when (val result = nextcloudRepository.listFiles()) {
             is Result.Success -> Result.Success(result.data.associateBy { it.filename.removeSuffix(".json") })
             is Result.Failure -> Result.Failure(result.throwable)
         }
@@ -113,13 +113,13 @@ open class SyncNotesWithNextcloudUseCase(
      */
     private suspend fun reconcileLocalNote(
         localNote: Note,
-        remoteFile: RemoteFileInfo?,
+        remoteFile: NextcloudFileInfo?,
         conflicts: MutableList<NoteConflict>,
         pushedNotes: MutableList<Note>,
         errors: MutableList<Throwable>,
     ) {
         if (localNote.status == NoteStatus.TRASH) {
-            recordFailure(nextcloudRepository.deleteRemoteNoteDirectory(localNote.id), errors)
+            recordFailure(nextcloudRepository.deleteNoteDirectory(localNote.id), errors)
             return
         }
 
@@ -140,6 +140,7 @@ open class SyncNotesWithNextcloudUseCase(
         when {
             localChanged && remoteChanged ->
                 conflicts.add(NoteConflict(localNote = localNote, remoteNoteId = localNote.id))
+
             remoteChanged -> pullNote(localNote.id, remoteFile.lastModified, errors)
             localChanged -> {
                 pushNote(localNote, errors)
@@ -166,7 +167,7 @@ open class SyncNotesWithNextcloudUseCase(
      */
     private suspend fun trashRemotelyDeletedNotes(
         localNoteMap: Map<String, Note>,
-        remoteFileMap: Map<String, RemoteFileInfo>,
+        remoteFileMap: Map<String, NextcloudFileInfo>,
         errors: MutableList<Throwable>,
     ) {
         val remoteDeletedIds =
@@ -254,23 +255,28 @@ open class SyncNotesWithNextcloudUseCase(
             if (localAttachment != null && localAttachment.uri.isNotBlank()) {
                 mergedAttachments.add(localAttachment)
             } else {
-                val bytesResult =
+                val result =
                     nextcloudRepository.downloadAttachment(
                         noteId = uuid,
                         attachmentId = remoteAttachment.id,
                         filename = remoteAttachment.filename,
                     )
-                if (bytesResult is Result.Success) {
-                    val filePath =
-                        attachmentFileStorage.writeBytes(remoteAttachment.id, bytesResult.data)
-                    mergedAttachments.add(
-                        Attachment(
-                            id = remoteAttachment.id,
-                            noteId = uuid,
-                            uri = filePath,
-                        ),
-                    )
-                }
+
+                val filePath =
+                    when (result) {
+                        is Result.Success -> result.data
+                        is Result.Failure -> null
+                    }
+
+                if (filePath == null) continue
+                // TODO mime type is lost
+                mergedAttachments.add(
+                    Attachment(
+                        id = remoteAttachment.id,
+                        noteId = uuid,
+                        uri = filePath,
+                    ),
+                )
             }
         }
 
@@ -306,15 +312,18 @@ open class SyncNotesWithNextcloudUseCase(
             )
             val file = attachmentFileStorage.getFile(attachment.id)
             if (file.exists()) {
-                recordFailure(
-                    nextcloudRepository.uploadAttachment(
-                        noteId = note.id,
-                        attachmentId = attachment.id,
-                        filename = filename,
-                        bytes = file.readBytes(),
-                    ),
-                    errors,
-                )
+                file.inputStream().use { inputStream ->
+                    recordFailure(
+                        nextcloudRepository.uploadAttachment(
+                            noteId = note.id,
+                            attachmentId = attachment.id,
+                            filename = filename,
+                            inputStream = inputStream,
+                            contentLength = file.length(),
+                        ),
+                        errors,
+                    )
+                }
             }
         }
 

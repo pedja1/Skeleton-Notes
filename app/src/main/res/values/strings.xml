@@ -15,7 +15,6 @@
     <string name="format_bold">Bold</string>
     <string name="format_italic">Italic</string>
     <string name="format_attach_file">Attach file</string>
-    <string name="format_attach_image">Attach image</string>
     <string name="heading_h1">Heading 1</string>
     <string name="heading_h2">Heading 2</string>
     <string name="paragraph_normal">Paragraph</string>
@@ -77,6 +76,16 @@
     <string name="settings_item_import_subtile">Import Notes from file</string>
     <string name="settings_item_export_tile">Export Notes</string>
     <string name="settings_item_export_subtile">Export Notes to file</string>
+    <string name="export_default_file_name">skeleton-notes-backup-%s.zip</string>
+    <string name="export_success">Exported %1$d notes</string>
+    <string name="import_success">Imported %1$d, updated %2$d, skipped %3$d</string>
+    <string name="data_transfer_error">Operation failed</string>
+    <string name="import_conflict_title">Note already exists</string>
+    <string name="import_conflict_message">A note titled \"%1$s\" already exists. What would you like to do?</string>
+    <string name="import_conflict_keep_existing">Keep existing</string>
+    <string name="import_conflict_overwrite">Overwrite</string>
+    <string name="import_conflict_keep_both">Keep both</string>
+    <string name="import_conflict_apply_to_all">Apply to all remaining</string>
     <string name="settings_item_connect_to_nextcloud_title">Connect</string>
     <string name="settings_item_connect_to_nextcloud_subtitle">Connect to NextCloud to enable Notes Sync</string>
     <string name="settings_item_nextcloud_connected_title">Connected</string>
@@ -100,4 +109,5 @@
     <string name="settings_sync_interval_6h">6 hours</string>
     <string name="settings_sync_interval_24h">24 hours</string>
     <string name="settings_sync_interval_dialog_title">Sync Interval</string>
+    <string name="note_details_error_adding_attachment">Error adding attachment</string>
 </resources>

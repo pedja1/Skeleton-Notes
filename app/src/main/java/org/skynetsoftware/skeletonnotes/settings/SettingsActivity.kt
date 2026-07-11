@@ -9,6 +9,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.browser.customtabs.CustomTabsClient
 import androidx.browser.customtabs.CustomTabsIntent
@@ -22,8 +23,13 @@ import kotlinx.coroutines.launch
 import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.databinding.ActivitySettingsBinding
 import org.skynetsoftware.skeletonnotes.databinding.DialogNextcloudServerUrlBinding
+import org.skynetsoftware.skeletonnotes.databinding.DialogImportConflictBinding
+import org.skynetsoftware.skeletonnotes.databinding.ItemSettingsClickableBinding
+import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.Settings
+import org.skynetsoftware.skeletonnotes.domain.repository.ConflictResolution
 import java.text.SimpleDateFormat
+import java.util.Date
 
 /**
  * Activity for managing application settings using a ListView
@@ -33,12 +39,26 @@ class SettingsActivity : ComponentActivity() {
 
     companion object {
         private val LAST_SYNC_FORMAT = SimpleDateFormat.getDateTimeInstance()
+        private val EXPORT_FILE_TIMESTAMP_FORMAT = SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US)
     }
 
     private val settingsViewModel by viewModels<SettingsViewModel>(factoryProducer = { SettingsViewModel.Factory })
     private lateinit var binding: ActivitySettingsBinding
 
     private var showNextcloudServerUrlDialog: AlertDialog? = null
+    private var conflictDialog: AlertDialog? = null
+
+    private val exportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri ->
+        uri?.let { settingsViewModel.export(it) }
+    }
+
+    private val importLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        uri?.let { settingsViewModel.import(it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,8 +101,92 @@ class SettingsActivity : ComponentActivity() {
                         handleAuthEvent(event)
                     }
                 }
+                launch {
+                    settingsViewModel.dataOperation.collect { operation ->
+                        updateDataOperation(operation)
+                    }
+                }
+                launch {
+                    settingsViewModel.dataTransferEvents.collect { event ->
+                        handleDataTransferEvent(event)
+                    }
+                }
+                launch {
+                    settingsViewModel.pendingConflict.collect { conflict ->
+                        updateConflictPrompt(conflict)
+                    }
+                }
             }
         }
+    }
+
+    private fun updateDataOperation(operation: DataOperation) {
+        setDataItemBusy(binding.itemExport, operation == DataOperation.EXPORT)
+        setDataItemBusy(binding.itemImport, operation == DataOperation.IMPORT)
+        val idle = operation == DataOperation.NONE
+        binding.itemExport.root.isEnabled = idle
+        binding.itemImport.root.isEnabled = idle
+    }
+
+    private fun setDataItemBusy(
+        item: ItemSettingsClickableBinding,
+        busy: Boolean,
+    ) {
+        item.progressBar.visibility = if (busy) View.VISIBLE else View.GONE
+        item.itemArrow.visibility = if (busy) View.GONE else View.VISIBLE
+    }
+
+    private fun handleDataTransferEvent(event: DataTransferEvent) {
+        when (event) {
+            is DataTransferEvent.ExportSuccess ->
+                Toast.makeText(this, getString(R.string.export_success, event.count), Toast.LENGTH_SHORT).show()
+
+            is DataTransferEvent.ImportSuccess ->
+                Toast.makeText(
+                    this,
+                    getString(
+                        R.string.import_success,
+                        event.summary.imported,
+                        event.summary.overwritten,
+                        event.summary.skipped,
+                    ),
+                    Toast.LENGTH_LONG,
+                ).show()
+
+            DataTransferEvent.Error ->
+                Toast.makeText(this, R.string.data_transfer_error, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateConflictPrompt(conflict: ImportConflictPrompt?) {
+        if (conflict == null) {
+            conflictDialog?.dismiss()
+        } else {
+            showConflictDialog(conflict.incoming)
+        }
+    }
+
+    private fun showConflictDialog(incoming: Note) {
+        val title = incoming.title?.takeIf { it.isNotBlank() } ?: getString(R.string.note_detail_new_note_title)
+        conflictDialog?.dismiss()
+        val binding = DialogImportConflictBinding.inflate(layoutInflater)
+        val applyToAll = binding.applyToAll
+        conflictDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.import_conflict_title)
+            .setMessage(getString(R.string.import_conflict_message, title))
+            .setView(binding.root)
+            .setCancelable(false)
+            .setPositiveButton(R.string.import_conflict_overwrite) { _, _ ->
+                settingsViewModel.onConflictResolved(ConflictResolution.OVERWRITE, applyToAll.isChecked)
+            }
+            .setNeutralButton(R.string.import_conflict_keep_both) { _, _ ->
+                settingsViewModel.onConflictResolved(ConflictResolution.KEEP_BOTH, applyToAll.isChecked)
+            }
+            .setNegativeButton(R.string.import_conflict_keep_existing) { _, _ ->
+                settingsViewModel.onConflictResolved(ConflictResolution.KEEP_EXISTING, applyToAll.isChecked)
+            }
+            .setOnDismissListener { conflictDialog = null }
+            .show()
     }
 
     private fun handleAuthEvent(event: NextcloudAuthEvent) {
@@ -175,14 +279,15 @@ class SettingsActivity : ComponentActivity() {
         binding.itemImport.itemSubtitle.text = getString(R.string.settings_item_import_subtile)
         binding.itemImport.itemSubtitle.visibility = View.VISIBLE
         binding.itemImport.root.setOnClickListener {
-
+            importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
         }
 
         binding.itemExport.itemTitle.text = getString(R.string.settings_item_export_tile)
         binding.itemExport.itemSubtitle.text = getString(R.string.settings_item_export_subtile)
         binding.itemExport.itemSubtitle.visibility = View.VISIBLE
         binding.itemExport.root.setOnClickListener {
-
+            val timestamp = EXPORT_FILE_TIMESTAMP_FORMAT.format(Date())
+            exportLauncher.launch(getString(R.string.export_default_file_name, timestamp))
         }
     }
 

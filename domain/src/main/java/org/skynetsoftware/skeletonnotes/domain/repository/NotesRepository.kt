@@ -25,6 +25,11 @@ interface NotesRepository {
     fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>>
 
     /**
+     * Retrieves all notes together with their attachments as a one-shot snapshot.
+     */
+    fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>>
+
+    /**
      * Retrieves a single note with its attachments by [id].
      */
     fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>>

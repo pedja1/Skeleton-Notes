@@ -8,15 +8,20 @@ import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okio.BufferedSink
 import org.json.JSONObject
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudConnectionInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiateLoginResult
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
-import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
 import org.w3c.dom.Element
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -149,7 +154,7 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
      * Lists files in .skeleton_notes/[path] via PROPFIND with Depth: 1.
      * Automatically creates the sync folder if it does not exist.
      */
-    override suspend fun listDirectory(path: String): Result<List<RemoteFileInfo>> = withContext(Dispatchers.IO) {
+    override suspend fun listDirectory(path: String): Result<List<NextcloudFileInfo>> = withContext(Dispatchers.IO) {
         try {
             ensureSyncFolder()
             val url = "${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}"
@@ -180,27 +185,42 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
      * Downloads a file from .skeleton_notes/[path] via HTTP GET.
      */
     override suspend fun downloadFile(path: String): Result<ByteArray> = withContext(Dispatchers.IO) {
-        try {
-            val request = Request.Builder()
-                .url("${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}")
-                .get()
-                .header("Authorization", authHeader())
-                .build()
-
-            val response = httpClient.newCall(request).execute()
-            response.use { resp ->
-                if (resp.isSuccessful) {
-                    Result.Success(resp.body?.bytes() ?: ByteArray(0))
-                } else {
-                    Log.e(TAG, "downloadFile failed: ${resp.code} ${resp.body?.string()}")
-                    Result.Failure(Exception("Server returned ${resp.code}"))
-                }
-            }
-        } catch (t: Throwable) {
-            Log.e(TAG, "downloadFile error", t)
-            Result.Failure(t)
+        val outputStream = ByteArrayOutputStream()
+        when (val result = downloadFile(path, outputStream)) {
+            is Result.Success -> Result.Success(outputStream.toByteArray())
+            is Result.Failure -> Result.Failure(result.throwable)
         }
     }
+
+    /**
+     * Downloads a file from .skeleton_notes/[path] via HTTP GET into [outputStream].
+     */
+    override suspend fun downloadFile(path: String, outputStream: OutputStream): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder()
+                    .url("${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}")
+                    .get()
+                    .header("Authorization", authHeader())
+                    .build()
+
+                val response = httpClient.newCall(request).execute()
+                response.use { resp ->
+                    if (resp.isSuccessful) {
+                        resp.body?.byteStream()?.use { input ->
+                            input.copyTo(outputStream)
+                        }
+                        Result.Success(Unit)
+                    } else {
+                        Log.e(TAG, "downloadFile failed: ${resp.code} ${resp.body?.string()}")
+                        Result.Failure(Exception("Server returned ${resp.code}"))
+                    }
+                }
+            } catch (t: Throwable) {
+                Log.e(TAG, "downloadFile error", t)
+                Result.Failure(t)
+            }
+        }
 
     /**
      * Uploads a file to .skeleton_notes/[path] via HTTP PUT.
@@ -208,8 +228,20 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
     override suspend fun uploadFile(path: String, content: ByteArray, contentType: String): Result<Unit> = withContext(
         Dispatchers.IO
     ) {
+        uploadFile(path, content.inputStream(), content.size.toLong(), contentType)
+    }
+
+    /**
+     * Uploads a file stream to .skeleton_notes/[path] via HTTP PUT.
+     */
+    override suspend fun uploadFile(
+        path: String,
+        inputStream: InputStream,
+        contentLength: Long,
+        contentType: String,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val body = content.toRequestBody(contentType.toMediaType())
+            val body = inputStream.toRequestBody(contentType, contentLength)
             val request = Request.Builder()
                 .url("${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}")
                 .put(body)
@@ -228,6 +260,26 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
         } catch (t: Throwable) {
             Log.e(TAG, "uploadFile error", t)
             Result.Failure(t)
+        }
+    }
+
+    /** Creates an OkHttp [RequestBody] that streams from this [InputStream]. */
+    private fun InputStream.toRequestBody(contentType: String, contentLength: Long): RequestBody {
+        return object : RequestBody() {
+            override fun contentType() = contentType.toMediaType()
+
+            override fun contentLength(): Long = contentLength
+
+            override fun writeTo(sink: BufferedSink) {
+                use { input ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        sink.write(buffer, 0, read)
+                    }
+                }
+            }
         }
     }
 
@@ -313,14 +365,14 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
      * Parses a PROPFIND multistatus XML response into a list of [RemoteFileInfo].
      * Extracts href (filename) and getlastmodified for each response entry.
      */
-    private fun parsePropfindResponse(xml: String, basePath: String): Result<List<RemoteFileInfo>> {
+    private fun parsePropfindResponse(xml: String, basePath: String): Result<List<NextcloudFileInfo>> {
         return try {
             val builder = newSecureDocumentBuilder()
             val doc = builder.parse(xml.byteInputStream())
 
             val responses = doc.getElementsByTagNameNS("DAV:", "response")
             val baseName = basePath.trimEnd('/').substringAfterLast('/')
-            val files = mutableListOf<RemoteFileInfo>()
+            val files = mutableListOf<NextcloudFileInfo>()
 
             for (i in 0 until responses.length) {
                 parseResponseEntry(responses.item(i) as Element, baseName)?.let { files.add(it) }
@@ -374,7 +426,7 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
      * Parses a single DAV `<response>` element into a [RemoteFileInfo], returning null for the
      * base collection itself or for nested collections (directories), which are not note files.
      */
-    private fun parseResponseEntry(response: Element, baseName: String): RemoteFileInfo? {
+    private fun parseResponseEntry(response: Element, baseName: String): NextcloudFileInfo? {
         val href = response.getElementsByTagNameNS("DAV:", "href").item(0)?.textContent ?: return null
         val filename = href.trimEnd('/').substringAfterLast('/')
         if (filename.isBlank() || filename == baseName) return null
@@ -398,7 +450,7 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
                 lastModified = parseDavDate(lmNode.textContent)
             }
         }
-        return RemoteFileInfo(filename = filename, lastModified = lastModified)
+        return NextcloudFileInfo(filename = filename, lastModified = lastModified)
     }
 
     /**

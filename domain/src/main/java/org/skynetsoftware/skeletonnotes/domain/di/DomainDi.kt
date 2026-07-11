@@ -1,15 +1,19 @@
 package org.skynetsoftware.skeletonnotes.domain.di
 
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
 import org.skynetsoftware.skeletonnotes.domain.di.DomainDi.init
-import org.skynetsoftware.skeletonnotes.domain.repository.AttachmentFileStorage
+import org.skynetsoftware.skeletonnotes.domain.repository.BackupRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ExportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ImportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
@@ -28,6 +32,7 @@ object DomainDi {
     private lateinit var notesRepository: NotesRepository
     private lateinit var nextcloudRepository: NextcloudRepository
     private lateinit var attachmentFileStorage: AttachmentFileStorage
+    private lateinit var backupRepository: BackupRepository
 
     private lateinit var settingsRepository: SettingsRepository
 
@@ -38,11 +43,13 @@ object DomainDi {
         notesRepository: NotesRepository,
         nextcloudRepository: NextcloudRepository,
         settingsRepository: SettingsRepository,
-        attachmentFileStorage: AttachmentFileStorage = NoOpAttachmentFileStorage,
+        backupRepository: BackupRepository,
+        attachmentFileStorage: AttachmentFileStorage,
     ) {
         this.notesRepository = notesRepository
         this.nextcloudRepository = nextcloudRepository
         this.settingsRepository = settingsRepository
+        this.backupRepository = backupRepository
         this.attachmentFileStorage = attachmentFileStorage
     }
 
@@ -51,6 +58,10 @@ object DomainDi {
     val getNoteByIdUseCase: GetNoteByIdUseCase by lazy { GetNoteByIdUseCase(notesRepository) }
 
     val saveNoteUseCase: SaveNoteUseCase by lazy { SaveNoteUseCase(notesRepository) }
+
+    val exportNotesUseCase: ExportNotesUseCase by lazy { ExportNotesUseCase(backupRepository) }
+
+    val importNotesUseCase: ImportNotesUseCase by lazy { ImportNotesUseCase(backupRepository) }
 
     val deleteNoteUseCase: DeleteNoteUseCase by lazy { DeleteNoteUseCase(notesRepository) }
 
@@ -64,8 +75,8 @@ object DomainDi {
         SyncNotesWithNextcloudUseCase(
             notesRepository,
             nextcloudRepository,
-            attachmentFileStorage,
             settingsRepository,
+            attachmentFileStorage,
         )
     }
 
@@ -99,6 +110,12 @@ object DomainDi {
     val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase by lazy {
         PollNextcloudLoginUseCase(
             nextcloudRepository,
+        )
+    }
+
+    val createAttachmentUseCase: CreateAttachmentUseCase by lazy {
+        CreateAttachmentUseCase(
+            attachmentFileStorage,
         )
     }
 }

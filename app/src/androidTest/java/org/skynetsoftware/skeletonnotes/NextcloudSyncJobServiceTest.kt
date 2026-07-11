@@ -14,11 +14,14 @@ import org.skynetsoftware.skeletonnotes.di.ProductionAppGraph
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
-import org.skynetsoftware.skeletonnotes.domain.repository.AttachmentFileStorage
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentWriteTarget
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncResult
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -79,8 +82,8 @@ class NextcloudSyncJobServiceTest {
     private class RecordingSyncUseCase : SyncNotesWithNextcloudUseCase(
         NoOpNotesRepository(),
         FakeSettingsNextcloudRepository(),
-        NoOpAttachmentFileStorage(),
         FakeSettingsRepository(),
+        NoOpAttachmentFileStorage(),
     ) {
         val started = CountDownLatch(1)
         val invocations = AtomicInteger(0)
@@ -101,6 +104,8 @@ class NextcloudSyncJobServiceTest {
         override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> =
             flowOf(Result.Success(emptyList()))
 
+        override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> = Result.Success(emptyList())
+
         override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> =
             flowOf(Result.Failure(Exception("not found")))
 
@@ -115,12 +120,18 @@ class NextcloudSyncJobServiceTest {
         override suspend fun archiveNote(id: String): Result<Unit> = Result.Success(Unit)
     }
 
-    /** No-op [AttachmentFileStorage] used only to satisfy the sync use case constructor. */
+    /** No-op [org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage] used only to satisfy the sync use case constructor. */
     private class NoOpAttachmentFileStorage : AttachmentFileStorage {
-        override fun writeBytes(
+        override fun copyToStorage(source: String, attachmentId: String): String = ""
+
+        override fun writeStream(
             attachmentId: String,
-            bytes: ByteArray,
+            inputStream: InputStream,
         ): String = ""
+
+        override fun openWriteStream(attachmentId: String): AttachmentWriteTarget {
+            return AttachmentWriteTarget("", ByteArrayOutputStream())
+        }
 
         override fun getFile(attachmentId: String): File = File("")
 

@@ -19,6 +19,8 @@ open class BaseFakeNotesRepository : NotesRepository {
     override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> =
         flowOf(Result.Success(emptyList()))
 
+    override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> = Result.Success(emptyList())
+
     override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> =
         flowOf(Result.Success(NoteWithAttachments(Note(id, null, "", 0, 0, emptySet()), emptyList())))
 

@@ -35,6 +35,13 @@ internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource)
         notesDataSource.getAllNotesWithAttachmentsFlow()
 
     /**
+     * @see NotesRepository.getAllNotesWithAttachments
+     * @see NotesDataSource.getAllNotesWithAttachments
+     */
+    override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> =
+        notesDataSource.getAllNotesWithAttachments()
+
+    /**
      * @see NotesRepository.getNoteByIdFlow
      * @see NotesDataSource.getNoteByIdFlow
      */

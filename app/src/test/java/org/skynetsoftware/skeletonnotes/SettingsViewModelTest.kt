@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -16,10 +17,16 @@ import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudConnecti
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiateLoginResult
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
+import org.skynetsoftware.skeletonnotes.domain.model.Note
+import org.skynetsoftware.skeletonnotes.domain.repository.BackupRepository
+import org.skynetsoftware.skeletonnotes.domain.repository.ConflictResolution
+import org.skynetsoftware.skeletonnotes.domain.repository.ImportSummary
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
-import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
+import org.skynetsoftware.skeletonnotes.domain.usecase.ExportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ImportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
@@ -28,6 +35,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUse
 import org.skynetsoftware.skeletonnotes.settings.NextcloudLoginState
 import org.skynetsoftware.skeletonnotes.settings.SettingsViewModel
 import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
+import java.io.InputStream
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -242,12 +250,41 @@ class SettingsViewModelTest {
         }
     }
 
+    @Test
+    fun importConflictRemainsPendingUntilResolved() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val existing = Note("n1", "Existing", "old", 1L, 1L, emptySet())
+            val incoming = Note("n1", "Incoming", "new", 2L, 2L, emptySet())
+            val viewModel = createViewModel()
+            var resolution: ConflictResolution? = null
+            val conflictJob = launch {
+                resolution = viewModel.resolveConflict(existing, incoming)
+            }
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(incoming, viewModel.pendingConflict.value?.incoming)
+            assertEquals(existing, viewModel.pendingConflict.value?.existing)
+
+            viewModel.onConflictResolved(ConflictResolution.OVERWRITE, applyToAll = false)
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(ConflictResolution.OVERWRITE, resolution)
+            assertEquals(null, viewModel.pendingConflict.value)
+            conflictJob.cancel()
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
     private fun createViewModel(
         periodicSyncEnabled: Boolean = false,
         connectionInfo: NextcloudConnectionInfo? = null,
         settingsRepository: SettingsRepository = FakeSettingsRepo(periodicSyncEnabled),
         nextcloudRepo: NextcloudRepository = FakeNextcloudRepoForSettings(connectionInfo = connectionInfo),
         scheduler: NextcloudSyncScheduler = FakeSyncScheduler(),
+        backupRepository: BackupRepository = FakeBackupRepository(),
     ): SettingsViewModel {
         return SettingsViewModel(
             getSettings = GetSettingsUseCase(settingsRepository, nextcloudRepo),
@@ -257,7 +294,18 @@ class SettingsViewModelTest {
             initiateNextcloudLogin = InitiateNextcloudLoginUseCase(nextcloudRepo),
             pollNextcloudLogin = PollNextcloudLoginUseCase(nextcloudRepo),
             scheduler = scheduler,
+            exportNotes = ExportNotesUseCase(backupRepository),
+            importNotes = ImportNotesUseCase(backupRepository),
         )
+    }
+
+    private open class FakeBackupRepository : BackupRepository {
+        override suspend fun exportNotes(outputStream: java.io.OutputStream): Result<Int> = Result.Success(0)
+
+        override suspend fun importNotes(
+            inputStream: java.io.InputStream,
+            onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
+        ): Result<ImportSummary> = Result.Success(ImportSummary(0, 0, 0))
     }
 
     private class FakeSettingsRepo(
@@ -282,14 +330,26 @@ class SettingsViewModelTest {
         override suspend fun pollLogin(token: String, endpoint: String) = pollLoginResult
         override fun connectionInfo(): Flow<NextcloudConnectionInfo?> = flowOf(connectionInfo)
         override fun logout() {}
-        override suspend fun listRemoteFiles(): Result<List<RemoteFileInfo>> = Result.Success(emptyList())
+        override suspend fun listFiles(): Result<List<NextcloudFileInfo>> = Result.Success(emptyList())
         override suspend fun downloadNote(uuid: String): Result<NextcloudNote> = Result.Failure(Exception("Not implemented"))
         override suspend fun uploadNote(note: NextcloudNote) = Result.Success(Unit)
         override suspend fun deleteRemoteNote(uuid: String) = Result.Success(Unit)
-        override suspend fun uploadAttachment(noteId: String, attachmentId: String, filename: String, bytes: ByteArray) = Result.Success(Unit)
-        override suspend fun downloadAttachment(noteId: String, attachmentId: String, filename: String): Result<ByteArray> = Result.Success(ByteArray(0))
-        override suspend fun deleteRemoteAttachment(noteId: String, attachmentId: String, filename: String) = Result.Success(Unit)
-        override suspend fun deleteRemoteNoteDirectory(uuid: String) = Result.Success(Unit)
+        override suspend fun uploadAttachment(
+            noteId: String,
+            attachmentId: String,
+            filename: String,
+            inputStream: InputStream,
+            contentLength: Long,
+        ) = Result.Success(Unit)
+
+        override suspend fun downloadAttachment(
+            noteId: String,
+            attachmentId: String,
+            filename: String,
+        ): Result<String> = Result.Success("")
+
+        override suspend fun deleteAttachment(noteId: String, attachmentId: String, filename: String) = Result.Success(Unit)
+        override suspend fun deleteNoteDirectory(uuid: String) = Result.Success(Unit)
     }
 
     private class FakeSyncScheduler : NextcloudSyncScheduler {

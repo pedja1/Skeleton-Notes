@@ -6,11 +6,13 @@ import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
 import org.skynetsoftware.skeletonnotes.data.mapper.jsonToNextcloudNote
 import org.skynetsoftware.skeletonnotes.data.mapper.nextcloudNoteToJson
 import org.skynetsoftware.skeletonnotes.data.network.NextcloudApi
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudConnectionInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
-import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
+import java.io.InputStream
 
 /**
  * Implementation of [NextcloudRepository] that uses [NextcloudApi]
@@ -19,6 +21,7 @@ import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
 internal class NextcloudRepositoryImpl(
     private val nextcloudApi: NextcloudApi,
     private val nextcloudConfigStore: NextcloudConfigStore,
+    private val attachmentFileStorage: AttachmentFileStorage,
 ) : NextcloudRepository {
 
     override suspend fun initiateLogin(serverUrl: String) = nextcloudApi.initiateLoginFlow(serverUrl)
@@ -46,7 +49,7 @@ internal class NextcloudRepositoryImpl(
     /**
      * Lists all note JSON files in .skeleton_notes/ via WebDAV PROPFIND.
      */
-    override suspend fun listRemoteFiles(): Result<List<RemoteFileInfo>> {
+    override suspend fun listFiles(): Result<List<NextcloudFileInfo>> {
         return nextcloudApi.listDirectory("/")
     }
 
@@ -87,13 +90,15 @@ internal class NextcloudRepositoryImpl(
         noteId: String,
         attachmentId: String,
         filename: String,
-        bytes: ByteArray,
+        inputStream: InputStream,
+        contentLength: Long,
     ): Result<Unit> {
         val dirResult = nextcloudApi.createDirectory("$noteId/")
         if (dirResult is Result.Failure) return dirResult
         return nextcloudApi.uploadFile(
             "$noteId/${attachmentId}_${sanitizeSegment(filename)}",
-            bytes,
+            inputStream,
+            contentLength,
             "application/octet-stream",
         )
     }
@@ -105,14 +110,18 @@ internal class NextcloudRepositoryImpl(
         noteId: String,
         attachmentId: String,
         filename: String,
-    ): Result<ByteArray> {
-        return nextcloudApi.downloadFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}")
+    ): Result<String> {
+        val path = attachmentFileStorage.openWriteStream(attachmentId).use { target ->
+            nextcloudApi.downloadFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}", target.outputStream)
+            target.path
+        }
+        return Result.Success(path)
     }
 
     /**
      * Deletes an attachment file from the note's subdirectory on the server.
      */
-    override suspend fun deleteRemoteAttachment(
+    override suspend fun deleteAttachment(
         noteId: String,
         attachmentId: String,
         filename: String,
@@ -134,7 +143,7 @@ internal class NextcloudRepositoryImpl(
     /**
      * Deletes the entire note directory including all attachment files and the JSON file.
      */
-    override suspend fun deleteRemoteNoteDirectory(uuid: String): Result<Unit> {
+    override suspend fun deleteNoteDirectory(uuid: String): Result<Unit> {
         val dirResult = nextcloudApi.deleteFile("$uuid/")
         if (dirResult is Result.Failure) return dirResult
         return nextcloudApi.deleteFile("$uuid.json")

@@ -3,10 +3,13 @@ package org.skynetsoftware.skeletonnotes.di
 import android.app.Application
 import org.skynetsoftware.skeletonnotes.di.AppDi.init
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ExportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ImportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
@@ -51,6 +54,10 @@ object AppDi {
 
     val saveNoteUseCase: SaveNoteUseCase get() = graph.saveNoteUseCase
 
+    val exportNotesUseCase: ExportNotesUseCase get() = graph.exportNotesUseCase
+
+    val importNotesUseCase: ImportNotesUseCase get() = graph.importNotesUseCase
+
     val deleteNoteUseCase: DeleteNoteUseCase get() = graph.deleteNoteUseCase
 
     val moveToTrashUseCase: MoveToTrashUseCase get() = graph.moveToTrashUseCase
@@ -74,4 +81,6 @@ object AppDi {
     val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase get() = graph.pollNextcloudLoginUseCase
 
     val nextcloudSyncScheduler: NextcloudSyncScheduler get() = graph.nextcloudSyncScheduler
+
+    val createAttachmentUseCase: CreateAttachmentUseCase get() = graph.createAttachmentUseCase
 }

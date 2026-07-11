@@ -1,9 +1,7 @@
 package org.skynetsoftware.skeletonnotes.note
 
 import android.app.AlertDialog
-import android.content.Intent
 import android.graphics.Typeface
-import android.net.Uri
 import android.os.Bundle
 import android.text.Html
 import android.text.Spannable
@@ -25,11 +23,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import org.skynetsoftware.skeletonnotes.R
-import org.skynetsoftware.skeletonnotes.data.attachment.AttachmentStorageManager
 import org.skynetsoftware.skeletonnotes.databinding.ActivityNoteDetailBinding
-import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.util.bindImages
-import java.util.UUID
 
 /**
  * Activity for viewing and editing a single note. Supports both creating new notes
@@ -52,20 +47,11 @@ class NoteDetailActivity : ComponentActivity() {
     })
 
     private lateinit var binding: ActivityNoteDetailBinding
-    private lateinit var attachmentStorageManager: AttachmentStorageManager
 
-    private val attachments = mutableListOf<Attachment>()
-
-    private val pickFileLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        onAttachmentPicked(uri, isImage = false)
-    }
-
-    private val pickImageLauncher = registerForActivityResult(
+    private val pickAttachmentLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
-        onAttachmentPicked(uri, isImage = true)
+        viewModel.onAttachmentPicked(uri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,8 +59,6 @@ class NoteDetailActivity : ComponentActivity() {
         enableEdgeToEdge()
         binding = ActivityNoteDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        attachmentStorageManager = AttachmentStorageManager(this)
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -93,6 +77,8 @@ class NoteDetailActivity : ComponentActivity() {
         setupFocusListeners()
         setupFormattingToolbar()
         observeViewModel()
+        observeAttachments()
+        observeToasts()
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -143,9 +129,6 @@ class NoteDetailActivity : ComponentActivity() {
                                     state.note.content
                                 )
                             )
-                            attachments.clear()
-                            attachments.addAll(state.attachments)
-                            renderImages()
                         }
 
                         NoteDetailViewModel.UiState.Saved -> finish()
@@ -167,6 +150,30 @@ class NoteDetailActivity : ComponentActivity() {
         }
     }
 
+    private fun observeAttachments() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.attachments.collect { attachments ->
+                    //TODO display other non-image attachments
+                    val imagePaths = attachments
+                        .filter { it.mimeType?.startsWith("image/") == true }
+                        .map { it.uri }
+                    binding.noteImages.bindImages(imagePaths, lifecycleScope)
+                }
+            }
+        }
+    }
+
+    private fun observeToasts() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.showToast.collect {
+                    Toast.makeText(this@NoteDetailActivity, it, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
     private fun saveAndFinish() {
         val title = binding.editNoteTitle.text?.toString()?.trim()?.ifEmpty { null }
         val content = binding.editNoteContent.text?.let {
@@ -177,7 +184,7 @@ class NoteDetailActivity : ComponentActivity() {
             finish()
             return
         }
-        viewModel.saveNote(title, content, plainText, attachments)
+        viewModel.saveNote(title, content, plainText)
     }
 
     private fun showDeleteConfirmation() {
@@ -223,8 +230,7 @@ class NoteDetailActivity : ComponentActivity() {
         binding.formattingToolbar.formatH1.setOnClickListener { applyHeading(1) }
         binding.formattingToolbar.formatH2.setOnClickListener { applyHeading(2) }
         binding.formattingToolbar.formatParagraph.setOnClickListener { applyHeading(null) }
-        binding.formattingToolbar.formatAttachFile.setOnClickListener { pickFile() }
-        binding.formattingToolbar.formatAttachImage.setOnClickListener { pickImage() }
+        binding.formattingToolbar.formatAttachFile.setOnClickListener { pickAttachment() }
     }
 
     private fun toggleBold() {
@@ -293,50 +299,7 @@ class NoteDetailActivity : ComponentActivity() {
         }
     }
 
-    private fun pickFile() {
-        pickFileLauncher.launch(arrayOf("*/*"))
-    }
-
-    private fun pickImage() {
-        pickImageLauncher.launch("image/*")
-    }
-
-    private fun onAttachmentPicked(uri: Uri?, isImage: Boolean) {
-        if (uri == null) return
-
-        val attachmentId = UUID.randomUUID().toString()
-        val filename = uri.lastPathSegment ?: "file"
-        val localPath = attachmentStorageManager.copyToStorage(uri, attachmentId, filename)
-
-        val attachment = Attachment(
-            id = attachmentId,
-            noteId = viewModel.noteId,
-            uri = localPath,
-            mimeType = contentResolver.getType(uri),
-        )
-        attachments.add(attachment)
-
-        if (isImage) {
-            renderImages()
-        } else {
-            //TODO translate
-            Toast.makeText(this, "File attached", Toast.LENGTH_SHORT).show()
-        }
-
-        contentResolver.takePersistableUriPermission(
-            uri,
-            Intent.FLAG_GRANT_READ_URI_PERMISSION
-        )
-    }
-
-    /**
-     * Renders the note's image attachments in the grid above the title. Images live only in the
-     * attachments list, never in the note's Markdown content.
-     */
-    private fun renderImages() {
-        val imagePaths = attachments
-            .filter { it.mimeType?.startsWith("image/") == true }
-            .map { it.uri }
-        binding.noteImages.bindImages(imagePaths, lifecycleScope)
+    private fun pickAttachment() {
+        pickAttachmentLauncher.launch("*/*")
     }
 }

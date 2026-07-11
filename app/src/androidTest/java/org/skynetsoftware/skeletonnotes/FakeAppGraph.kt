@@ -33,6 +33,9 @@ private class FailingNotesRepository : NotesRepository {
     override fun getAllNotesWithAttachmentsFlow(): Flow<Result<List<NoteWithAttachments>>> =
         flowOf(Result.Failure(IllegalStateException("database corrupted")))
 
+    override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> =
+        Result.Failure(IllegalStateException("database corrupted"))
+
     override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> =
         flowOf(Result.Failure(IllegalStateException("database corrupted")))
 

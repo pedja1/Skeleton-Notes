@@ -15,24 +15,31 @@ import org.junit.Test
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
 import org.skynetsoftware.skeletonnotes.data.mapper.nextcloudNoteToJson
 import org.skynetsoftware.skeletonnotes.data.network.NextcloudApi
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentWriteTarget
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudConnectionInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiateLoginResult
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
-import org.skynetsoftware.skeletonnotes.domain.repository.RemoteFileInfo
+import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 
 class NextcloudRepositoryImplTest {
 
     private lateinit var api: FakeNextcloudApi
     private lateinit var configStore: FakeNextcloudConfigStore
+    private lateinit var fakeAttachmentStorage: FakeAttachmentStorage
     private lateinit var repository: NextcloudRepositoryImpl
 
     @Before
     fun setUp() {
         api = FakeNextcloudApi()
         configStore = FakeNextcloudConfigStore()
-        repository = NextcloudRepositoryImpl(api, configStore)
+        fakeAttachmentStorage = FakeAttachmentStorage()
+        repository = NextcloudRepositoryImpl(api, configStore, fakeAttachmentStorage)
     }
 
     @Test
@@ -90,11 +97,11 @@ class NextcloudRepositoryImplTest {
     }
 
     @Test
-    fun listRemoteFilesDelegatesToApi() = runBlocking {
-        val expected = listOf(RemoteFileInfo("note1.json", 1000L))
+    fun listFilesDelegatesToApi() = runBlocking {
+        val expected = listOf(NextcloudFileInfo("note1.json", 1000L))
         api.listDirectoryResult = Result.Success(expected)
 
-        val result = repository.listRemoteFiles()
+        val result = repository.listFiles()
 
         assertEquals("/", api.lastListDirectoryPath)
         assertTrue(result is Result.Success)
@@ -169,11 +176,12 @@ class NextcloudRepositoryImplTest {
         api.createDirectoryResult = Result.Success(Unit)
         api.uploadFileResult = Result.Success(Unit)
 
-        val result = repository.uploadAttachment("note1", "att1", "file.png", byteArrayOf(1, 2, 3))
+        val result = repository.uploadAttachment("note1", "att1", "file.png", byteArrayOf(1, 2, 3).inputStream(), 3L)
 
         assertEquals("note1/", api.lastCreateDirectoryPath)
         assertEquals("note1/att1_file.png", api.lastUploadFilePath)
         assertEquals("application/octet-stream", api.lastUploadContentType)
+        assertTrue(api.uploadStreamCalled)
         assertTrue(result is Result.Success)
     }
 
@@ -182,7 +190,7 @@ class NextcloudRepositoryImplTest {
         api.createDirectoryResult = Result.Failure(Exception("mkcol failed"))
         api.uploadFileResult = Result.Success(Unit)
 
-        val result = repository.uploadAttachment("note1", "att1", "file.png", byteArrayOf(1))
+        val result = repository.uploadAttachment("note1", "att1", "file.png", byteArrayOf(1).inputStream(), 1L)
 
         assertTrue(result is Result.Failure)
         // Upload must not be attempted when the directory could not be created.
@@ -198,7 +206,8 @@ class NextcloudRepositoryImplTest {
 
         assertEquals("note1/att1_file.png", api.lastDownloadFilePath)
         assertTrue(result is Result.Success)
-        assertEquals(expected, (result as Result.Success).data)
+        assertEquals(expected.toList(), fakeAttachmentStorage.getWritten("att1").toList())
+        assertTrue(api.downloadStreamCalled)
     }
 
     @Test
@@ -214,20 +223,20 @@ class NextcloudRepositoryImplTest {
     }
 
     @Test
-    fun deleteRemoteAttachmentDelegatesToApi() = runBlocking {
+    fun deleteAttachmentDelegatesToApi() = runBlocking {
         api.deleteFileResult = Result.Success(Unit)
 
-        val result = repository.deleteRemoteAttachment("note1", "att1", "file.png")
+        val result = repository.deleteAttachment("note1", "att1", "file.png")
 
         assertEquals("note1/att1_file.png", api.lastDeleteFilePath)
         assertTrue(result is Result.Success)
     }
 
     @Test
-    fun deleteRemoteNoteDirectoryDeletesDirectoryAndFile() = runBlocking {
+    fun deleteNoteDirectoryDeletesDirectoryAndFile() = runBlocking {
         api.deleteFileResult = Result.Success(Unit)
 
-        val result = repository.deleteRemoteNoteDirectory("note1")
+        val result = repository.deleteNoteDirectory("note1")
 
         assertTrue(api.deletedFilePaths.contains("note1/"))
         assertTrue(api.deletedFilePaths.contains("note1.json"))
@@ -238,21 +247,50 @@ class NextcloudRepositoryImplTest {
     fun deleteRemoteNoteDirectoryReturnsFailureWhenDirectoryDeleteFails() = runBlocking {
         api.deleteFileResult = Result.Failure(Exception("delete failed"))
 
-        val result = repository.deleteRemoteNoteDirectory("note1")
+        val result = repository.deleteNoteDirectory("note1")
 
         assertTrue(result is Result.Failure)
+    }
+
+    private class FakeAttachmentStorage : AttachmentFileStorage {
+        private val written = mutableMapOf<String, ByteArray>()
+
+        fun getWritten(attachmentId: String): ByteArray = written[attachmentId] ?: byteArrayOf()
+
+        override fun copyToStorage(source: String, attachmentId: String) = "/fake/$attachmentId"
+
+        override fun writeStream(attachmentId: String, inputStream: InputStream): String {
+            written[attachmentId] = inputStream.readBytes()
+            return "/fake/$attachmentId"
+        }
+
+        override fun openWriteStream(attachmentId: String): AttachmentWriteTarget {
+            val baos = object : java.io.ByteArrayOutputStream() {
+                override fun close() {
+                    written[attachmentId] = toByteArray()
+                    super.close()
+                }
+            }
+            return AttachmentWriteTarget("/fake/$attachmentId", baos)
+        }
+
+        override fun getFile(attachmentId: String) = File("/fake/$attachmentId")
+
+        override fun deleteFile(attachmentId: String) { written.remove(attachmentId) }
     }
 
     private class FakeNextcloudApi : NextcloudApi {
         var initiateLoginResult: Result<NextcloudInitiateLoginResult> =
             Result.Failure(Exception("not set"))
         var pollLoginResult: NextcloudPollStatus = NextcloudPollStatus.Pending
-        var listDirectoryResult: Result<List<RemoteFileInfo>> =
+        var listDirectoryResult: Result<List<NextcloudFileInfo>> =
             Result.Failure(Exception("not set"))
         var downloadFileResult: Result<ByteArray> = Result.Failure(Exception("not set"))
         var uploadFileResult: Result<Unit> = Result.Failure(Exception("not set"))
         var deleteFileResult: Result<Unit> = Result.Failure(Exception("not set"))
         var createDirectoryResult: Result<Unit> = Result.Failure(Exception("not set"))
+        var uploadStreamCalled = false
+        var downloadStreamCalled = false
 
         var lastInitiateLoginServerUrl: String? = null
         var lastPollLoginToken: String? = null
@@ -276,7 +314,7 @@ class NextcloudRepositoryImplTest {
             return pollLoginResult
         }
 
-        override suspend fun listDirectory(path: String): Result<List<RemoteFileInfo>> {
+        override suspend fun listDirectory(path: String): Result<List<NextcloudFileInfo>> {
             lastListDirectoryPath = path
             return listDirectoryResult
         }
@@ -286,9 +324,34 @@ class NextcloudRepositoryImplTest {
             return downloadFileResult
         }
 
+        override suspend fun downloadFile(path: String, outputStream: OutputStream): Result<Unit> {
+            lastDownloadFilePath = path
+            downloadStreamCalled = true
+            return when (val result = downloadFileResult) {
+                is Result.Success -> {
+                    outputStream.write(result.data)
+                    Result.Success(Unit)
+                }
+                is Result.Failure -> Result.Failure(result.throwable)
+            }
+        }
+
         override suspend fun uploadFile(path: String, content: ByteArray, contentType: String): Result<Unit> {
             lastUploadFilePath = path
             lastUploadContentType = contentType
+            return uploadFileResult
+        }
+
+        override suspend fun uploadFile(
+            path: String,
+            inputStream: InputStream,
+            contentLength: Long,
+            contentType: String,
+        ): Result<Unit> {
+            lastUploadFilePath = path
+            lastUploadContentType = contentType
+            uploadStreamCalled = true
+            inputStream.readBytes()
             return uploadFileResult
         }
 

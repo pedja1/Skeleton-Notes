@@ -15,11 +15,17 @@ import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
+import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentWriteTarget
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.InputStream
 import org.skynetsoftware.skeletonnotes.note.NoteDetailViewModel
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -90,7 +96,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository(shouldFailLoad = true)
             val viewModel = createViewModel("existing", repository)
 
-            viewModel.saveNote("Title", "Content", "Content", emptyList())
+            viewModel.saveNote("Title", "Content", "Content")
 
             assertTrue(repository.savedNoteWithAttachments == null)
         } finally {
@@ -106,7 +112,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository()
             val viewModel = createViewModel("", repository, isNewNote = true)
 
-            viewModel.saveNote("Title", "<p>Hello #world and #foo</p>", "Hello #world and #foo", emptyList())
+            viewModel.saveNote("Title", "<p>Hello #world and #foo</p>", "Hello #world and #foo")
 
             val state = viewModel.uiState.value
             assertEquals(NoteDetailViewModel.UiState.Saved, state)
@@ -127,7 +133,7 @@ class NoteDetailViewModelTest {
 
             // HTML content wraps the tag word in inline markup (as IME spell-check spans do),
             // which would hide it from a regex over the HTML. Plain text keeps it intact.
-            viewModel.saveNote("Title", "<p>#<u>LinuxRules</u></p>", "#LinuxRules", emptyList())
+            viewModel.saveNote("Title", "<p>#<u>LinuxRules</u></p>", "#LinuxRules")
 
             assertEquals(NoteDetailViewModel.UiState.Saved, viewModel.uiState.value)
             assertEquals(setOf("LinuxRules"), repository.savedNoteWithAttachments?.note?.tags)
@@ -144,7 +150,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository(shouldFailSave = true)
             val viewModel = createViewModel("", repository, isNewNote = true)
 
-            viewModel.saveNote("Title", "Content", "Content", emptyList())
+            viewModel.saveNote("Title", "Content", "Content")
 
             val state = viewModel.uiState.value
             assertTrue(state is NoteDetailViewModel.UiState.Error)
@@ -161,7 +167,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository()
             val viewModel = createViewModel("existing-id", repository, isNewNote = true)
 
-            viewModel.saveNote("New", "Content", "Content", emptyList())
+            viewModel.saveNote("New", "Content", "Content")
             assertEquals(NoteDetailViewModel.UiState.Saved, viewModel.uiState.value)
             assertEquals("existing-id", viewModel.noteId)
         } finally {
@@ -223,7 +229,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository(note = note)
             val viewModel = createViewModel("10", repository)
 
-            viewModel.saveNote("Updated", "Updated content", "Updated content", emptyList())
+            viewModel.saveNote("Updated", "Updated content", "Updated content")
             assertEquals(NoteDetailViewModel.UiState.Saved, viewModel.uiState.value)
             assertEquals("10", viewModel.noteId)
         } finally {
@@ -244,7 +250,7 @@ class NoteDetailViewModelTest {
             val repository = FakeNoteDetailRepository(note = note)
             val viewModel = createViewModel("10", repository)
 
-            viewModel.saveNote("Updated", "Updated content", "Updated content", emptyList())
+            viewModel.saveNote("Updated", "Updated content", "Updated content")
 
             val saved = repository.savedNoteWithAttachments?.note
             assertEquals(1000L, saved?.createdAt)
@@ -353,6 +359,14 @@ class NoteDetailViewModelTest {
             deleteNoteUseCase = DeleteNoteUseCase(repository),
             moveToTrashUseCase = MoveToTrashUseCase(repository),
             archiveNoteUseCase = ArchiveNoteUseCase(repository),
+            createAttachment = CreateAttachmentUseCase(object : AttachmentFileStorage {
+                override fun copyToStorage(source: String, attachmentId: String) = ""
+                override fun writeStream(attachmentId: String, inputStream: InputStream) = ""
+                override fun openWriteStream(attachmentId: String) =
+                    AttachmentWriteTarget("", ByteArrayOutputStream())
+                override fun getFile(attachmentId: String) = File("")
+                override fun deleteFile(attachmentId: String) {}
+            }),
         )
     }
 

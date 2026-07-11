@@ -16,6 +16,7 @@ import org.junit.runner.RunWith
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
 import org.skynetsoftware.skeletonnotes.domain.model.Result
+import java.io.ByteArrayOutputStream
 import java.io.File
 
 /**
@@ -87,6 +88,38 @@ class NextcloudApiImplInstrumentedTest {
         } finally {
             secretFile.delete()
         }
+    }
+
+    @Test
+    fun uploadFileStreamsRequestBody() = runBlocking {
+        mockWebServer.enqueue(MockResponse().setResponseCode(201))
+
+        val result = api.uploadFile(
+            path = "note1/att1_photo.png",
+            inputStream = "streamed-body".byteInputStream(),
+            contentLength = "streamed-body".length.toLong(),
+            contentType = "application/octet-stream",
+        )
+
+        assertTrue(result is Result.Success)
+        val upload = mockWebServer.takeRequest()
+        assertEquals("PUT", upload.method)
+        assertEquals("streamed-body", upload.body.readUtf8())
+    }
+
+    @Test
+    fun downloadFileStreamsResponseBody() = runBlocking {
+        val outputStream = ByteArrayOutputStream()
+        mockWebServer.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("download-body"),
+        )
+
+        val result = api.downloadFile("note1/att1_photo.png", outputStream)
+
+        assertTrue(result is Result.Success)
+        assertEquals("download-body", outputStream.toString())
     }
 
     private fun enqueueSyncFolderSuccess() {

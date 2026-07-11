@@ -195,6 +195,11 @@ class NoteRepositoryImplTest {
             else emit(Result.Success(notes.map { NoteWithAttachments(it, emptyList()) }))
         }
 
+        override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> {
+            if (shouldFail) return Result.Failure(RuntimeException("test failure"))
+            return Result.Success(notes.map { NoteWithAttachments(it, emptyList()) })
+        }
+
         override fun getNoteByIdFlow(id: String): Flow<Result<NoteWithAttachments>> = flow {
             emit(getNoteById(id))
         }

@@ -4,10 +4,13 @@ import android.app.Application
 import org.skynetsoftware.skeletonnotes.data.di.DataDi
 import org.skynetsoftware.skeletonnotes.domain.di.DomainDi
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ExportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ImportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
@@ -30,6 +33,8 @@ interface AppGraph {
     val getAllNotesUseCase: GetAllNotesUseCase
     val getNoteByIdUseCase: GetNoteByIdUseCase
     val saveNoteUseCase: SaveNoteUseCase
+    val exportNotesUseCase: ExportNotesUseCase
+    val importNotesUseCase: ImportNotesUseCase
     val deleteNoteUseCase: DeleteNoteUseCase
     val moveToTrashUseCase: MoveToTrashUseCase
     val archiveNoteUseCase: ArchiveNoteUseCase
@@ -42,6 +47,7 @@ interface AppGraph {
     val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase
     val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase
     val nextcloudSyncScheduler: NextcloudSyncScheduler
+    val createAttachmentUseCase: CreateAttachmentUseCase
 }
 
 /**
@@ -62,6 +68,7 @@ class ProductionAppGraph(
             DataDi.notesRepository,
             DataDi.nextcloudRepository,
             DataDi.settingsRepository,
+            DataDi.backupRepository,
             DataDi.attachmentFileStorage,
         )
     }
@@ -71,6 +78,10 @@ class ProductionAppGraph(
     override val getNoteByIdUseCase: GetNoteByIdUseCase get() = DomainDi.getNoteByIdUseCase
 
     override val saveNoteUseCase: SaveNoteUseCase get() = DomainDi.saveNoteUseCase
+
+    override val exportNotesUseCase: ExportNotesUseCase get() = DomainDi.exportNotesUseCase
+
+    override val importNotesUseCase: ImportNotesUseCase get() = DomainDi.importNotesUseCase
 
     override val deleteNoteUseCase: DeleteNoteUseCase get() = DomainDi.deleteNoteUseCase
 
@@ -97,4 +108,5 @@ class ProductionAppGraph(
     override val nextcloudSyncScheduler: NextcloudSyncScheduler by lazy {
         NextcloudSyncSchedulerImpl(application, DomainDi.getSettingsUseCase)
     }
+    override val createAttachmentUseCase: CreateAttachmentUseCase by lazy { DomainDi.createAttachmentUseCase }
 }
