@@ -115,6 +115,9 @@ class NextcloudSyncJobServiceTest {
 
         override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit> = Result.Success(Unit)
 
+        override suspend fun saveNotes(notesWithAttachments: List<NoteWithAttachments>): Result<Unit> =
+            Result.Success(Unit)
+
         override suspend fun deleteNote(id: String): Result<Unit> = Result.Success(Unit)
 
         override suspend fun moveToTrash(id: String): Result<Unit> = Result.Success(Unit)

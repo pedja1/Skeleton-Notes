@@ -241,7 +241,7 @@ class NoteRepositoryImplTest {
         var archivedNoteId: String = ""
         var shouldFail = false
 
-        override fun getAllNotes(): Result<List<Note>> {
+        override suspend fun getAllNotes(): Result<List<Note>> {
             if (shouldFail) return Result.Failure(RuntimeException("test failure"))
             return Result.Success(notes)
         }
@@ -264,7 +264,7 @@ class NoteRepositoryImplTest {
                 }
             }
 
-        override fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> {
+        override suspend fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>> {
             if (shouldFail) return Result.Failure(RuntimeException("test failure"))
             return Result.Success(notes.map { NoteWithAttachments(it, emptyList()) })
         }
@@ -274,7 +274,7 @@ class NoteRepositoryImplTest {
                 emit(getNoteById(id))
             }
 
-        override fun getNoteById(id: String): Result<NoteWithAttachments> {
+        override suspend fun getNoteById(id: String): Result<NoteWithAttachments> {
             if (shouldFail) return Result.Failure(RuntimeException("test failure"))
             return Result.Success(noteById)
         }
@@ -282,6 +282,12 @@ class NoteRepositoryImplTest {
         override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit> {
             if (shouldFail) return Result.Failure(RuntimeException("test failure"))
             savedNotes.add(noteWithAttachments)
+            return Result.Success(Unit)
+        }
+
+        override suspend fun saveNotes(notesWithAttachments: List<NoteWithAttachments>): Result<Unit> {
+            if (shouldFail) return Result.Failure(RuntimeException("test failure"))
+            savedNotes.addAll(notesWithAttachments)
             return Result.Success(Unit)
         }
 

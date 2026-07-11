@@ -241,30 +241,27 @@ internal class BackupRepositoryImpl(
         targets.filter { it.targetId == target.targetId }.forEach { it.localPath = path }
     }
 
-    /** Saves all planned notes and returns the final import summary. */
+    /** Saves all planned notes in a single batch and returns the final import summary. */
     private suspend fun savePlans(
         plans: List<ImportPlan>,
         initiallySkipped: Int,
     ): ImportSummary {
-        var imported = 0
-        var overwritten = 0
-        var skipped = initiallySkipped
-        plans.forEach { plan ->
-            val attachments =
-                plan.attachments.mapNotNull { attachment ->
-                    val path = attachment.localPath ?: return@mapNotNull null
-                    attachment.attachment.copy(uri = path)
-                }
-            if (notesRepository.saveNote(NoteWithAttachments(plan.note, attachments)) is Result.Success) {
-                when (plan.successOutcome) {
-                    ImportOutcome.IMPORTED -> imported++
-                    ImportOutcome.OVERWRITTEN -> overwritten++
-                    ImportOutcome.SKIPPED -> skipped++
-                }
-            } else {
-                skipped++
+        val notes =
+            plans.map { plan ->
+                val attachments =
+                    plan.attachments.mapNotNull { attachment ->
+                        val path = attachment.localPath ?: return@mapNotNull null
+                        attachment.attachment.copy(uri = path)
+                    }
+                NoteWithAttachments(plan.note, attachments)
             }
+        // Import is atomic: the whole batch saves in one transaction, so on failure nothing is
+        // persisted and every planned note is counted as skipped.
+        if (notes.isEmpty() || notesRepository.saveNotes(notes) is Result.Success) {
+            val imported = plans.count { it.successOutcome == ImportOutcome.IMPORTED }
+            val overwritten = plans.count { it.successOutcome == ImportOutcome.OVERWRITTEN }
+            return ImportSummary(imported = imported, overwritten = overwritten, skipped = initiallySkipped)
         }
-        return ImportSummary(imported = imported, overwritten = overwritten, skipped = skipped)
+        return ImportSummary(imported = 0, overwritten = 0, skipped = initiallySkipped + plans.size)
     }
 }

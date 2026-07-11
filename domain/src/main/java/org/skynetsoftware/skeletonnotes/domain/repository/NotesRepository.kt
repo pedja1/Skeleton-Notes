@@ -45,6 +45,11 @@ interface NotesRepository {
     suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit>
 
     /**
+     * Saves all [notesWithAttachments] in a single transaction, notifying observers once.
+     */
+    suspend fun saveNotes(notesWithAttachments: List<NoteWithAttachments>): Result<Unit>
+
+    /**
      * Deletes the note identified by [id] along with its attachments.
      */
     suspend fun deleteNote(id: String): Result<Unit>

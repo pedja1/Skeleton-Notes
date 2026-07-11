@@ -639,6 +639,11 @@ class SyncNotesWithNextcloudUseCaseTest {
             return Result.Success(Unit)
         }
 
+        override suspend fun saveNotes(notesWithAttachments: List<NoteWithAttachments>): Result<Unit> {
+            savedNoteWithAttachments.addAll(notesWithAttachments)
+            return Result.Success(Unit)
+        }
+
         override suspend fun deleteNote(id: String) = Result.Success(Unit)
 
         override suspend fun moveToTrash(id: String): Result<Unit> {

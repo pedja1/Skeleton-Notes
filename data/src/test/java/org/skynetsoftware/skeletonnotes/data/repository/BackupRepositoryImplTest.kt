@@ -429,6 +429,11 @@ class BackupRepositoryImplTest {
             return saveResult
         }
 
+        override suspend fun saveNotes(notesWithAttachments: List<NoteWithAttachments>): Result<Unit> {
+            if (saveResult is Result.Success) saved.addAll(notesWithAttachments)
+            return saveResult
+        }
+
         override fun getAllNotesFlow(): Flow<Result<List<Note>>> = flowOf(Result.Success(emptyList()))
 
         override suspend fun getAllNotes(): Result<List<Note>> = Result.Success(emptyList())

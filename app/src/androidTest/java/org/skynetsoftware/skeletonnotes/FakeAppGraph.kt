@@ -46,6 +46,9 @@ private class FailingNotesRepository : NotesRepository {
     override suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit> =
         Result.Failure(IllegalStateException("database corrupted"))
 
+    override suspend fun saveNotes(notesWithAttachments: List<NoteWithAttachments>): Result<Unit> =
+        Result.Failure(IllegalStateException("database corrupted"))
+
     override suspend fun deleteNote(id: String): Result<Unit> =
         Result.Failure(IllegalStateException("database corrupted"))
 

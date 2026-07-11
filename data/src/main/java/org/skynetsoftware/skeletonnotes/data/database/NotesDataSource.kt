@@ -18,7 +18,7 @@ internal interface NotesDataSource {
     /**
      * Retrieves all notes.
      */
-    fun getAllNotes(): Result<List<Note>>
+    suspend fun getAllNotes(): Result<List<Note>>
 
     /**
      * Retrieves all notes together with their attachments as a Flow.
@@ -28,7 +28,7 @@ internal interface NotesDataSource {
     /**
      * Retrieves all notes together with their attachments as a one-shot snapshot.
      */
-    fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>>
+    suspend fun getAllNotesWithAttachments(): Result<List<NoteWithAttachments>>
 
     /**
      * Retrieves a single note with its attachments by [id] as Flow
@@ -38,12 +38,17 @@ internal interface NotesDataSource {
     /**
      * Retrieves a single note with its attachments by [id].
      */
-    fun getNoteById(id: String): Result<NoteWithAttachments>
+    suspend fun getNoteById(id: String): Result<NoteWithAttachments>
 
     /**
      * Saves the given [noteWithAttachments] and returns the note's ID.
      */
     suspend fun saveNote(noteWithAttachments: NoteWithAttachments): Result<Unit>
+
+    /**
+     * Saves all [notesWithAttachments] in a single transaction, notifying observers once.
+     */
+    suspend fun saveNotes(notesWithAttachments: List<NoteWithAttachments>): Result<Unit>
 
     /**
      * Deletes the note identified by [id] along with its attachments.

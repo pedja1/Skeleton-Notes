@@ -17,6 +17,14 @@ internal class SkeletonNotesDatabaseHelper(
     application: Application,
     databaseName: String? = "skeleton-notes",
 ) : SQLiteOpenHelper(application, databaseName, null, DATABASE_VERSION) {
+    init {
+        // WAL lets readers run concurrently with a writer (e.g. a large import), so reads no longer
+        // block on the single write connection. In-memory databases (used by tests) don't support WAL.
+        if (databaseName != null) {
+            setWriteAheadLoggingEnabled(true)
+        }
+    }
+
     companion object {
         private const val DATABASE_VERSION = 3
 
