@@ -51,7 +51,14 @@ object DataDi {
 
     private val nextcloudConfigStore: NextcloudConfigStore by lazy { NextcloudConfigStoreImpl.from(application) }
 
-    private val nextcloudApi: NextcloudApi by lazy { NextcloudApiImpl(nextcloudConfigStore) }
+    private val nextcloudApi: NextcloudApi by lazy {
+        val versionName = try {
+            application.packageManager.getPackageInfo(application.packageName, 0).versionName ?: "dev"
+        } catch (_: Exception) {
+            "dev"
+        }
+        NextcloudApiImpl(nextcloudConfigStore, versionName)
+    }
 
     val attachmentFileStorage: AttachmentFileStorage by lazy { AttachmentStorageImpl(application) }
 

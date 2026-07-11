@@ -39,7 +39,7 @@ class NextcloudApiImplInstrumentedTest {
         configStore.serverUrlFlow.value = mockWebServer.url("/").toString().trimEnd('/')
         configStore.usernameFlow.value = "testuser"
         configStore.appPasswordFlow.value = "testpass"
-        api = NextcloudApiImpl(configStore)
+        api = NextcloudApiImpl(configStore, "dev")
     }
 
     @After

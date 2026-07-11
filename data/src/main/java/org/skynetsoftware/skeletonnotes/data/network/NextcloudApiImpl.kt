@@ -33,7 +33,10 @@ import javax.xml.parsers.ParserConfigurationException
 /**
  * Communicates with Nextcloud via WebDAV and Login Flow v2 using OkHttp.
  */
-internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfigStore) : NextcloudApi {
+internal class NextcloudApiImpl(
+    private val nextcloudConfigStore: NextcloudConfigStore,
+    appVersion: String,
+) : NextcloudApi {
 
     companion object {
         private const val TAG = "NextcloudApi"
@@ -47,6 +50,13 @@ internal class NextcloudApiImpl(private val nextcloudConfigStore: NextcloudConfi
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
+        .addInterceptor { chain ->
+            chain.proceed(
+                chain.request().newBuilder()
+                    .header("User-Agent", "Skeleton-Notes/$appVersion")
+                    .build()
+            )
+        }
         .build()
 
     /**

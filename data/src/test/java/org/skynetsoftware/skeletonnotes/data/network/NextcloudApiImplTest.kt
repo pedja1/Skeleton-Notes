@@ -27,7 +27,7 @@ class NextcloudApiImplTest {
     fun setUp() {
         mockWebServer = MockWebServer()
         configStore = FakeNextcloudConfigStore()
-        api = NextcloudApiImpl(configStore)
+        api = NextcloudApiImpl(configStore, "test")
     }
 
     @After
