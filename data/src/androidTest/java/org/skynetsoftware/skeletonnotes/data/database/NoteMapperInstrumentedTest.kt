@@ -10,6 +10,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_CONTENT
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_CREATED
+import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_FILENAME
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_ID
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MODIFIED
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_NOTE_ID
@@ -265,12 +266,19 @@ class NoteMapperInstrumentedTest {
 
     @Test
     fun attachmentToContentValuesContainsAllFields() {
-        val attachment = Attachment(id = "att-id", noteId = "note-42", uri = "file://test/photo.jpg")
+        val attachment =
+            Attachment(
+                id = "att-id",
+                noteId = "note-42",
+                uri = "file://test/photo.jpg",
+                filename = "report.pdf",
+            )
 
         val cv = attachment.toContentValues()
 
         assertEquals("att-id", cv.getAsString(COLUMN_ID))
         assertEquals("note-42", cv.getAsString(COLUMN_NOTE_ID))
         assertEquals("file://test/photo.jpg", cv.getAsString(COLUMN_URI))
+        assertEquals("report.pdf", cv.getAsString(COLUMN_FILENAME))
     }
 }

@@ -14,6 +14,7 @@ class CreateAttachmentUseCase(
         noteId: String,
         sourceUri: String,
         mimeType: String?,
+        filename: String?,
     ): Result<Attachment> =
         withContext(Dispatchers.IO) {
             try {
@@ -26,6 +27,7 @@ class CreateAttachmentUseCase(
                         noteId = noteId,
                         uri = localPath,
                         mimeType = mimeType,
+                        filename = filename,
                     )
                 Result.Success(attachment)
             } catch (t: Throwable) {

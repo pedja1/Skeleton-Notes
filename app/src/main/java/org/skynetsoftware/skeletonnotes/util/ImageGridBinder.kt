@@ -27,7 +27,8 @@ import org.skynetsoftware.skeletonnotes.widget.ImageGridLayout
 fun ImageGridLayout.bindImages(
     paths: List<String>,
     scope: CoroutineScope,
-    onLongClick: ((Int) -> Unit) = {},
+    onClick: ((Int) -> Unit)? = null,
+    onLongClick: ((Int) -> Unit)? = null,
 ) {
     if (paths.isEmpty()) {
         visibility = View.GONE
@@ -46,9 +47,16 @@ fun ImageGridLayout.bindImages(
             continue
         }
         cell.visibility = View.VISIBLE
-        cell.setOnLongClickListener {
-            onLongClick(i)
-            true
+        if (onClick != null) {
+            cell.setOnClickListener {
+                onClick(i)
+            }
+        }
+        if (onLongClick != null) {
+            cell.setOnLongClickListener {
+                onLongClick(i)
+                true
+            }
         }
         val path = paths[i]
         if (cell.getTag(R.id.image_grid_path_tag) != path) {

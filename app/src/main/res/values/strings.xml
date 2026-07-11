@@ -114,4 +114,5 @@
     <string name="settings_sync_interval_24h">24 hours</string>
     <string name="settings_sync_interval_dialog_title">Sync Interval</string>
     <string name="note_details_error_adding_attachment">Error adding attachment</string>
+    <string name="no_app_to_open_attachment">No app found to open this file</string>
 </resources>

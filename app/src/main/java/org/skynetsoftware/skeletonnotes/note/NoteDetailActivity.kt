@@ -1,6 +1,8 @@
 package org.skynetsoftware.skeletonnotes.note
 
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.Html
@@ -16,6 +18,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
@@ -26,7 +29,9 @@ import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.databinding.ActivityNoteDetailBinding
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
+import org.skynetsoftware.skeletonnotes.util.bindAttachments
 import org.skynetsoftware.skeletonnotes.util.bindImages
+import java.io.File
 
 /**
  * Activity for viewing and editing a single note. Supports both creating new notes
@@ -162,14 +167,48 @@ class NoteDetailActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.attachments.collect { attachments ->
-                    // TODO display other non-image attachments
                     val imageAttachments = attachments.filter { it.mimeType?.startsWith("image/") == true }
-                    val imagePaths = imageAttachments.map { it.uri }
-                    binding.noteImages.bindImages(imagePaths, lifecycleScope) { index ->
-                        showRemoveAttachmentConfirmation(imageAttachments[index])
-                    }
+                    val otherAttachments = attachments.filter { it.mimeType?.startsWith("image/") != true }
+                    binding.noteImages.bindImages(
+                        paths = imageAttachments.map { it.uri },
+                        scope = lifecycleScope,
+                        onClick = { index ->
+                            openAttachment(imageAttachments[index])
+                        },
+                        onLongClick = { index ->
+                            showRemoveAttachmentConfirmation(imageAttachments[index])
+                        },
+                    )
+                    binding.noteAttachments.bindAttachments(
+                        otherAttachments,
+                        onClick = { openAttachment(it) },
+                        onLongClick = { showRemoveAttachmentConfirmation(it) },
+                    )
                 }
             }
+        }
+    }
+
+    /**
+     * Opens [attachment] in an external app via [Intent.ACTION_VIEW], sharing the local file through
+     * the app's [FileProvider]. Shows a toast if no app can handle the file's type.
+     */
+    private fun openAttachment(attachment: Attachment) {
+        try {
+            val uri =
+                FileProvider.getUriForFile(
+                    this,
+                    "$packageName.fileprovider",
+                    File(attachment.uri),
+                )
+            val intent =
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, attachment.mimeType ?: "*/*")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+            startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(this, R.string.no_app_to_open_attachment, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -204,7 +243,11 @@ class NoteDetailActivity : ComponentActivity() {
                 MarkdownFormatter.toMarkdown(it)
             } ?: ""
         val plainText = binding.editNoteContent.text?.toString() ?: ""
-        if (viewModel.isNewNote() && title == null && content.isBlank()) {
+        if (viewModel.isNewNote() &&
+            title == null &&
+            content.isBlank() &&
+            viewModel.attachments.value.isEmpty()
+        ) {
             finish()
             return
         }

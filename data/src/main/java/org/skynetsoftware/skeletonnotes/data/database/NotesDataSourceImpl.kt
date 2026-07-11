@@ -7,6 +7,7 @@ import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.map
+import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_FILENAME
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_ID
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MIME_TYPE
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MODIFIED
@@ -96,7 +97,8 @@ internal class NotesDataSourceImpl(
                         $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
                         $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
                         $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI,
-                        $TABLE_ATTACHMENTS.$COLUMN_MIME_TYPE AS ${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE
+                        $TABLE_ATTACHMENTS.$COLUMN_MIME_TYPE AS ${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE,
+                        $TABLE_ATTACHMENTS.$COLUMN_FILENAME AS ${TABLE_ATTACHMENTS}_$COLUMN_FILENAME
                     FROM $TABLE_NOTES
                     LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
                     ORDER BY $TABLE_NOTES.$COLUMN_MODIFIED DESC, $TABLE_NOTES.$COLUMN_ID
@@ -142,7 +144,8 @@ internal class NotesDataSourceImpl(
                         $TABLE_ATTACHMENTS.$COLUMN_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_ID,
                         $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID AS ${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID,
                         $TABLE_ATTACHMENTS.$COLUMN_URI AS ${TABLE_ATTACHMENTS}_$COLUMN_URI,
-                        $TABLE_ATTACHMENTS.$COLUMN_MIME_TYPE AS ${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE
+                        $TABLE_ATTACHMENTS.$COLUMN_MIME_TYPE AS ${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE,
+                        $TABLE_ATTACHMENTS.$COLUMN_FILENAME AS ${TABLE_ATTACHMENTS}_$COLUMN_FILENAME
                     FROM $TABLE_NOTES
                     LEFT JOIN $TABLE_ATTACHMENTS on $TABLE_NOTES.$COLUMN_ID = $TABLE_ATTACHMENTS.$COLUMN_NOTE_ID
                     WHERE $TABLE_NOTES.$COLUMN_ID = ?

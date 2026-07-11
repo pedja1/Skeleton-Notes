@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.database.Cursor
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_CONTENT
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_CREATED
+import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_FILENAME
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_ID
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MIME_TYPE
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper.Companion.COLUMN_MODIFIED
@@ -89,11 +90,13 @@ internal fun Cursor.toAttachmentFromJoin(): Attachment? {
     val noteIdIndex = getColumnIndexOrThrow("${TABLE_ATTACHMENTS}_$COLUMN_NOTE_ID")
     val uriIndex = getColumnIndexOrThrow("${TABLE_ATTACHMENTS}_$COLUMN_URI")
     val mimeTypeIndex = getColumnIndex("${TABLE_ATTACHMENTS}_$COLUMN_MIME_TYPE")
+    val filenameIndex = getColumnIndex("${TABLE_ATTACHMENTS}_$COLUMN_FILENAME")
     return Attachment(
         id = getString(idIndex),
         noteId = getString(noteIdIndex),
         uri = getString(uriIndex),
         mimeType = getStringOrNull(mimeTypeIndex),
+        filename = getStringOrNull(filenameIndex),
     )
 }
 
@@ -132,6 +135,7 @@ internal fun Attachment.toContentValues(): ContentValues =
         put(COLUMN_NOTE_ID, noteId)
         put(COLUMN_URI, uri)
         put(COLUMN_MIME_TYPE, mimeType)
+        put(COLUMN_FILENAME, filename)
     }
 
 /**

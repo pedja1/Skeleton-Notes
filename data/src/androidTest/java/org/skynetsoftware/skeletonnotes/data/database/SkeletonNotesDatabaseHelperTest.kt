@@ -48,8 +48,8 @@ class SkeletonNotesDatabaseHelperTest {
     }
 
     @Test
-    fun databaseVersionIs2() {
-        assertEquals(2, database.version)
+    fun databaseVersionIs3() {
+        assertEquals(3, database.version)
     }
 
     @Test

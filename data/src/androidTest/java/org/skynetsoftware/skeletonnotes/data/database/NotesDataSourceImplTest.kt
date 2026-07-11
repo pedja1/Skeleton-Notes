@@ -116,6 +116,7 @@ class NotesDataSourceImplTest {
                     noteId = withImages.id,
                     uri = "/tmp/a",
                     mimeType = "image/jpeg",
+                    filename = "a.jpg",
                 )
             val image2 =
                 Attachment(
@@ -123,6 +124,7 @@ class NotesDataSourceImplTest {
                     noteId = withImages.id,
                     uri = "/tmp/b",
                     mimeType = "image/png",
+                    filename = "b.png",
                 )
             val withoutAttachments =
                 Note(
@@ -146,6 +148,10 @@ class NotesDataSourceImplTest {
             assertEquals(
                 setOf("image/jpeg", "image/png"),
                 loadedWithImages.attachments.mapNotNull { it.mimeType }.toSet(),
+            )
+            assertEquals(
+                setOf("a.jpg", "b.png"),
+                loadedWithImages.attachments.mapNotNull { it.filename }.toSet(),
             )
 
             val loadedEmpty = data.first { it.note.id == withoutAttachments.id }

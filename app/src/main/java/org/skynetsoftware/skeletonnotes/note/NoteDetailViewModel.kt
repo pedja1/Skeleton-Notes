@@ -1,6 +1,7 @@
 package org.skynetsoftware.skeletonnotes.note
 
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -308,6 +309,7 @@ class NoteDetailViewModel(
                     noteId = noteId,
                     sourceUri = uri.toString(),
                     mimeType = AppDi.application.contentResolver.getType(uri),
+                    filename = resolveDisplayName(uri),
                 )
             when (createAttachmentResult) {
                 is Result.Failure<Attachment> -> {
@@ -321,4 +323,22 @@ class NoteDetailViewModel(
                 }
             }
         }
+
+    /**
+     * Resolves the human-readable display name for a picked [uri] via [OpenableColumns.DISPLAY_NAME],
+     * or `null` if it cannot be determined. Used to preserve the original filename for display.
+     */
+    private fun resolveDisplayName(uri: Uri): String? =
+        runCatching {
+            AppDi.application.contentResolver
+                .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (index >= 0 && !cursor.isNull(index)) cursor.getString(index) else null
+                    } else {
+                        null
+                    }
+                }
+        }.getOrNull()
 }

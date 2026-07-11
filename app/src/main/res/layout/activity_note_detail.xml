@@ -19,6 +19,16 @@
         android:paddingEnd="@dimen/note_detail_padding_horizontal"
         android:paddingTop="@dimen/note_detail_padding_horizontal" />
 
+    <LinearLayout
+        android:id="@+id/note_attachments"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:paddingStart="@dimen/note_detail_padding_horizontal"
+        android:paddingEnd="@dimen/note_detail_padding_horizontal"
+        android:paddingTop="@dimen/note_detail_padding_horizontal" />
+
     <EditText
         android:id="@+id/edit_note_title"
         android:layout_width="match_parent"

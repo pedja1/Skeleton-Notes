@@ -274,6 +274,7 @@ open class SyncNotesWithNextcloudUseCase(
                         noteId = uuid,
                         uri = filePath,
                         mimeType = remoteAttachment.mimeType,
+                        filename = remoteAttachment.filename,
                     ),
                 )
             }
@@ -302,7 +303,7 @@ open class SyncNotesWithNextcloudUseCase(
 
         val nextcloudAttachments = mutableListOf<NextcloudAttachment>()
         for (attachment in localNoteWithAttachments.attachments) {
-            val filename = attachment.uri.substringAfterLast("/")
+            val filename = attachment.filename ?: attachment.uri.substringAfterLast("/")
             nextcloudAttachments.add(
                 NextcloudAttachment(
                     id = attachment.id,

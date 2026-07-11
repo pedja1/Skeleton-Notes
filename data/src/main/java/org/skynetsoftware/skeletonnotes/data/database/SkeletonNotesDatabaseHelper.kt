@@ -18,7 +18,7 @@ internal class SkeletonNotesDatabaseHelper(
     databaseName: String? = "skeleton-notes",
 ) : SQLiteOpenHelper(application, databaseName, null, DATABASE_VERSION) {
     companion object {
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
 
         // table notes
         const val TABLE_NOTES = "notes"
@@ -36,6 +36,7 @@ internal class SkeletonNotesDatabaseHelper(
         const val COLUMN_NOTE_ID = "noteId"
         const val COLUMN_URI = "uri"
         const val COLUMN_MIME_TYPE = "mimeType"
+        const val COLUMN_FILENAME = "filename"
     }
 
     override fun onCreate(database: SQLiteDatabase) {
@@ -61,6 +62,7 @@ internal class SkeletonNotesDatabaseHelper(
                 `$COLUMN_NOTE_ID` TEXT NOT NULL,
                 `$COLUMN_URI` TEXT NOT NULL,
                 `$COLUMN_MIME_TYPE` TEXT,
+                `$COLUMN_FILENAME` TEXT,
                 PRIMARY KEY(`$COLUMN_ID`)
             )
             """.trimIndent(),
@@ -75,6 +77,11 @@ internal class SkeletonNotesDatabaseHelper(
         if (oldVersion < 2) {
             database.execSQL(
                 "ALTER TABLE `$TABLE_ATTACHMENTS` ADD COLUMN `$COLUMN_MIME_TYPE` TEXT",
+            )
+        }
+        if (oldVersion < 3) {
+            database.execSQL(
+                "ALTER TABLE `$TABLE_ATTACHMENTS` ADD COLUMN `$COLUMN_FILENAME` TEXT",
             )
         }
     }
