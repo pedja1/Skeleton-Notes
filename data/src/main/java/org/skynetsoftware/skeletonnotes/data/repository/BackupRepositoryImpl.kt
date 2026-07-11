@@ -1,5 +1,6 @@
 package org.skynetsoftware.skeletonnotes.data.repository
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -33,6 +34,7 @@ import java.util.zip.ZipOutputStream
 internal class BackupRepositoryImpl(
     private val notesRepository: NotesRepository,
     private val attachmentFileStorage: AttachmentFileStorage,
+    private val coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : BackupRepository {
     companion object {
         /** ZIP entry containing the exported note manifest. */
@@ -43,7 +45,7 @@ internal class BackupRepositoryImpl(
     }
 
     override suspend fun exportNotes(outputStream: OutputStream): Result<Int> =
-        withContext(Dispatchers.IO) {
+        withContext(coroutineDispatcher) {
             try {
                 val notes =
                     when (val result = notesRepository.getAllNotesWithAttachments()) {
@@ -75,7 +77,7 @@ internal class BackupRepositoryImpl(
         inputStream: InputStream,
         onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
     ): Result<ImportSummary> =
-        withContext(Dispatchers.IO) {
+        withContext(coroutineDispatcher) {
             try {
                 Result.Success(importArchive(inputStream, onConflict))
             } catch (t: Throwable) {

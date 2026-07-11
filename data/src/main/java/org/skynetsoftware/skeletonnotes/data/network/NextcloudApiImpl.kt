@@ -2,6 +2,7 @@ package org.skynetsoftware.skeletonnotes.data.network
 
 import android.util.Base64
 import android.util.Log
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -36,6 +37,7 @@ import javax.xml.parsers.ParserConfigurationException
 internal class NextcloudApiImpl(
     private val nextcloudConfigStore: NextcloudConfigStore,
     appVersion: String,
+    private val coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : NextcloudApi {
     companion object {
         private const val TAG = "NextcloudApi"
@@ -92,7 +94,7 @@ internal class NextcloudApiImpl(
      */
     override suspend fun initiateLoginFlow(serverUrl: String): Result<NextcloudInitiateLoginResult> =
         withContext(
-            Dispatchers.IO,
+            coroutineDispatcher,
         ) {
             try {
                 val normalizedUrl = serverUrl.trimEnd('/')
@@ -139,7 +141,7 @@ internal class NextcloudApiImpl(
         token: String,
         endpoint: String,
     ): NextcloudPollStatus =
-        withContext(Dispatchers.IO) {
+        withContext(coroutineDispatcher) {
             try {
                 val body = FormBody.Builder().add("token", token).build()
                 val request =
@@ -175,7 +177,7 @@ internal class NextcloudApiImpl(
      * Automatically creates the sync folder if it does not exist.
      */
     override suspend fun listDirectory(path: String): Result<List<NextcloudFileInfo>> =
-        withContext(Dispatchers.IO) {
+        withContext(coroutineDispatcher) {
             try {
                 ensureSyncFolder()
                 val url = "${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}"
@@ -208,7 +210,7 @@ internal class NextcloudApiImpl(
      * Downloads a file from .skeleton_notes/[path] via HTTP GET.
      */
     override suspend fun downloadFile(path: String): Result<ByteArray> =
-        withContext(Dispatchers.IO) {
+        withContext(coroutineDispatcher) {
             val outputStream = ByteArrayOutputStream()
             when (val result = downloadFile(path, outputStream)) {
                 is Result.Success -> Result.Success(outputStream.toByteArray())
@@ -223,7 +225,7 @@ internal class NextcloudApiImpl(
         path: String,
         outputStream: OutputStream,
     ): Result<Unit> =
-        withContext(Dispatchers.IO) {
+        withContext(coroutineDispatcher) {
             try {
                 val request =
                     Request
@@ -260,7 +262,7 @@ internal class NextcloudApiImpl(
         contentType: String,
     ): Result<Unit> =
         withContext(
-            Dispatchers.IO,
+            coroutineDispatcher,
         ) {
             uploadFile(path, content.inputStream(), content.size.toLong(), contentType)
         }
@@ -274,7 +276,7 @@ internal class NextcloudApiImpl(
         contentLength: Long,
         contentType: String,
     ): Result<Unit> =
-        withContext(Dispatchers.IO) {
+        withContext(coroutineDispatcher) {
             try {
                 val body = inputStream.toRequestBody(contentType, contentLength)
                 val request =
@@ -326,7 +328,7 @@ internal class NextcloudApiImpl(
      * Deletes a file from .skeleton_notes/[path] via HTTP DELETE.
      */
     override suspend fun deleteFile(path: String): Result<Unit> =
-        withContext(Dispatchers.IO) {
+        withContext(coroutineDispatcher) {
             try {
                 val request =
                     Request
@@ -356,7 +358,7 @@ internal class NextcloudApiImpl(
      * Creates a directory inside .skeleton_notes/[path] via WebDAV MKCOL.
      */
     override suspend fun createDirectory(path: String): Result<Unit> =
-        withContext(Dispatchers.IO) {
+        withContext(coroutineDispatcher) {
             try {
                 val url = "${davBaseUrl()}/$SYNC_FOLDER/${path.trimStart('/')}".trimEnd('/')
                 val request =

@@ -1,5 +1,6 @@
 package org.skynetsoftware.skeletonnotes.domain.usecase
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.skynetsoftware.skeletonnotes.domain.attachment.AttachmentFileStorage
@@ -9,6 +10,7 @@ import java.util.UUID
 
 class CreateAttachmentUseCase(
     private val attachmentFileStorage: AttachmentFileStorage,
+    private val coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     suspend operator fun invoke(
         noteId: String,
@@ -16,7 +18,7 @@ class CreateAttachmentUseCase(
         mimeType: String?,
         filename: String?,
     ): Result<Attachment> =
-        withContext(Dispatchers.IO) {
+        withContext(coroutineDispatcher) {
             try {
                 val attachmentId = UUID.randomUUID().toString()
                 val localPath = attachmentFileStorage.copyToStorage(sourceUri, attachmentId, mimeType)
