@@ -49,11 +49,13 @@ class MainActivity : ComponentActivity() {
         gridView.layoutManager =
             StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
 
-        adapter = NoteAdapter(lifecycleScope) { note ->
+        adapter = NoteAdapter(lifecycleScope, onNoteClick = { note ->
             val intent = Intent(this, NoteDetailActivity::class.java)
             intent.putExtra(NoteDetailActivity.EXTRA_NOTE_ID, note.id)
             startActivity(intent)
-        }
+        }, onTagClick = { tag ->
+            binding.searchInput.setText("#$tag")
+        })
         gridView.adapter = adapter
 
         binding.toolbar.toolbarAddNote.setOnClickListener {

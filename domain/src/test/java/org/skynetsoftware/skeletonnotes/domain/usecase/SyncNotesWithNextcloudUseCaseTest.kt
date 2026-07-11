@@ -613,6 +613,8 @@ class SyncNotesWithNextcloudUseCaseTest {
         }
 
         override suspend fun archiveNote(id: String) = Result.Success(Unit)
+
+        override suspend fun restoreNote(id: String) = Result.Success(Unit)
     }
 
     private class FakeNextcloudRepo(

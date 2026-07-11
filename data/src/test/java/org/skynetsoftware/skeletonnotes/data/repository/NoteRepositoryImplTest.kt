@@ -232,5 +232,10 @@ class NoteRepositoryImplTest {
             archivedNoteId = id
             return Result.Success(Unit)
         }
+
+        override suspend fun restoreNote(id: String): Result<Unit> {
+            if (shouldFail) return Result.Failure(RuntimeException("test failure"))
+            return Result.Success(Unit)
+        }
     }
 }

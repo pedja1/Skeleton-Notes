@@ -14,6 +14,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.ImportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.RestoreNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
@@ -38,6 +39,7 @@ interface AppGraph {
     val deleteNoteUseCase: DeleteNoteUseCase
     val moveToTrashUseCase: MoveToTrashUseCase
     val archiveNoteUseCase: ArchiveNoteUseCase
+    val restoreNoteUseCase: RestoreNoteUseCase
     val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase
     val syncNotesWithNextcloudUseCase: SyncNotesWithNextcloudUseCase
     val getSettingsUseCase: GetSettingsUseCase
@@ -88,6 +90,8 @@ class ProductionAppGraph(
     override val moveToTrashUseCase: MoveToTrashUseCase get() = DomainDi.moveToTrashUseCase
 
     override val archiveNoteUseCase: ArchiveNoteUseCase get() = DomainDi.archiveNoteUseCase
+
+    override val restoreNoteUseCase: RestoreNoteUseCase get() = DomainDi.restoreNoteUseCase
 
     override val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase get() = DomainDi.searchAndFilterNotesUseCase
 

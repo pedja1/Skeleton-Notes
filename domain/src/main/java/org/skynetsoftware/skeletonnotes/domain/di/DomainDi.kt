@@ -17,6 +17,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.ImportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.RestoreNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
@@ -68,6 +69,8 @@ object DomainDi {
     val moveToTrashUseCase: MoveToTrashUseCase by lazy { MoveToTrashUseCase(notesRepository) }
 
     val archiveNoteUseCase: ArchiveNoteUseCase by lazy { ArchiveNoteUseCase(notesRepository) }
+
+    val restoreNoteUseCase: RestoreNoteUseCase by lazy { RestoreNoteUseCase(notesRepository) }
 
     val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase by lazy { SearchAndFilterNotesUseCase() }
 

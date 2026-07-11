@@ -34,4 +34,6 @@ open class BaseFakeNotesRepository : NotesRepository {
     override suspend fun moveToTrash(id: String): Result<Unit> = Result.Success(Unit)
 
     override suspend fun archiveNote(id: String): Result<Unit> = Result.Success(Unit)
+
+    override suspend fun restoreNote(id: String): Result<Unit> = Result.Success(Unit)
 }

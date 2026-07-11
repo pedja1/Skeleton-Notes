@@ -274,6 +274,25 @@ internal class NotesDataSourceImpl(
     }
 
     /**
+     * @see NotesDataSource.restoreNote
+     */
+    override suspend fun restoreNote(id: String): Result<Unit> {
+        return try {
+            val database = skeletonNotesDatabaseHelper.writableDatabase
+            val values = ContentValues().apply {
+                put(COLUMN_STATUS, NoteStatus.ACTIVE.value)
+            }
+            database.update(TABLE_NOTES, values, "$COLUMN_ID = ?", arrayOf(id))
+            Log.d(TAG, "restoreNote: $id")
+            notifyNotesChanged(id)
+            Result.Success(Unit)
+        } catch (t: Throwable) {
+            Log.e(TAG, null, t)
+            Result.Failure(t)
+        }
+    }
+
+    /**
      * trigger re-read of all notes or note by id, for all functions that return Flow
      */
     private suspend fun notifyNotesChanged(noteId: String?) {

@@ -64,4 +64,14 @@ interface NotesRepository {
      * @return [Result.Success] on success, or [Result.Failure] on error
      */
     suspend fun archiveNote(id: String): Result<Unit>
+
+    /**
+     * Restores the note with the given [id] by setting its status back to
+     * [org.skynetsoftware.skeletonnotes.domain.model.NoteStatus.ACTIVE].
+     * Used for both unarchiving and restoring from trash.
+     *
+     * @param id the ID of the note to restore
+     * @return [Result.Success] on success, or [Result.Failure] on error
+     */
+    suspend fun restoreNote(id: String): Result<Unit>
 }

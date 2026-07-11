@@ -60,4 +60,9 @@ internal interface NotesDataSource {
      * Archive note. Set status to [NoteStatus.ARCHIVED]
      */
     suspend fun archiveNote(id: String): Result<Unit>
+
+    /**
+     * Restore note from trash or archive by setting its status back to [NoteStatus.ACTIVE].
+     */
+    suspend fun restoreNote(id: String): Result<Unit>
 }

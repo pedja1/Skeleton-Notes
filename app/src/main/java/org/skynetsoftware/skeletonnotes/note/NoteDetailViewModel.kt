@@ -25,6 +25,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.RestoreNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.util.TagExtractor
 import java.util.UUID
@@ -40,6 +41,7 @@ class NoteDetailViewModel(
     private val deleteNoteUseCase: DeleteNoteUseCase,
     private val moveToTrashUseCase: MoveToTrashUseCase,
     private val archiveNoteUseCase: ArchiveNoteUseCase,
+    private val restoreNoteUseCase: RestoreNoteUseCase,
     private val createAttachment: CreateAttachmentUseCase
 ) : ViewModel() {
 
@@ -62,6 +64,7 @@ class NoteDetailViewModel(
                     deleteNoteUseCase = AppDi.deleteNoteUseCase,
                     moveToTrashUseCase = AppDi.moveToTrashUseCase,
                     archiveNoteUseCase = AppDi.archiveNoteUseCase,
+                    restoreNoteUseCase = AppDi.restoreNoteUseCase,
                     createAttachment = AppDi.createAttachmentUseCase,
                 )
             }
@@ -92,6 +95,9 @@ class NoteDetailViewModel(
 
         /** The note has been archived. */
         object Archived : UiState()
+
+        /** The note has been restored from trash or archive. */
+        object Restored : UiState()
 
         /** An error occurred. */
         data class Error(val throwable: Throwable) : UiState()
@@ -144,6 +150,10 @@ class NoteDetailViewModel(
      */
     fun saveNote(title: String?, content: String, plainTextContent: String) {
         if (uiState.value is UiState.Error) return
+        if (!isNewNote && title == loadedNote?.title && content == loadedNote?.content) {
+            _uiState.value = UiState.Saved
+            return
+        }
         _uiState.value = UiState.Saving
         viewModelScope.launch {
             val tags = TagExtractor.extractTags(plainTextContent)
@@ -226,9 +236,33 @@ class NoteDetailViewModel(
     }
 
     /**
+     * Restores the currently loaded note from trash or archive. On success emits
+     * [UiState.Restored], on failure emits [UiState.Error].
+     */
+    fun restoreNote() {
+        _uiState.value = UiState.Saving
+        viewModelScope.launch {
+            when (val result = restoreNoteUseCase(noteId)) {
+                is Result.Success -> {
+                    _uiState.value = UiState.Restored
+                }
+                is Result.Failure -> {
+                    _uiState.value = UiState.Error(result.throwable)
+                }
+            }
+        }
+    }
+
+    /**
      * Returns `true` if this is a new note (not yet saved to the repository).
      */
     fun isNewNote(): Boolean = isNewNote
+
+    /**
+     * Returns the [NoteStatus] of the currently loaded note, or `null` if no note
+     * has been loaded yet (e.g. a new note).
+     */
+    fun noteStatus(): NoteStatus? = loadedNote?.status
 
     fun onAttachmentPicked(uri: Uri?) = viewModelScope.launch {
         if (uri == null) return@launch

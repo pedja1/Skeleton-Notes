@@ -84,4 +84,12 @@ internal class NotesRepositoryImpl(private val notesDataSource: NotesDataSource)
     override suspend fun archiveNote(id: String): Result<Unit> = withContext(Dispatchers.IO) {
         notesDataSource.archiveNote(id)
     }
+
+    /**
+     * @see NotesRepository.restoreNote
+     * @see NotesDataSource.restoreNote
+     */
+    override suspend fun restoreNote(id: String): Result<Unit> = withContext(Dispatchers.IO) {
+        notesDataSource.restoreNote(id)
+    }
 }

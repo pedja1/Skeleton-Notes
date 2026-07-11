@@ -22,6 +22,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetNoteByIdUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.RestoreNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -346,6 +347,109 @@ class NoteDetailViewModelTest {
         }
     }
 
+    @Test
+    fun savingUnchangedNoteSkipsRepositoryCall() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val note = Note(
+                id = "10", title = "Existing", content = "<b>Content</b>",
+                createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()
+            )
+            val repository = FakeNoteDetailRepository(note = note)
+            val viewModel = createViewModel("10", repository)
+
+            viewModel.saveNote("Existing", "<b>Content</b>", "Content")
+            assertEquals(NoteDetailViewModel.UiState.Saved, viewModel.uiState.value)
+            assertTrue(repository.savedNoteWithAttachments == null)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun savingChangedContentStillCallsRepository() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val note = Note(
+                id = "10", title = "Existing", content = "<b>Content</b>",
+                createdAt = 1000L, modifiedAt = 1000L, tags = emptySet()
+            )
+            val repository = FakeNoteDetailRepository(note = note)
+            val viewModel = createViewModel("10", repository)
+
+            viewModel.saveNote("Existing", "<b>Changed</b>", "Changed")
+            assertEquals(NoteDetailViewModel.UiState.Saved, viewModel.uiState.value)
+            assertTrue(repository.savedNoteWithAttachments != null)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun restoreNoteEmitsRestored() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val note = Note(
+                id = "5", title = "Archived", content = "Content",
+                createdAt = 1000L, modifiedAt = 1000L, tags = emptySet(),
+                status = NoteStatus.ARCHIVE
+            )
+            val repository = FakeNoteDetailRepository(note = note)
+            val viewModel = createViewModel("5", repository)
+
+            assertTrue(viewModel.uiState.value is NoteDetailViewModel.UiState.NoteLoaded)
+
+            viewModel.restoreNote()
+            assertEquals(NoteDetailViewModel.UiState.Restored, viewModel.uiState.value)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun restoreNoteEmitsErrorOnFailure() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val note = Note(
+                id = "5", title = "Archived", content = "Content",
+                createdAt = 1000L, modifiedAt = 1000L, tags = emptySet(),
+                status = NoteStatus.ARCHIVE
+            )
+            val repository = FakeNoteDetailRepository(note = note, shouldFailRestore = true)
+            val viewModel = createViewModel("5", repository)
+
+            viewModel.restoreNote()
+
+            val state = viewModel.uiState.value
+            assertTrue(state is NoteDetailViewModel.UiState.Error)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun noteStatusReturnsCorrectStatus() = runTest {
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(testDispatcher)
+        try {
+            val note = Note(
+                id = "5", title = "Archived", content = "Content",
+                createdAt = 1000L, modifiedAt = 1000L, tags = emptySet(),
+                status = NoteStatus.ARCHIVE
+            )
+            val repository = FakeNoteDetailRepository(note = note)
+            val viewModel = createViewModel("5", repository)
+
+            assertEquals(NoteStatus.ARCHIVE, viewModel.noteStatus())
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
     private fun createViewModel(
         noteId: String,
         repository: FakeNoteDetailRepository = FakeNoteDetailRepository(),
@@ -359,6 +463,7 @@ class NoteDetailViewModelTest {
             deleteNoteUseCase = DeleteNoteUseCase(repository),
             moveToTrashUseCase = MoveToTrashUseCase(repository),
             archiveNoteUseCase = ArchiveNoteUseCase(repository),
+            restoreNoteUseCase = RestoreNoteUseCase(repository),
             createAttachment = CreateAttachmentUseCase(object : AttachmentFileStorage {
                 override fun copyToStorage(source: String, attachmentId: String, mimeType: String?) = ""
                 override fun writeStream(attachmentId: String, inputStream: InputStream) = ""
@@ -378,6 +483,7 @@ class NoteDetailViewModelTest {
         private val shouldFailDelete: Boolean = false,
         private val shouldFailMoveToTrash: Boolean = false,
         private val shouldFailArchive: Boolean = false,
+        private val shouldFailRestore: Boolean = false,
     ) : BaseFakeNotesRepository() {
         var savedNoteWithAttachments: NoteWithAttachments? = null
 
@@ -407,6 +513,11 @@ class NoteDetailViewModelTest {
 
         override suspend fun archiveNote(id: String): Result<Unit> {
             if (shouldFailArchive) return Result.Failure(RuntimeException("Archive error"))
+            return Result.Success(Unit)
+        }
+
+        override suspend fun restoreNote(id: String): Result<Unit> {
+            if (shouldFailRestore) return Result.Failure(RuntimeException("Restore error"))
             return Result.Success(Unit)
         }
     }

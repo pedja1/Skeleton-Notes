@@ -29,6 +29,8 @@
     <!--Trash & Archive-->
     <string name="move_to_trash">Move to trash</string>
     <string name="archive_note">Archive</string>
+    <string name="unarchive_note">Unarchive</string>
+    <string name="restore_from_trash">Restore from trash</string>
     <string name="delete_permanently">Delete permanently</string>
     <string name="toolbar_more">More options</string>
 

@@ -53,6 +53,9 @@ private class FailingNotesRepository : NotesRepository {
 
     override suspend fun archiveNote(id: String): Result<Unit> =
         Result.Failure(IllegalStateException("database corrupted"))
+
+    override suspend fun restoreNote(id: String): Result<Unit> =
+        Result.Failure(IllegalStateException("database corrupted"))
 }
 
 /**

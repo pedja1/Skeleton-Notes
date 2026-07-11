@@ -13,6 +13,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.ImportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.RestoreNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
@@ -63,6 +64,8 @@ object AppDi {
     val moveToTrashUseCase: MoveToTrashUseCase get() = graph.moveToTrashUseCase
 
     val archiveNoteUseCase: ArchiveNoteUseCase get() = graph.archiveNoteUseCase
+
+    val restoreNoteUseCase: RestoreNoteUseCase get() = graph.restoreNoteUseCase
 
     val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase get() = graph.searchAndFilterNotesUseCase
 

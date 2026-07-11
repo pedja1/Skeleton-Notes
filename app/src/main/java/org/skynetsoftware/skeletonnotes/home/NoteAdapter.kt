@@ -24,7 +24,8 @@ import org.skynetsoftware.skeletonnotes.util.bindImages
  */
 class NoteAdapter(
     private val scope: CoroutineScope,
-    private val onNoteClick: (Note) -> Unit
+    private val onNoteClick: (Note) -> Unit,
+    private val onTagClick: (String) -> Unit
 ) : RecyclerView.Adapter<NoteAdapter.ViewHolder>() {
 
     private var notes: List<NoteWithAttachments> = emptyList()
@@ -59,7 +60,7 @@ class NoteAdapter(
      * Binds the note at [position] to the given [holder].
      */
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(notes[position], scope, onNoteClick)
+        holder.bind(notes[position], scope, onNoteClick, onTagClick)
     }
 
     /**
@@ -72,7 +73,12 @@ class NoteAdapter(
         /**
          * Binds note data to the view and sets click listener.
          */
-        fun bind(noteWithAttachments: NoteWithAttachments, scope: CoroutineScope, onNoteClick: (Note) -> Unit) {
+        fun bind(
+            noteWithAttachments: NoteWithAttachments,
+            scope: CoroutineScope,
+            onNoteClick: (Note) -> Unit,
+            onTagClick: (String) -> Unit
+        ) {
             val note = noteWithAttachments.note
 
             binding.noteImages.bindImages(
@@ -97,7 +103,7 @@ class NoteAdapter(
                 binding.notePreview.visibility = View.VISIBLE
             }
 
-            bindTags(note)
+            bindTags(note, onTagClick)
 
             binding.noteLastEdited.text = NoteTimeFormatter.format(
                 note.modifiedAt,
@@ -121,7 +127,7 @@ class NoteAdapter(
          * tags than there are existing chips, and hiding any surplus chips left over from a
          * previous, longer binding.
          */
-        private fun bindTags(note: Note) {
+        private fun bindTags(note: Note, onTagClick: (String) -> Unit) {
             val container = binding.noteTags
             if (note.tags.isEmpty()) {
                 container.visibility = View.GONE
@@ -131,7 +137,7 @@ class NoteAdapter(
             var index = 0
             for (tag in note.tags) {
                 val chip = container.getChildAt(index) as TextView?
-                    ?: createTagChip().also { container.addView(it) }
+                    ?: createTagChip(onTagClick).also { container.addView(it) }
                 chip.visibility = View.VISIBLE
                 chip.text = tag
                 index++
@@ -145,7 +151,7 @@ class NoteAdapter(
          * Creates a single tag chip [TextView] styled as a rounded pill. The chip text is set by
          * the caller so the chip can be reused across binds.
          */
-        private fun createTagChip(): TextView {
+        private fun createTagChip(onTagClick: (String) -> Unit): TextView {
             val context = binding.root.context
             val resources = context.resources
             val horizontalPadding =
@@ -164,6 +170,12 @@ class NoteAdapter(
                 )
                 maxLines = 1
                 ellipsize = TextUtils.TruncateAt.END
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { chip ->
+                    val tag = (chip as? TextView)?.text?.toString() ?: return@setOnClickListener
+                    onTagClick(tag)
+                }
                 layoutParams = ViewGroup.MarginLayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT

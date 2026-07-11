@@ -24,6 +24,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.databinding.ActivityNoteDetailBinding
+import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.util.bindImages
 
 /**
@@ -135,6 +136,7 @@ class NoteDetailActivity : ComponentActivity() {
                         NoteDetailViewModel.UiState.Deleted -> finish()
                         NoteDetailViewModel.UiState.MovedToTrash -> finish()
                         NoteDetailViewModel.UiState.Archived -> finish()
+                        NoteDetailViewModel.UiState.Restored -> finish()
                         is NoteDetailViewModel.UiState.Error -> {
                             Toast.makeText(
                                 this@NoteDetailActivity,
@@ -201,15 +203,39 @@ class NoteDetailActivity : ComponentActivity() {
     private fun showOverflowMenu() {
         val popupMenu = PopupMenu(this, binding.toolbar.toolbarOverflow)
         popupMenu.menuInflater.inflate(R.menu.note_detail_overflow, popupMenu.menu)
+        val status = viewModel.noteStatus()
+        if (status != null) {
+            val archiveItem = popupMenu.menu.findItem(R.id.action_archive)
+            val trashItem = popupMenu.menu.findItem(R.id.action_move_to_trash)
+            when (status) {
+                NoteStatus.ARCHIVE -> {
+                    archiveItem.setTitle(R.string.unarchive_note)
+                    trashItem.isVisible = false
+                }
+                NoteStatus.TRASH -> {
+                    trashItem.setTitle(R.string.restore_from_trash)
+                    archiveItem.isVisible = false
+                }
+                else -> { /* default titles from XML */ }
+            }
+        }
         popupMenu.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 R.id.action_move_to_trash -> {
-                    viewModel.moveToTrash()
+                    if (status == NoteStatus.TRASH) {
+                        viewModel.restoreNote()
+                    } else {
+                        viewModel.moveToTrash()
+                    }
                     true
                 }
 
                 R.id.action_archive -> {
-                    viewModel.archiveNote()
+                    if (status == NoteStatus.ARCHIVE) {
+                        viewModel.restoreNote()
+                    } else {
+                        viewModel.archiveNote()
+                    }
                     true
                 }
 
