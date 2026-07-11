@@ -110,6 +110,7 @@ class NoteDetailActivity : ComponentActivity() {
         binding.editNoteContent.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) binding.formattingToolbar.root.visibility = View.VISIBLE
         }
+        binding.editNoteContent.requestFocus()
     }
 
     private fun setupToolbar() {

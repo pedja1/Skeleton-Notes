@@ -121,10 +121,10 @@ class NoteDetailActivityTest {
     }
 
     @Test
-    fun test8_formattingToolbarIsNotDisplayedInitially() {
+    fun test8_formattingToolbarIsDisplayedInitially() {
         ActivityScenario.launch(NoteDetailActivity::class.java).use { _ ->
             onView(withId(R.id.formatting_toolbar))
-                .check(matches(not(isDisplayed())))
+                .check(matches(isDisplayed()))
         }
     }
 
