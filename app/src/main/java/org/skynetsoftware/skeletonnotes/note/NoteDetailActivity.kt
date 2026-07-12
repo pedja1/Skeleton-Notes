@@ -3,8 +3,13 @@ package org.skynetsoftware.skeletonnotes.note
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.widget.PopupWindow
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -56,6 +61,9 @@ class NoteDetailActivity : ComponentActivity() {
 
     private var pendingSaveAttachment: Attachment? = null
 
+    private var linkPopup: PopupWindow? = null
+    private var pendingLinkUrl: String? = null
+
     private val saveAttachmentLauncher =
         registerForActivityResult(
             ActivityResultContracts.CreateDocument("*/*"),
@@ -98,6 +106,7 @@ class NoteDetailActivity : ComponentActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
+                    dismissLinkPopup()
                     saveAndFinish()
                 }
             },
@@ -108,6 +117,9 @@ class NoteDetailActivity : ComponentActivity() {
         binding.toolbar.toolbarSettings.visibility = View.GONE
         binding.toolbar.toolbarAddNote.visibility = View.GONE
         binding.toolbar.toolbarDelete.visibility = View.GONE
+        binding.editNoteContent.onLinkContextChanged = { url, x, y ->
+            if (url != null) showLinkPopup(url, x, y) else dismissLinkPopup()
+        }
     }
 
     /**
@@ -223,6 +235,64 @@ class NoteDetailActivity : ComponentActivity() {
                 attachment.filename ?: attachment.uri.substringAfterLast('/'),
             )
         }
+    }
+
+    /** Opens [url] in an external browser via [Intent.ACTION_VIEW]. Shows a toast if no browser is available. */
+    private fun openUrl(url: String) {
+        try {
+            val intent =
+                Intent(Intent.ACTION_VIEW).apply {
+                    data = Uri.parse(url)
+                }
+            startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            Toast
+                .makeText(
+                    this,
+                    R.string.cannot_open_link,
+                    Toast.LENGTH_SHORT,
+                ).show()
+        }
+    }
+
+    /**
+     * Shows a [PopupWindow] with an "Open link" action anchored at ([x], [y]) screen coordinates.
+     * Dismisses and re-creates if the popup already exists so the position tracks the cursor.
+     */
+    private fun showLinkPopup(
+        url: String,
+        x: Float,
+        y: Float,
+    ) {
+        dismissLinkPopup()
+        pendingLinkUrl = url
+
+        val popupView =
+            LayoutInflater.from(this).inflate(R.layout.note_detail_popup_link, null)
+        popupView.setOnClickListener {
+            openUrl(url)
+            dismissLinkPopup()
+        }
+
+        val popup =
+            PopupWindow(
+                popupView,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                true,
+            ).apply {
+                isFocusable = false
+                isOutsideTouchable = true
+                showAtLocation(binding.root, Gravity.START or Gravity.TOP, x.toInt(), y.toInt())
+            }
+        linkPopup = popup
+    }
+
+    /** Dismisses the currently visible link popup, if any. */
+    private fun dismissLinkPopup() {
+        linkPopup?.dismiss()
+        linkPopup = null
+        pendingLinkUrl = null
     }
 
     private fun showRemoveAttachmentConfirmation(attachment: Attachment) {

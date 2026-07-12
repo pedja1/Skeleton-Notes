@@ -121,4 +121,6 @@
     <string name="note_details_error_adding_attachment">Error adding attachment</string>
     <string name="attachment_saved">Attachment saved</string>
     <string name="attachment_save_error">Could not save attachment</string>
+    <string name="cannot_open_link">Can\'t open link</string>
+    <string name="open_link">Open link</string>
 </resources>

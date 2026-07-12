@@ -9,6 +9,7 @@ import android.text.Spannable
 import android.text.style.RelativeSizeSpan
 import android.text.style.StrikethroughSpan
 import android.text.style.StyleSpan
+import android.text.style.URLSpan
 import android.text.style.UnderlineSpan
 import android.view.MotionEvent
 import android.view.View
@@ -437,6 +438,63 @@ class RichEditTextInstrumentedTest {
             spanCount = checklistSpans(editor).size
         }
         assertEquals("pressing Enter on an empty item leaves only the original item", 1, spanCount)
+    }
+
+    @Test
+    fun cursorOnMarkdownLinkFiresContextCallback() {
+        val editor = buildEditor(MarkdownFormatter.fromMarkdown("a [link](https://example.com) b"))
+        var contextUrl: String? = null
+        instrumentation.runOnMainSync {
+            editor.onLinkContextChanged = { url, _, _ -> contextUrl = url }
+        }
+        instrumentation.runOnMainSync {
+            val urlSpans = editor.editable.getSpans(0, editor.length(), URLSpan::class.java)
+            val cursorPos = editor.editable.getSpanStart(urlSpans.first()) + 1
+            editor.setSelection(cursorPos)
+        }
+        assertEquals("https://example.com", contextUrl)
+    }
+
+    @Test
+    fun cursorOnRawUrlFiresContextCallback() {
+        val editor = buildEditor()
+        var contextUrl: String? = null
+        instrumentation.runOnMainSync {
+            editor.onLinkContextChanged = { url, _, _ -> contextUrl = url }
+        }
+        instrumentation.runOnMainSync {
+            editor.setText("see https://example.com/page for details")
+            editor.setSelection(8)
+        }
+        assertEquals("https://example.com/page", contextUrl)
+    }
+
+    @Test
+    fun cursorOnPlainTextFiresNullContext() {
+        val editor = buildEditor(MarkdownFormatter.fromMarkdown("plain text"))
+        var contextUrl: String? = "not null"
+        instrumentation.runOnMainSync {
+            editor.onLinkContextChanged = { url, _, _ -> contextUrl = url }
+        }
+        instrumentation.runOnMainSync {
+            editor.setSelection(3)
+        }
+        assertEquals(null, contextUrl)
+    }
+
+    @Test
+    fun selectionDoesNotFireContextUrl() {
+        val editor = buildEditor(MarkdownFormatter.fromMarkdown("[link](https://example.com)"))
+        var contextUrl: String? = "not null"
+        instrumentation.runOnMainSync {
+            editor.onLinkContextChanged = { url, _, _ -> contextUrl = url }
+        }
+        instrumentation.runOnMainSync {
+            val urlSpans = editor.editable.getSpans(0, editor.length(), URLSpan::class.java)
+            val start = editor.editable.getSpanStart(urlSpans.first())
+            editor.setSelection(start, editor.editable.getSpanEnd(urlSpans.first()))
+        }
+        assertEquals("selection should not produce a URL context", null, contextUrl)
     }
 
     private companion object {

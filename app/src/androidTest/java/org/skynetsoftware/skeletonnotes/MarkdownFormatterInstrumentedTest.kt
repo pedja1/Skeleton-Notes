@@ -181,4 +181,58 @@ class MarkdownFormatterInstrumentedTest {
         assertEquals(markdown, once)
         assertEquals("Round trip must be stable", once, twice)
     }
+
+    @Test
+    fun linkRoundTrips() {
+        val markdown = "a [link](https://example.com) b"
+        assertEquals(markdown, roundTrip(markdown))
+    }
+
+    @Test
+    fun linkInsideBoldRoundTrips() {
+        val markdown = "**bold [link](https://example.com) more**"
+        assertEquals(markdown, roundTrip(markdown))
+    }
+
+    @Test
+    fun linkInsideHeadingRoundTrips() {
+        val markdown = "# [Heading Link](https://example.com)"
+        assertEquals(markdown, roundTrip(markdown))
+    }
+
+    @Test
+    fun linkInChecklistRoundTrips() {
+        val markdown = "- [ ] task with [link](https://example.com)"
+        assertEquals(markdown, roundTrip(markdown))
+    }
+
+    @Test
+    fun escapedBracketIsNotParsedAsLink() {
+        val spanned = MarkdownFormatter.fromMarkdown("\\[not a link](url)")
+        val urlSpans = spanned.getSpans(0, spanned.length, android.text.style.URLSpan::class.java)
+        assertTrue("escaped bracket should not produce a URLSpan", urlSpans.isEmpty())
+    }
+
+    @Test
+    fun linkRoundTripIsIdempotent() {
+        val markdown = "see [docs](https://example.com) and [more](https://test.com)"
+        val once = roundTrip(markdown)
+        val twice = roundTrip(once)
+        assertEquals("Link round trip must be stable", once, twice)
+    }
+
+    @Test
+    fun linkIsParsedAsUrlSpan() {
+        val spanned = MarkdownFormatter.fromMarkdown("[link](https://example.com)")
+        val urlSpans = spanned.getSpans(0, spanned.length, android.text.style.URLSpan::class.java)
+        assertEquals("URLSpan should be present", 1, urlSpans.size)
+        assertEquals("https://example.com", urlSpans[0].url)
+    }
+
+    @Test
+    fun plainBracketsAreEscaped() {
+        val markdown = "plain [brackets] text"
+        val serialized = roundTrip(markdown)
+        assertEquals("plain \\[brackets\\] text", serialized)
+    }
 }

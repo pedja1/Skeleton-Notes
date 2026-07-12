@@ -7,6 +7,7 @@ import android.text.Spanned
 import android.text.style.RelativeSizeSpan
 import android.text.style.StrikethroughSpan
 import android.text.style.StyleSpan
+import android.text.style.URLSpan
 import android.text.style.UnderlineSpan
 
 /**
@@ -14,9 +15,9 @@ import android.text.style.UnderlineSpan
  * of the editor's WYSIWYG span model.
  *
  * The editor represents formatting with the same spans it always has: bold/italic as
- * [StyleSpan], strikethrough/underline as [StrikethroughSpan]/[UnderlineSpan], H1/H2 as a
- * [RelativeSizeSpan] plus a bold [StyleSpan] over the whole paragraph, and checklist items as a
- * [ChecklistSpan]. [toMarkdown] walks the content paragraph-by-paragraph and emits `# `/`## `
+ * [StyleSpan], strikethrough/underline as [StrikethroughSpan]/[UnderlineSpan], links as
+ * [URLSpan], H1/H2 as a [RelativeSizeSpan] plus a bold [StyleSpan] over the whole paragraph,
+ * and checklist items as a [ChecklistSpan]. [toMarkdown] walks the content paragraph-by-paragraph and emits `# `/`## `
  * heading prefixes and `- [ ] `/`- [x] ` checklist prefixes, plus `**`/`*`/`~~` and `<u></u>` for
  * inline formatting; [fromMarkdown] is the deliberate inverse, parsing each `\n`-separated line back
  * into those spans and joining the lines with a single `\n` (mirroring the single-newline paragraph
@@ -40,6 +41,9 @@ object MarkdownFormatter {
 
     /** Matches a GFM task-list line `- [ ] …` / `- [x] …`, capturing the check state and content. */
     private val CHECKLIST_REGEX = Regex("^- \\[([ xX])\\] ?(.*)$", RegexOption.DOT_MATCHES_ALL)
+
+    /** Matches an inline link `[text](url)`, capturing the display text and destination URL. */
+    private val LINK_REGEX = Regex("\\[([^]]*)]\\(([^)]+)\\)")
 
     /**
      * An inline emphasis, with the marker(s) that open and close it. Symmetric Markdown emphases use
@@ -296,6 +300,14 @@ object MarkdownFormatter {
         from: Int,
         to: Int,
     ): String {
+        val urlSpan =
+            spanned
+                .getSpans(from, to, URLSpan::class.java)
+                .firstOrNull { spanned.getSpanStart(it) <= from && spanned.getSpanEnd(it) >= to }
+        if (urlSpan != null) {
+            if (urlSpan is AutoDetectedUrlSpan) return spanned.subSequence(from, to).toString()
+            return "[${spanned.subSequence(from, to)}](${urlSpan.url})"
+        }
         val sb = StringBuilder(to - from)
         for (index in from until to) {
             val c = spanned[index]
@@ -315,6 +327,7 @@ object MarkdownFormatter {
             i =
                 when {
                     isEscape(text, i) -> appendEscaped(text, i, builder)
+                    isLink(text, i) -> appendLink(text, i, builder)
                     text.startsWith(
                         Emphasis.UNDERLINE.close,
                         i,
@@ -340,6 +353,27 @@ object MarkdownFormatter {
         text: String,
         index: Int,
     ) = text[index] == '*' && index + 1 < text.length && text[index + 1] == '*'
+
+    /** True when [index] begins a link (`[text](url)`). */
+    private fun isLink(
+        text: String,
+        index: Int,
+    ) = text[index] == '[' && LINK_REGEX.find(text, index) != null
+
+    /** Appends the display text of a link at [index] decorated by a [URLSpan] and returns the next index. */
+    private fun appendLink(
+        text: String,
+        index: Int,
+        builder: SpannableStringBuilder,
+    ): Int {
+        val match = LINK_REGEX.find(text, index) ?: return appendLiteral(text, index, builder)
+        val displayText = match.groupValues[1]
+        val url = match.groupValues[2]
+        val start = builder.length
+        builder.append(displayText)
+        builder.setSpan(URLSpan(url), start, builder.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        return index + match.value.length
+    }
 
     /** Appends the character escaped by the backslash at [index] and returns the next index. */
     private fun appendEscaped(

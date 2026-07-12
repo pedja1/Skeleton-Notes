@@ -9,8 +9,10 @@ import android.text.TextWatcher
 import android.text.style.RelativeSizeSpan
 import android.text.style.StrikethroughSpan
 import android.text.style.StyleSpan
+import android.text.style.URLSpan
 import android.text.style.UnderlineSpan
 import android.util.AttributeSet
+import android.util.Patterns
 import android.view.MotionEvent
 import android.widget.EditText
 import kotlin.math.abs
@@ -53,6 +55,14 @@ class RichEditText
         /** Invoked whenever the active formatting changes (selection moved, style toggled, edit). */
         var onFormattingStateChanged: ((FormattingState) -> Unit)? = null
 
+        /**
+         * Invoked when the cursor moves onto or off a link. When [url] is non-null the cursor sits
+         * on a clickable link ([URLSpan] or a raw URL pattern); [x] and [y] are the screen-relative
+         * coordinates of the cursor so the caller can anchor a popup. When [url] is null the cursor
+         * moved away from any link and any popup should be dismissed.
+         */
+        var onLinkContextChanged: ((url: String?, x: Float, y: Float) -> Unit)? = null
+
         /** Inline styles pending for the next typed characters (compose mode / typing attributes). */
         private val pendingInline = linkedSetOf<InlineStyle>()
 
@@ -85,6 +95,7 @@ class RichEditText
         fun setContentSilently(content: CharSequence) {
             applyingInternally = true
             setText(content)
+            text?.let { applyAutoDetectedLinks(it as Editable, 0, it.length) }
             applyingInternally = false
             post { emitState() }
         }
@@ -151,12 +162,12 @@ class RichEditText
         ) {
             super.onSelectionChanged(selStart, selEnd)
             if (!ready || applyingInternally) return
-            // A collapsed cursor inherits the styles around it as the next typing attributes.
             if (selStart == selEnd) {
                 pendingInline.clear()
                 pendingInline.addAll(inlineStylesAt(selStart))
             }
             emitState()
+            notifyLinkContext(selStart, selEnd)
         }
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -381,6 +392,114 @@ class RichEditText
             }
         }
 
+        /**
+         * Scans the text around the changed region ([changeStart]..[changeEnd]) for raw URL patterns
+         * and applies an [AutoDetectedUrlSpan] to each that is not already covered by a Markdown
+         * [URLSpan]. Existing [AutoDetectedUrlSpan] instances overlapping the region are removed first
+         * so the span set stays in sync with the current text.
+         */
+        private fun applyAutoDetectedLinks(
+            editable: Editable,
+            changeStart: Int,
+            changeEnd: Int,
+        ) {
+            if (changeEnd <= changeStart || changeStart > editable.length) return
+            val searchStart = (changeStart - 2048).coerceAtLeast(0)
+            val searchEnd = (changeEnd + 2048).coerceAtMost(editable.length)
+            if (searchEnd <= searchStart) return
+
+            editable
+                .getSpans(searchStart, searchEnd, AutoDetectedUrlSpan::class.java)
+                .filter { editable.getSpanEnd(it) >= searchStart && editable.getSpanStart(it) <= searchEnd }
+                .forEach { editable.removeSpan(it) }
+
+            applyingInternally = true
+            try {
+                applyUrlMatches(editable, searchStart, searchEnd)
+            } finally {
+                applyingInternally = false
+            }
+        }
+
+        /** Walks [Patterns.WEB_URL] matches in [[searchStart]..[searchEnd]) and applies [AutoDetectedUrlSpan]. */
+        private fun applyUrlMatches(
+            editable: Editable,
+            searchStart: Int,
+            searchEnd: Int,
+        ) {
+            val matcher = Patterns.WEB_URL.matcher(editable)
+            while (matcher.find()) {
+                val start = matcher.start()
+                if (start < searchStart) continue
+                if (start >= searchEnd) break
+                val end = matcher.end()
+                if (end > searchEnd) continue
+                if (hasMarkdownUrlSpan(editable, start, end)) continue
+                val raw = matcher.group()
+                val url = if (raw.startsWith("http://") || raw.startsWith("https://")) raw else "https://$raw"
+                editable.setSpan(AutoDetectedUrlSpan(url), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }
+
+        /** True when [start]..[end] is already covered by a Markdown [URLSpan] (not auto-detected). */
+        private fun hasMarkdownUrlSpan(
+            editable: Editable,
+            start: Int,
+            end: Int,
+        ) = editable
+            .getSpans(start, end, URLSpan::class.java)
+            .any { it !is AutoDetectedUrlSpan }
+
+        /**
+         * Computes the screen-relative coordinates of the cursor at [offset] and invokes
+         * [onLinkContextChanged] with the result of [findUrlAtOffset], or null if no link is found
+         * or a range is selected.
+         */
+        private fun notifyLinkContext(
+            selStart: Int,
+            selEnd: Int,
+        ) {
+            val listener = onLinkContextChanged ?: return
+            if (selStart != selEnd) {
+                listener(null, 0f, 0f)
+                return
+            }
+            val url = findUrlAtOffset(selStart)
+            if (url == null) {
+                listener(null, 0f, 0f)
+                return
+            }
+            val currentLayout = layout ?: return
+            val line = currentLayout.getLineForOffset(selStart)
+            val x = currentLayout.getPrimaryHorizontal(selStart) + totalPaddingLeft - scrollX
+            val y = currentLayout.getLineBottom(line).toFloat() + totalPaddingTop - scrollY
+            val screenCoords = IntArray(2)
+            getLocationOnScreen(screenCoords)
+            listener(url, screenCoords[0] + x, screenCoords[1] + y)
+        }
+
+        /**
+         * Returns the URL at the given character [offset], or null. Checks for a [URLSpan] first
+         * (markdown links), then falls back to a raw URL match via [Patterns.WEB_URL].
+         */
+        private fun findUrlAtOffset(offset: Int): String? {
+            val editable = text ?: return null
+            if (offset < 0 || offset > editable.length) return null
+
+            val urlSpan = editable.getSpans(offset, offset, URLSpan::class.java).firstOrNull()
+            if (urlSpan != null) return urlSpan.url
+
+            val text = editable.toString()
+            val matcher = Patterns.WEB_URL.matcher(text)
+            while (matcher.find()) {
+                if (offset in matcher.start() until matcher.end()) {
+                    val url = matcher.group()
+                    return if (url.startsWith("http://") || url.startsWith("https://")) url else "https://$url"
+                }
+            }
+            return null
+        }
+
         private fun emitState() {
             val listener = onFormattingStateChanged ?: return
             val editable = text
@@ -449,6 +568,7 @@ class RichEditText
                         continuePendingChecklist(s, start)
                     }
                     normalizeChecklistSpans(s)
+                    applyAutoDetectedLinks(s, start, end)
                 } finally {
                     applyingInternally = false
                 }
