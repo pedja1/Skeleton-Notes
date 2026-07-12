@@ -3,17 +3,20 @@ package org.skynetsoftware.skeletonnotes.note
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.skynetsoftware.skeletonnotes.R
 import org.skynetsoftware.skeletonnotes.di.AppDi
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
@@ -30,6 +33,7 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.MoveToTrashUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.RestoreNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.util.TagExtractor
+import java.io.File
 import java.util.UUID
 
 /**
@@ -298,6 +302,31 @@ class NoteDetailViewModel(
 
     fun onRemoveAttachment(attachment: Attachment) {
         _attachments.value = _attachments.value.filter { it.id != attachment.id }
+    }
+
+    /**
+     * Copies [attachment]'s local file into the user-selected [destUri] (a `content://` URI from the
+     * Storage Access Framework) and emits a toast reporting success or failure. Used as a fallback
+     * when no installed app can open the attachment directly.
+     */
+    fun saveAttachmentToUri(
+        attachment: Attachment,
+        destUri: String,
+    ) = viewModelScope.launch {
+        val message =
+            try {
+                withContext(Dispatchers.IO) {
+                    val output =
+                        AppDi.application.contentResolver.openOutputStream(destUri.toUri())
+                            ?: error("Cannot open output stream")
+                    output.use { out -> File(attachment.uri).inputStream().use { it.copyTo(out) } }
+                }
+                AppDi.application.getString(R.string.attachment_saved)
+            } catch (t: Throwable) {
+                Log.w(TAG, null, t)
+                AppDi.application.getString(R.string.attachment_save_error)
+            }
+        _showToast.emit(message)
     }
 
     fun onAttachmentPicked(uri: Uri?) =

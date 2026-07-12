@@ -61,6 +61,19 @@ class NoteDetailActivity : ComponentActivity() {
             viewModel.onAttachmentPicked(uri)
         }
 
+    private var pendingSaveAttachment: Attachment? = null
+
+    private val saveAttachmentLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.CreateDocument("*/*"),
+        ) { uri ->
+            val attachment = pendingSaveAttachment
+            pendingSaveAttachment = null
+            if (uri != null && attachment != null) {
+                viewModel.saveAttachmentToUri(attachment, uri.toString())
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -192,7 +205,8 @@ class NoteDetailActivity : ComponentActivity() {
 
     /**
      * Opens [attachment] in an external app via [Intent.ACTION_VIEW], sharing the local file through
-     * the app's [FileProvider]. Shows a toast if no app can handle the file's type.
+     * the app's [FileProvider]. If no app can handle the file's type, falls back to letting the user
+     * save the attachment to a location of their choosing via the Storage Access Framework.
      */
     private fun openAttachment(attachment: Attachment) {
         try {
@@ -209,7 +223,10 @@ class NoteDetailActivity : ComponentActivity() {
                 }
             startActivity(intent)
         } catch (_: ActivityNotFoundException) {
-            Toast.makeText(this, R.string.no_app_to_open_attachment, Toast.LENGTH_SHORT).show()
+            pendingSaveAttachment = attachment
+            saveAttachmentLauncher.launch(
+                attachment.filename ?: attachment.uri.substringAfterLast('/'),
+            )
         }
     }
 
