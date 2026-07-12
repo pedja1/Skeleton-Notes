@@ -2,13 +2,11 @@ package org.skynetsoftware.skeletonnotes.home
 
 import android.app.AlertDialog
 import android.content.Intent
-import android.graphics.PorterDuff
 import android.os.Bundle
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doOnTextChanged
@@ -115,14 +113,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewMode.filter.collect {
-                    if (!it.showActive || it.showTrashed || it.showArchived) {
-                        filterIcon.setColorFilter(
-                            ContextCompat.getColor(this@MainActivity, R.color.filter_active),
-                            PorterDuff.Mode.SRC_IN,
-                        )
-                    } else {
-                        filterIcon.clearColorFilter()
-                    }
+                    filterIcon.isSelected = !it.showActive || it.showTrashed || it.showArchived
                 }
             }
         }

@@ -5,23 +5,27 @@ import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
+import android.text.style.StrikethroughSpan
 import android.text.style.StyleSpan
-import org.skynetsoftware.skeletonnotes.note.MarkdownFormatter.CANONICAL_ORDER
-import org.skynetsoftware.skeletonnotes.note.MarkdownFormatter.fromMarkdown
-import org.skynetsoftware.skeletonnotes.note.MarkdownFormatter.toMarkdown
+import android.text.style.UnderlineSpan
 
 /**
  * Serializes note content to Markdown and parses it back symmetrically - the Markdown counterpart
  * of the editor's WYSIWYG span model.
  *
  * The editor represents formatting with the same spans it always has: bold/italic as
- * [StyleSpan], H1/H2 as a [RelativeSizeSpan] plus a bold [StyleSpan] over the whole paragraph.
- * [toMarkdown] walks the content paragraph-by-paragraph and emits
- * `# `/`## ` prefixes for headings and `**`/`*`/`![]()` for inline formatting; [fromMarkdown] is
- * the deliberate inverse, parsing each `\n`-separated line back into those spans and joining the
- * lines with a single `\n` (mirroring the single-newline paragraph invariant the old HtmlFormatter
- * maintained, so the load/save round trip stays stable).
+ * [StyleSpan], strikethrough/underline as [StrikethroughSpan]/[UnderlineSpan], H1/H2 as a
+ * [RelativeSizeSpan] plus a bold [StyleSpan] over the whole paragraph, and checklist items as a
+ * [ChecklistSpan]. [toMarkdown] walks the content paragraph-by-paragraph and emits `# `/`## `
+ * heading prefixes and `- [ ] `/`- [x] ` checklist prefixes, plus `**`/`*`/`~~` and `<u></u>` for
+ * inline formatting; [fromMarkdown] is the deliberate inverse, parsing each `\n`-separated line back
+ * into those spans and joining the lines with a single `\n` (mirroring the single-newline paragraph
+ * invariant the old HtmlFormatter maintained, so the load/save round trip stays stable).
+ *
+ * Markdown has no native underline, so it is serialized as the inline HTML `<u>…</u>`, consistent
+ * with the app's legacy-HTML lineage; every other token is standard (GFM) Markdown.
  */
+@Suppress("TooManyFunctions") // A cohesive serializer; its small parse/serialize helpers belong together.
 object MarkdownFormatter {
     /** Relative size for an H1, matching Android's internal `HEADING_SIZES[0]`. */
     const val H1_SCALE = 1.5f
@@ -34,15 +38,25 @@ object MarkdownFormatter {
     /** Matches the leading `#`..`######` of a heading line (before any inline parsing/unescaping). */
     private val HEADING_REGEX = Regex("^(#{1,6})\\s+(.*)$", RegexOption.DOT_MATCHES_ALL)
 
+    /** Matches a GFM task-list line `- [ ] …` / `- [x] …`, capturing the check state and content. */
+    private val CHECKLIST_REGEX = Regex("^- \\[([ xX])\\] ?(.*)$", RegexOption.DOT_MATCHES_ALL)
+
+    /**
+     * An inline emphasis, with the marker(s) that open and close it. Symmetric Markdown emphases use
+     * the same string for both; underline uses distinct HTML tags.
+     */
     private enum class Emphasis(
-        val marker: String,
+        val open: String,
+        val close: String,
     ) {
-        BOLD("**"),
-        ITALIC("*"),
+        BOLD("**", "**"),
+        ITALIC("*", "*"),
+        STRIKETHROUGH("~~", "~~"),
+        UNDERLINE("<u>", "</u>"),
     }
 
-    /** Canonical nesting order: bold wraps italic, so `**` opens before `*` and closes after it. */
-    private val CANONICAL_ORDER = listOf(Emphasis.BOLD, Emphasis.ITALIC)
+    /** Canonical nesting order: outer-most first, so markers open and close in a validly nested way. */
+    private val CANONICAL_ORDER = listOf(Emphasis.BOLD, Emphasis.ITALIC, Emphasis.STRIKETHROUGH, Emphasis.UNDERLINE)
 
     fun toMarkdown(spanned: Spanned): String {
         val text = spanned.toString()
@@ -70,26 +84,35 @@ object MarkdownFormatter {
     fun fromMarkdown(source: String): Spanned {
         val builder = SpannableStringBuilder()
         val headings = mutableListOf<HeadingRange>()
+        val checklists = mutableListOf<ChecklistRange>()
         source.split('\n').forEachIndexed { index, line ->
             if (index > 0) builder.append('\n')
 
-            val heading = HEADING_REGEX.find(line)
+            val checklist = CHECKLIST_REGEX.find(line)
+            val heading = if (checklist == null) HEADING_REGEX.find(line) else null
             val level = heading?.groupValues?.get(1)?.length ?: 0
-            val content = if (level > 0) heading!!.groupValues[2] else line
+            val content =
+                when {
+                    checklist != null -> checklist.groupValues[2]
+                    level > 0 -> heading!!.groupValues[2]
+                    else -> line
+                }
 
             val start = builder.length
             parseInline(content, builder)
             val end = builder.length
 
-            if (level > 0 && end > start) {
+            if (checklist != null) {
+                checklists.add(ChecklistRange(start, end, checklist.groupValues[1].lowercase() == "x"))
+            } else if (level > 0 && end > start) {
                 headings.add(HeadingRange(start, end, level))
             }
         }
 
-        // Heading spans are applied only after the whole document is built. Applying them inside the
-        // loop would let the SPAN_EXCLUSIVE_INCLUSIVE end mark grow across the '\n' and swallow every
-        // paragraph appended afterwards. The INCLUSIVE flag is kept so the editor's applyHeading path
-        // (which also uses it, so typing at a heading's end keeps extending it) stays consistent.
+        // Heading and checklist spans are applied only after the whole document is built. Applying
+        // them inside the loop would let the end mark grow across the '\n' and swallow every paragraph
+        // appended afterwards. Heading spans keep SPAN_EXCLUSIVE_INCLUSIVE so the editor's applyHeading
+        // path (which also uses it, so typing at a heading's end keeps extending it) stays consistent.
         for (headingRange in headings) {
             val scale = if (headingRange.level == 1) H1_SCALE else H2_SCALE // h2..h6 -> sub-heading
             builder.setSpan(
@@ -105,6 +128,14 @@ object MarkdownFormatter {
                 Spannable.SPAN_EXCLUSIVE_INCLUSIVE,
             )
         }
+        for (checklistRange in checklists) {
+            builder.setSpan(
+                ChecklistSpan(checklistRange.checked),
+                checklistRange.start,
+                paragraphSpanEnd(builder, checklistRange.end),
+                Spannable.SPAN_PARAGRAPH,
+            )
+        }
         return builder
     }
 
@@ -115,11 +146,29 @@ object MarkdownFormatter {
         val level: Int,
     )
 
+    /** A parsed checklist item's text range and checked state, applied after the document is built. */
+    private data class ChecklistRange(
+        val start: Int,
+        val end: Int,
+        val checked: Boolean,
+    )
+
+    /** Paragraph spans (SPAN_PARAGRAPH) must end at a '\n' boundary or the buffer end. */
+    private fun paragraphSpanEnd(
+        text: CharSequence,
+        end: Int,
+    ): Int = if (end < text.length && text[end] == '\n') end + 1 else end
+
     private fun serializeParagraph(
         spanned: Spanned,
         start: Int,
         end: Int,
     ): String {
+        val checked = checklistCheckedFor(spanned, start, end)
+        if (checked != null) {
+            val prefix = if (checked) "- [x] " else "- [ ] "
+            return if (start == end) prefix else prefix + serializeInline(spanned, start, end, isHeading = false)
+        }
         val level = headingLevelFor(spanned, start, end)
         val prefix =
             when (level) {
@@ -130,8 +179,23 @@ object MarkdownFormatter {
         if (start == end) return prefix
         val inline = serializeInline(spanned, start, end, isHeading = level != 0)
         // A plain paragraph that happens to start with '#' would be misread as a heading on load.
+        // Checklist look-alikes are already protected because '[' and ']' are escaped by escapeInline.
         val escaped = if (level == 0 && inline.startsWith("#")) "\\$inline" else inline
         return prefix + escaped
+    }
+
+    private fun checklistCheckedFor(
+        spanned: Spanned,
+        start: Int,
+        end: Int,
+    ): Boolean? {
+        val queryEnd = if (end > start) end else (start + 1).coerceAtMost(spanned.length)
+        // Only a span that starts in this paragraph counts; the previous paragraph's SPAN_PARAGRAPH
+        // can be returned at the boundary, which would wrongly mark an empty next line as a checklist.
+        return spanned
+            .getSpans(start, queryEnd, ChecklistSpan::class.java)
+            .firstOrNull { spanned.getSpanStart(it) >= start }
+            ?.checked
     }
 
     private fun headingLevelFor(
@@ -152,9 +216,9 @@ object MarkdownFormatter {
 
     /**
      * Serializes a single paragraph's inline formatting. Walks span transitions, tracking the set
-     * of active emphases on a stack so overlapping bold/italic runs close and reopen in a validly
-     * nested way. When [isHeading] the whole-paragraph bold conveyed by the `#` prefix is skipped so
-     * no redundant `**` is emitted inside the heading.
+     * of active emphases on a stack so overlapping runs close and reopen in a validly nested way.
+     * When [isHeading] the whole-paragraph bold conveyed by the `#` prefix is skipped so no redundant
+     * `**` is emitted inside the heading.
      */
     private fun serializeInline(
         spanned: Spanned,
@@ -175,7 +239,7 @@ object MarkdownFormatter {
 
             i = next
         }
-        while (open.isNotEmpty()) sb.append(open.removeLast().marker)
+        while (open.isNotEmpty()) sb.append(open.removeLast().close)
         return sb.toString()
     }
 
@@ -187,6 +251,7 @@ object MarkdownFormatter {
     ): Set<Emphasis> {
         val result = mutableSetOf<Emphasis>()
         for (span in spanned.getSpans(from, to, StyleSpan::class.java)) {
+            if (spanned.isComposing(span)) continue
             when (span.style) {
                 Typeface.BOLD -> if (!isHeading) result.add(Emphasis.BOLD)
                 Typeface.ITALIC -> result.add(Emphasis.ITALIC)
@@ -195,6 +260,12 @@ object MarkdownFormatter {
                     result.add(Emphasis.ITALIC)
                 }
             }
+        }
+        if (spanned.getSpans(from, to, StrikethroughSpan::class.java).any { !spanned.isComposing(it) }) {
+            result.add(Emphasis.STRIKETHROUGH)
+        }
+        if (spanned.getSpans(from, to, UnderlineSpan::class.java).any { !spanned.isComposing(it) }) {
+            result.add(Emphasis.UNDERLINE)
         }
         return result
     }
@@ -210,11 +281,11 @@ object MarkdownFormatter {
     ) {
         val divergence = open.indexOfFirst { it !in active }
         if (divergence >= 0) {
-            while (open.size > divergence) sb.append(open.removeLast().marker)
+            while (open.size > divergence) sb.append(open.removeLast().close)
         }
         for (emphasis in CANONICAL_ORDER) {
             if (emphasis in active && emphasis !in open) {
-                sb.append(emphasis.marker)
+                sb.append(emphasis.open)
                 open.addLast(emphasis)
             }
         }
@@ -228,7 +299,7 @@ object MarkdownFormatter {
         val sb = StringBuilder(to - from)
         for (index in from until to) {
             val c = spanned[index]
-            if (c == '\\' || c == '*' || c == '[' || c == ']') sb.append('\\')
+            if (c == '\\' || c == '*' || c == '[' || c == ']' || c == '~' || c == '<') sb.append('\\')
             sb.append(c)
         }
         return sb.toString()
@@ -238,14 +309,21 @@ object MarkdownFormatter {
         text: String,
         builder: SpannableStringBuilder,
     ) {
-        val emphasis = EmphasisTracker()
+        val openAt = HashMap<Emphasis, Int>()
         var i = 0
         while (i < text.length) {
             i =
                 when {
                     isEscape(text, i) -> appendEscaped(text, i, builder)
-                    isBold(text, i) -> emphasis.toggleBold(builder, i)
-                    text[i] == '*' -> emphasis.toggleItalic(builder, i)
+                    text.startsWith(
+                        Emphasis.UNDERLINE.close,
+                        i,
+                    ) -> closeEmphasis(Emphasis.UNDERLINE, openAt, builder, i)
+                    text.startsWith(Emphasis.UNDERLINE.open, i) -> openEmphasis(Emphasis.UNDERLINE, openAt, builder, i)
+                    isBold(text, i) -> toggleEmphasis(Emphasis.BOLD, openAt, builder, i)
+                    text.startsWith(Emphasis.STRIKETHROUGH.open, i) ->
+                        toggleEmphasis(Emphasis.STRIKETHROUGH, openAt, builder, i)
+                    text[i] == '*' -> toggleEmphasis(Emphasis.ITALIC, openAt, builder, i)
                     else -> appendLiteral(text, i, builder)
                 }
         }
@@ -283,52 +361,57 @@ object MarkdownFormatter {
         return index + 1
     }
 
-    /**
-     * Tracks the open positions of the bold/italic runs while parsing so a closing marker can apply
-     * the matching [StyleSpan] over the text accumulated since the opening marker.
-     */
-    private class EmphasisTracker {
-        private var boldStart = -1
-        private var italicStart = -1
-
-        /** Handles a `**` marker at [index], opening or closing a bold run. Returns the next index. */
-        fun toggleBold(
-            builder: SpannableStringBuilder,
-            index: Int,
-        ): Int {
-            if (boldStart < 0) {
-                boldStart = builder.length
-            } else {
-                builder.setSpan(
-                    StyleSpan(Typeface.BOLD),
-                    boldStart,
-                    builder.length,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-                )
-                boldStart = -1
-            }
-            return index + 2
+    /** Handles a symmetric marker (`**`, `*`, `~~`), opening or closing [emphasis]. */
+    private fun toggleEmphasis(
+        emphasis: Emphasis,
+        openAt: HashMap<Emphasis, Int>,
+        builder: SpannableStringBuilder,
+        index: Int,
+    ): Int {
+        val startedAt = openAt.remove(emphasis)
+        if (startedAt == null) {
+            openAt[emphasis] = builder.length
+        } else {
+            builder.setSpan(spanFor(emphasis), startedAt, builder.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-
-        /** Handles a `*` marker at [index], opening or closing an italic run. Returns the next index. */
-        fun toggleItalic(
-            builder: SpannableStringBuilder,
-            index: Int,
-        ): Int {
-            if (italicStart < 0) {
-                italicStart = builder.length
-            } else {
-                builder.setSpan(
-                    StyleSpan(Typeface.ITALIC),
-                    italicStart,
-                    builder.length,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-                )
-                italicStart = -1
-            }
-            return index + 1
-        }
+        return index + emphasis.open.length
     }
+
+    /** Records the open position of an asymmetric emphasis (`<u>`). */
+    private fun openEmphasis(
+        emphasis: Emphasis,
+        openAt: HashMap<Emphasis, Int>,
+        builder: SpannableStringBuilder,
+        index: Int,
+    ): Int {
+        openAt[emphasis] = builder.length
+        return index + emphasis.open.length
+    }
+
+    /** Applies an asymmetric emphasis (`</u>`) over the text accumulated since its opening marker. */
+    private fun closeEmphasis(
+        emphasis: Emphasis,
+        openAt: HashMap<Emphasis, Int>,
+        builder: SpannableStringBuilder,
+        index: Int,
+    ): Int {
+        val startedAt = openAt.remove(emphasis)
+        if (startedAt != null) {
+            builder.setSpan(spanFor(emphasis), startedAt, builder.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        return index + emphasis.close.length
+    }
+
+    private fun spanFor(emphasis: Emphasis): Any =
+        when (emphasis) {
+            Emphasis.BOLD -> StyleSpan(Typeface.BOLD)
+            Emphasis.ITALIC -> StyleSpan(Typeface.ITALIC)
+            Emphasis.STRIKETHROUGH -> StrikethroughSpan()
+            Emphasis.UNDERLINE -> UnderlineSpan()
+        }
+
+    /** A transient span the IME places on composing text must not be serialized as user formatting. */
+    private fun Spanned.isComposing(span: Any) = (getSpanFlags(span) and Spanned.SPAN_COMPOSING) != 0
 
     private fun approxEquals(
         a: Float,

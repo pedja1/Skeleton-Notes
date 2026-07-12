@@ -1,87 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
-<HorizontalScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/formatting_toolbar"
     android:layout_width="match_parent"
     android:layout_height="@dimen/formatting_toolbar_height"
-    android:scrollbars="none"
     android:background="?android:windowBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/formatting_toolbar_padding_horizontal"
+    android:paddingEnd="@dimen/formatting_toolbar_padding_horizontal"
     android:visibility="gone">
 
-    <LinearLayout
-        android:layout_width="wrap_content"
+    <ImageView
+        android:id="@+id/format_bold"
+        android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="@dimen/toolbar_padding_horizontal"
-        android:paddingEnd="@dimen/toolbar_padding_horizontal">
+        android:layout_weight="1"
+        android:padding="@dimen/formatting_button_padding"
+        android:src="@drawable/ic_format_bold"
+        android:tint="@color/formatting_button_tint"
+        android:contentDescription="@string/format_bold"
+        android:background="@drawable/bg_formatting_button"
+        android:scaleType="centerInside" />
 
-        <ImageView
-            android:id="@+id/format_bold"
-            android:layout_width="@dimen/formatting_button_touch_target"
-            android:layout_height="match_parent"
-            android:padding="@dimen/formatting_button_padding"
-            android:src="@drawable/ic_format_bold"
-            android:contentDescription="@string/format_bold"
-            android:background="?android:selectableItemBackgroundBorderless"
-            android:scaleType="centerInside" />
+    <ImageView
+        android:id="@+id/format_italic"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:padding="@dimen/formatting_button_padding"
+        android:src="@drawable/ic_format_italic"
+        android:tint="@color/formatting_button_tint"
+        android:contentDescription="@string/format_italic"
+        android:background="@drawable/bg_formatting_button"
+        android:scaleType="centerInside" />
 
-        <ImageView
-            android:id="@+id/format_italic"
-            android:layout_width="@dimen/formatting_button_touch_target"
-            android:layout_height="match_parent"
-            android:padding="@dimen/formatting_button_padding"
-            android:src="@drawable/ic_format_italic"
-            android:contentDescription="@string/format_italic"
-            android:background="?android:selectableItemBackgroundBorderless"
-            android:scaleType="centerInside" />
+    <ImageView
+        android:id="@+id/format_strikethrough"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:padding="@dimen/formatting_button_padding"
+        android:src="@drawable/ic_format_strikethrough"
+        android:tint="@color/formatting_button_tint"
+        android:contentDescription="@string/format_strikethrough"
+        android:background="@drawable/bg_formatting_button"
+        android:scaleType="centerInside" />
 
-        <ImageView
-            android:id="@+id/format_h1"
-            android:layout_width="@dimen/formatting_button_touch_target"
-            android:layout_height="match_parent"
-            android:padding="@dimen/formatting_button_padding"
-            android:src="@drawable/ic_format_h1"
-            android:contentDescription="@string/heading_h1"
-            android:background="?android:selectableItemBackgroundBorderless"
-            android:scaleType="centerInside" />
+    <ImageView
+        android:id="@+id/format_underline"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:padding="@dimen/formatting_button_padding"
+        android:src="@drawable/ic_format_underline"
+        android:tint="@color/formatting_button_tint"
+        android:contentDescription="@string/format_underline"
+        android:background="@drawable/bg_formatting_button"
+        android:scaleType="centerInside" />
 
-        <ImageView
-            android:id="@+id/format_h2"
-            android:layout_width="@dimen/formatting_button_touch_target"
-            android:layout_height="match_parent"
-            android:padding="@dimen/formatting_button_padding"
-            android:src="@drawable/ic_format_h2"
-            android:contentDescription="@string/heading_h2"
-            android:background="?android:selectableItemBackgroundBorderless"
-            android:scaleType="centerInside" />
+    <View
+        android:layout_width="1dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:background="?android:textColorSecondary" />
 
-        <ImageView
-            android:id="@+id/format_paragraph"
-            android:layout_width="@dimen/formatting_button_touch_target"
-            android:layout_height="match_parent"
-            android:padding="@dimen/formatting_button_padding"
-            android:src="@drawable/ic_format_paragraph"
-            android:contentDescription="@string/paragraph_normal"
-            android:background="?android:selectableItemBackgroundBorderless"
-            android:scaleType="centerInside" />
+    <ImageView
+        android:id="@+id/format_h1"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:padding="@dimen/formatting_button_padding"
+        android:src="@drawable/ic_format_h1"
+        android:tint="@color/formatting_button_tint"
+        android:contentDescription="@string/heading_h1"
+        android:background="@drawable/bg_formatting_button"
+        android:scaleType="centerInside" />
 
-        <View
-            android:layout_width="1dp"
-            android:layout_height="24dp"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"
-            android:background="?android:textColorSecondary" />
+    <ImageView
+        android:id="@+id/format_h2"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:padding="@dimen/formatting_button_padding"
+        android:src="@drawable/ic_format_h2"
+        android:tint="@color/formatting_button_tint"
+        android:contentDescription="@string/heading_h2"
+        android:background="@drawable/bg_formatting_button"
+        android:scaleType="centerInside" />
 
-        <ImageView
-            android:id="@+id/format_attach_file"
-            android:layout_width="@dimen/formatting_button_touch_target"
-            android:layout_height="match_parent"
-            android:padding="@dimen/formatting_button_padding"
-            android:src="@drawable/ic_attach_file"
-            android:contentDescription="@string/format_attach_file"
-            android:background="?android:selectableItemBackgroundBorderless"
-            android:scaleType="centerInside" />
+    <ImageView
+        android:id="@+id/format_paragraph"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:padding="@dimen/formatting_button_padding"
+        android:src="@drawable/ic_format_paragraph"
+        android:tint="@color/formatting_button_tint"
+        android:contentDescription="@string/paragraph_normal"
+        android:background="@drawable/bg_formatting_button"
+        android:scaleType="centerInside" />
 
-    </LinearLayout>
+    <View
+        android:layout_width="1dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:background="?android:textColorSecondary" />
 
-</HorizontalScrollView>
+    <ImageView
+        android:id="@+id/format_checklist"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:padding="@dimen/formatting_button_padding"
+        android:src="@drawable/ic_checklist"
+        android:tint="@color/formatting_button_tint"
+        android:contentDescription="@string/format_checklist"
+        android:background="@drawable/bg_formatting_button"
+        android:scaleType="centerInside" />
+
+</LinearLayout>

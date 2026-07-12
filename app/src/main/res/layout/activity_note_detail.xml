@@ -47,7 +47,7 @@
         android:layout_marginBottom="@dimen/note_detail_title_margin_bottom"
         android:importantForAutofill="no" />
 
-    <EditText
+    <org.skynetsoftware.skeletonnotes.note.RichEditText
         android:id="@+id/edit_note_content"
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -66,5 +66,8 @@
 
     <include layout="@layout/formatting_toolbar"
         android:id="@+id/formatting_toolbar"/>
+
+    <include layout="@layout/note_detail_action_toolbar"
+        android:id="@+id/note_action_toolbar"/>
 
 </LinearLayout>

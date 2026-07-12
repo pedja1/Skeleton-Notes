@@ -5,7 +5,9 @@
     android:viewportWidth="960"
     android:viewportHeight="960"
     android:tint="?android:textColorPrimary">
-    <path
-        android:pathData="M150,280 h105 v147 h110 v-147 h105 v400 h-105 v-147 h-110 v147 h-105 Z M615,280 h105 v400 h-105 Z M615,280 L615,410 L535,365 Z"
-        android:fillColor="@android:color/white" />
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M200,-280v-400h60v170h180v-170h60v400h-60v-170H260v170h-60ZM700,-280v-340h-80v-60h140v400h-60Z" />
+    </group>
 </vector>

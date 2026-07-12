@@ -15,6 +15,7 @@ import androidx.test.espresso.action.ViewActions.typeText
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
+import androidx.test.espresso.matcher.ViewMatchers.isEnabled
 import androidx.test.espresso.matcher.ViewMatchers.withHint
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
@@ -79,10 +80,17 @@ class NoteDetailActivityTest {
     }
 
     @Test
-    fun test3_overflowIconIsNotDisplayedWhenCreating() {
+    fun test3_archiveTrashDeleteAreDisabledWhenCreating() {
         ActivityScenario.launch(NoteDetailActivity::class.java).use { _ ->
-            onView(withId(R.id.toolbar_overflow))
-                .check(matches(not(isDisplayed())))
+            onView(withId(R.id.action_archive))
+                .check(matches(isDisplayed()))
+                .check(matches(not(isEnabled())))
+            onView(withId(R.id.action_trash))
+                .check(matches(isDisplayed()))
+                .check(matches(not(isEnabled())))
+            onView(withId(R.id.action_delete))
+                .check(matches(isDisplayed()))
+                .check(matches(not(isEnabled())))
         }
     }
 
@@ -121,9 +129,9 @@ class NoteDetailActivityTest {
     }
 
     @Test
-    fun test8_formattingToolbarIsDisplayedInitially() {
+    fun test8_actionToolbarIsDisplayedInitially() {
         ActivityScenario.launch(NoteDetailActivity::class.java).use { _ ->
-            onView(withId(R.id.formatting_toolbar))
+            onView(withId(R.id.note_action_toolbar))
                 .check(matches(isDisplayed()))
         }
     }
@@ -148,7 +156,7 @@ class NoteDetailActivityTest {
     }
 
     @Test
-    fun test10_overflowIconIsDisplayedWhenEditing() {
+    fun test10_actionButtonsEnabledWhenEditing() {
         val noteId = prePopulateNote()
         val intent =
             Intent().apply {
@@ -160,8 +168,12 @@ class NoteDetailActivityTest {
             }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
-            onView(withId(R.id.toolbar_overflow))
-                .check(matches(isDisplayed()))
+            onView(withId(R.id.action_archive))
+                .check(matches(isEnabled()))
+            onView(withId(R.id.action_trash))
+                .check(matches(isEnabled()))
+            onView(withId(R.id.action_delete))
+                .check(matches(isEnabled()))
         }
     }
 
@@ -204,22 +216,20 @@ class NoteDetailActivityTest {
     }
 
     @Test
-    fun test13_formattingToolbarVisibleOnContentFocus() {
+    fun test13_formatToggleEnabledOnContentFocus() {
         ActivityScenario.launch(NoteDetailActivity::class.java).use { _ ->
             onView(withId(R.id.edit_note_content)).perform(click())
-            onView(withId(R.id.formatting_toolbar))
-                .check(matches(isDisplayed()))
+            onView(withId(R.id.action_format))
+                .check(matches(isEnabled()))
         }
     }
 
     @Test
-    fun test14_formattingToolbarHiddenOnTitleFocus() {
+    fun test14_formatToggleDisabledOnTitleFocus() {
         ActivityScenario.launch(NoteDetailActivity::class.java).use { _ ->
-            onView(withId(R.id.edit_note_content)).perform(click())
-            onView(withId(R.id.formatting_toolbar)).check(matches(isDisplayed()))
             onView(withId(R.id.edit_note_title)).perform(click())
-            onView(withId(R.id.formatting_toolbar))
-                .check(matches(not(isDisplayed())))
+            onView(withId(R.id.action_format))
+                .check(matches(not(isEnabled())))
         }
     }
 
@@ -232,6 +242,7 @@ class NoteDetailActivityTest {
                 editContent.setText("Test bold text")
                 editContent.selectAll()
             }
+            onView(withId(R.id.action_format)).perform(click())
             onView(withId(R.id.format_bold)).perform(click())
             scenario.onActivity { activity ->
                 val editContent = activity.findViewById<EditText>(R.id.edit_note_content)
@@ -251,6 +262,7 @@ class NoteDetailActivityTest {
                 editContent.setText("Test italic text")
                 editContent.selectAll()
             }
+            onView(withId(R.id.action_format)).perform(click())
             onView(withId(R.id.format_italic)).perform(click())
             scenario.onActivity { activity ->
                 val editContent = activity.findViewById<EditText>(R.id.edit_note_content)
@@ -270,6 +282,7 @@ class NoteDetailActivityTest {
                 editContent.setText("Toggle bold")
                 editContent.selectAll()
             }
+            onView(withId(R.id.action_format)).perform(click())
             onView(withId(R.id.format_bold)).perform(click())
             scenario.onActivity { activity ->
                 val editContent = activity.findViewById<EditText>(R.id.edit_note_content)
@@ -293,6 +306,7 @@ class NoteDetailActivityTest {
             scenario.onActivity { activity ->
                 activity.findViewById<EditText>(R.id.edit_note_content).selectAll()
             }
+            onView(withId(R.id.action_format)).perform(click())
             onView(withId(R.id.format_h1)).perform(click())
             scenario.onActivity { activity ->
                 val spannable =
@@ -330,7 +344,7 @@ class NoteDetailActivityTest {
     }
 
     @Test
-    fun test22_overflowMenuShowsDeleteConfirmationDialogWhenEditing() {
+    fun test22_deleteActionShowsDeleteConfirmationDialogWhenEditing() {
         val noteId = prePopulateNote()
         val intent =
             Intent().apply {
@@ -342,8 +356,7 @@ class NoteDetailActivityTest {
             }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
-            onView(withId(R.id.toolbar_overflow)).perform(click())
-            onView(withText(R.string.delete_permanently)).perform(click())
+            onView(withId(R.id.action_delete)).perform(click())
             onView(withText(R.string.delete_note_confirm_title))
                 .check(matches(isDisplayed()))
             onView(withText(R.string.delete_note_confirm_message))
@@ -368,8 +381,7 @@ class NoteDetailActivityTest {
             }
 
         ActivityScenario.launch<NoteDetailActivity>(intent).use { _ ->
-            onView(withId(R.id.toolbar_overflow)).perform(click())
-            onView(withText(R.string.delete_permanently)).perform(click())
+            onView(withId(R.id.action_delete)).perform(click())
             onView(withText(R.string.delete_note_confirm_positive)).perform(click())
         }
 
@@ -418,6 +430,21 @@ class NoteDetailActivityTest {
             onView(withId(R.id.note_images)).perform(longClick())
             onView(withText(R.string.remove_attachment_confirm_positive)).perform(click())
             onView(withId(R.id.note_images)).check(matches(not(isDisplayed())))
+        }
+    }
+
+    @Test
+    fun test26_formatToggleShowsAndHidesFormattingToolbar() {
+        ActivityScenario.launch(NoteDetailActivity::class.java).use { _ ->
+            onView(withId(R.id.edit_note_content)).perform(click())
+            onView(withId(R.id.formatting_toolbar))
+                .check(matches(not(isDisplayed())))
+            onView(withId(R.id.action_format)).perform(click())
+            onView(withId(R.id.formatting_toolbar))
+                .check(matches(isDisplayed()))
+            onView(withId(R.id.action_format)).perform(click())
+            onView(withId(R.id.formatting_toolbar))
+                .check(matches(not(isDisplayed())))
         }
     }
 

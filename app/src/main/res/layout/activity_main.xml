@@ -46,7 +46,7 @@
             android:background="?android:selectableItemBackgroundBorderless"
             android:contentDescription="@string/filter_content_description"
             android:src="@drawable/ic_filter"
-            android:tint="?android:textColorPrimary" />
+            android:tint="@color/filter_tint" />
 
     </LinearLayout>
 

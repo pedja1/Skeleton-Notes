@@ -3,15 +3,8 @@ package org.skynetsoftware.skeletonnotes.note
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.graphics.Typeface
 import android.os.Bundle
-import android.text.Html
-import android.text.Spannable
-import android.text.SpannableStringBuilder
-import android.text.style.RelativeSizeSpan
-import android.text.style.StyleSpan
 import android.view.View
-import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -36,8 +29,8 @@ import java.io.File
 /**
  * Activity for viewing and editing a single note. Supports both creating new notes
  * and editing existing ones. Content is stored as Markdown and rendered into the editor's
- * span model via [MarkdownFormatter]. The formatting toolbar provides bold, italic, paragraph
- * styles (H1/H2/Paragraph), and file/image attachment.
+ * span model via [MarkdownFormatter]. A persistent bottom action toolbar provides formatting
+ * toggle, attach, archive, trash, and delete actions.
  */
 class NoteDetailActivity : ComponentActivity() {
     companion object {
@@ -94,6 +87,7 @@ class NoteDetailActivity : ComponentActivity() {
 
         setupViews()
         setupToolbar()
+        setupBottomToolbar()
         setupFocusListeners()
         setupFormattingToolbar()
         observeViewModel()
@@ -116,12 +110,17 @@ class NoteDetailActivity : ComponentActivity() {
         binding.toolbar.toolbarDelete.visibility = View.GONE
     }
 
+    /**
+     * Enables the formatting toggle button only while the content editor has focus, and hides the
+     * formatting toolbar when focus is lost so it cannot appear without the user toggling it.
+     */
     private fun setupFocusListeners() {
-        binding.editNoteTitle.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) binding.formattingToolbar.root.visibility = View.GONE
-        }
         binding.editNoteContent.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus) binding.formattingToolbar.root.visibility = View.VISIBLE
+            binding.noteActionToolbar.actionFormat.isEnabled = hasFocus
+            if (!hasFocus) {
+                binding.noteActionToolbar.actionFormat.isSelected = false
+                binding.formattingToolbar.root.visibility = View.GONE
+            }
         }
         binding.editNoteContent.requestFocus()
     }
@@ -140,20 +139,16 @@ class NoteDetailActivity : ComponentActivity() {
                     when (state) {
                         is NoteDetailViewModel.UiState.NewNote -> {
                             binding.toolbar.toolbarTitle.setText(R.string.note_detail_new_note_title)
-                            binding.toolbar.toolbarOverflow.visibility = View.GONE
+                            updateActionButtons(null)
                         }
 
                         is NoteDetailViewModel.UiState.NoteLoaded -> {
                             binding.toolbar.toolbarTitle.setText(R.string.note_detail_title)
-                            binding.toolbar.toolbarOverflow.visibility = View.VISIBLE
-                            binding.toolbar.toolbarOverflow.setOnClickListener { showOverflowMenu() }
                             binding.editNoteTitle.setText(state.note.title ?: "")
-                            binding.editNoteContent.text =
-                                SpannableStringBuilder(
-                                    MarkdownFormatter.fromMarkdown(
-                                        state.note.content,
-                                    ),
-                                )
+                            binding.editNoteContent.setContentSilently(
+                                MarkdownFormatter.fromMarkdown(state.note.content),
+                            )
+                            updateActionButtons(state.note.status)
                         }
 
                         NoteDetailViewModel.UiState.Saved -> finish()
@@ -283,132 +278,151 @@ class NoteDetailActivity : ComponentActivity() {
             .show()
     }
 
-    private fun showOverflowMenu() {
-        val popupMenu = PopupMenu(this, binding.toolbar.toolbarOverflow)
-        popupMenu.menuInflater.inflate(R.menu.note_detail_overflow, popupMenu.menu)
-        val status = viewModel.noteStatus()
-        if (status != null) {
-            val archiveItem = popupMenu.menu.findItem(R.id.action_archive)
-            val trashItem = popupMenu.menu.findItem(R.id.action_move_to_trash)
-            when (status) {
-                NoteStatus.ARCHIVE -> {
-                    archiveItem.setTitle(R.string.unarchive_note)
-                    trashItem.isVisible = false
-                }
-                NoteStatus.TRASH -> {
-                    trashItem.setTitle(R.string.restore_from_trash)
-                    archiveItem.isVisible = false
-                }
-                else -> { /* default titles from XML */ }
+    /**
+     * Wires the bottom action toolbar buttons and sets their tooltips.
+     */
+    private fun setupBottomToolbar() {
+        val toolbar = binding.noteActionToolbar
+
+        toolbar.actionFormat.setOnClickListener { toggleFormattingToolbar() }
+        toolbar.actionAttach.setOnClickListener { pickAttachment() }
+        toolbar.actionArchive.setOnClickListener {
+            if (viewModel.noteStatus() == NoteStatus.ARCHIVE) {
+                viewModel.restoreNote()
+            } else {
+                viewModel.archiveNote()
             }
         }
-        popupMenu.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                R.id.action_move_to_trash -> {
-                    if (status == NoteStatus.TRASH) {
-                        viewModel.restoreNote()
-                    } else {
-                        viewModel.moveToTrash()
-                    }
-                    true
-                }
-
-                R.id.action_archive -> {
-                    if (status == NoteStatus.ARCHIVE) {
-                        viewModel.restoreNote()
-                    } else {
-                        viewModel.archiveNote()
-                    }
-                    true
-                }
-
-                R.id.action_delete -> {
-                    showDeleteConfirmation()
-                    true
-                }
-
-                else -> false
+        toolbar.actionTrash.setOnClickListener {
+            if (viewModel.noteStatus() == NoteStatus.TRASH) {
+                viewModel.restoreNote()
+            } else {
+                viewModel.moveToTrash()
             }
         }
-        popupMenu.show()
+        toolbar.actionDelete.setOnClickListener { showDeleteConfirmation() }
+
+        ViewCompat.setTooltipText(toolbar.actionFormat, getString(R.string.format_formatting))
+        ViewCompat.setTooltipText(toolbar.actionAttach, getString(R.string.format_attach_file))
+        ViewCompat.setTooltipText(toolbar.actionArchive, getString(R.string.archive_note))
+        ViewCompat.setTooltipText(toolbar.actionTrash, getString(R.string.move_to_trash))
+        ViewCompat.setTooltipText(toolbar.actionDelete, getString(R.string.delete_permanently))
+
+        toolbar.actionFormat.isEnabled = false
+        toolbar.actionArchive.isEnabled = false
+        toolbar.actionTrash.isEnabled = false
+        toolbar.actionDelete.isEnabled = false
     }
 
-    private fun setupFormattingToolbar() {
-        binding.formattingToolbar.formatBold.setOnClickListener { toggleBold() }
-        binding.formattingToolbar.formatItalic.setOnClickListener { toggleItalic() }
-        binding.formattingToolbar.formatH1.setOnClickListener { applyHeading(1) }
-        binding.formattingToolbar.formatH2.setOnClickListener { applyHeading(2) }
-        binding.formattingToolbar.formatParagraph.setOnClickListener { applyHeading(null) }
-        binding.formattingToolbar.formatAttachFile.setOnClickListener { pickAttachment() }
-    }
+    /**
+     * Updates the bottom action toolbar buttons based on the current [status] of the loaded note.
+     * When [status] is null (new/unsaved note) all action buttons except attach are disabled.
+     *
+     * - [NoteStatus.ACTIVE]: archive and trash show their default icons with archive/trash labels.
+     * - [NoteStatus.ARCHIVE]: archive switches to Unarchive label+icon, trash is disabled.
+     * - [NoteStatus.TRASH]: trash switches to Restore label+icon, archive is disabled.
+     */
+    private fun updateActionButtons(status: NoteStatus?) {
+        val toolbar = binding.noteActionToolbar
+        if (status == null) {
+            toolbar.actionArchive.isEnabled = false
+            toolbar.actionTrash.isEnabled = false
+            toolbar.actionDelete.isEnabled = false
+            toolbar.actionArchive.setImageResource(R.drawable.ic_archive)
+            toolbar.actionArchive.contentDescription = getString(R.string.archive_note)
+            toolbar.actionTrash.setImageResource(R.drawable.ic_delete)
+            toolbar.actionTrash.contentDescription = getString(R.string.move_to_trash)
+            return
+        }
+        when (status) {
+            NoteStatus.ACTIVE -> {
+                toolbar.actionArchive.isEnabled = true
+                toolbar.actionArchive.setImageResource(R.drawable.ic_archive)
+                toolbar.actionArchive.contentDescription = getString(R.string.archive_note)
+                ViewCompat.setTooltipText(toolbar.actionArchive, getString(R.string.archive_note))
 
-    private fun toggleBold() {
-        toggleSpan(StyleSpan(Typeface.BOLD))
-    }
+                toolbar.actionTrash.isEnabled = true
+                toolbar.actionTrash.setImageResource(R.drawable.ic_delete)
+                toolbar.actionTrash.contentDescription = getString(R.string.move_to_trash)
+                ViewCompat.setTooltipText(toolbar.actionTrash, getString(R.string.move_to_trash))
 
-    private fun toggleItalic() {
-        toggleSpan(StyleSpan(Typeface.ITALIC))
-    }
+                toolbar.actionDelete.isEnabled = true
+            }
 
-    private fun toggleSpan(span: StyleSpan) {
-        val editable = binding.editNoteContent.text
-        val selectionStart = binding.editNoteContent.selectionStart
-        val selectionEnd = binding.editNoteContent.selectionEnd
-        val spannable = editable as Spannable
-        val existingSpans = spannable.getSpans(selectionStart, selectionEnd, span.javaClass)
-        if (existingSpans.isNotEmpty()) {
-            existingSpans.forEach { spannable.removeSpan(it) }
-        } else {
-            spannable.setSpan(
-                span,
-                selectionStart,
-                selectionEnd.coerceAtLeast(selectionStart),
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-            )
+            NoteStatus.ARCHIVE -> {
+                toolbar.actionArchive.isEnabled = true
+                toolbar.actionArchive.setImageResource(R.drawable.ic_unarchive)
+                toolbar.actionArchive.contentDescription = getString(R.string.unarchive_note)
+                ViewCompat.setTooltipText(toolbar.actionArchive, getString(R.string.unarchive_note))
+
+                toolbar.actionTrash.isEnabled = false
+                toolbar.actionTrash.setImageResource(R.drawable.ic_delete)
+                toolbar.actionTrash.contentDescription = getString(R.string.move_to_trash)
+
+                toolbar.actionDelete.isEnabled = true
+            }
+
+            NoteStatus.TRASH -> {
+                toolbar.actionArchive.isEnabled = false
+                toolbar.actionArchive.setImageResource(R.drawable.ic_archive)
+                toolbar.actionArchive.contentDescription = getString(R.string.archive_note)
+
+                toolbar.actionTrash.isEnabled = true
+                toolbar.actionTrash.setImageResource(R.drawable.ic_restore_from_trash)
+                toolbar.actionTrash.contentDescription = getString(R.string.restore_from_trash)
+                ViewCompat.setTooltipText(toolbar.actionTrash, getString(R.string.restore_from_trash))
+
+                toolbar.actionDelete.isEnabled = true
+            }
         }
     }
 
     /**
-     * Applies a heading style ([level] 1 or 2) or reverts to a plain paragraph ([level] null)
-     * to the paragraph(s) covered by the current selection. Headings are represented the same way
-     * [Html.fromHtml] represents them: a [RelativeSizeSpan] plus a bold [StyleSpan].
+     * Toggles the formatting toolbar visibility and reflects the active state on the formatting
+     * toggle button.
      */
-    private fun applyHeading(level: Int?) {
-        val spannable = binding.editNoteContent.text as? Spannable ?: return
-        val text = spannable.toString()
+    private fun toggleFormattingToolbar() {
+        val toolbar = binding.formattingToolbar
+        val actionFormat = binding.noteActionToolbar.actionFormat
+        if (toolbar.root.visibility == View.VISIBLE) {
+            toolbar.root.visibility = View.GONE
+            actionFormat.isSelected = false
+        } else {
+            toolbar.root.visibility = View.VISIBLE
+            actionFormat.isSelected = true
+        }
+    }
 
-        val selectionStart = binding.editNoteContent.selectionStart.coerceAtLeast(0)
-        val selectionEnd = binding.editNoteContent.selectionEnd.coerceAtLeast(0)
+    private fun setupFormattingToolbar() {
+        val toolbar = binding.formattingToolbar
+        val content = binding.editNoteContent
 
-        val paragraphStart =
-            text
-                .lastIndexOf('\n', (selectionStart - 1).coerceAtLeast(0))
-                .let { if (it < 0) 0 else it + 1 }
-        val paragraphEnd = text.indexOf('\n', selectionEnd).let { if (it < 0) text.length else it }
-        if (paragraphStart >= paragraphEnd) return
+        toolbar.formatBold.setOnClickListener { content.toggleBold() }
+        toolbar.formatItalic.setOnClickListener { content.toggleItalic() }
+        toolbar.formatStrikethrough.setOnClickListener { content.toggleStrikethrough() }
+        toolbar.formatUnderline.setOnClickListener { content.toggleUnderline() }
+        toolbar.formatH1.setOnClickListener { content.applyHeading(1) }
+        toolbar.formatH2.setOnClickListener { content.applyHeading(2) }
+        toolbar.formatParagraph.setOnClickListener { content.applyHeading(null) }
+        toolbar.formatChecklist.setOnClickListener { content.toggleChecklist() }
 
-        spannable
-            .getSpans(paragraphStart, paragraphEnd, RelativeSizeSpan::class.java)
-            .forEach { spannable.removeSpan(it) }
-        spannable
-            .getSpans(paragraphStart, paragraphEnd, StyleSpan::class.java)
-            .filter { it.style == Typeface.BOLD }
-            .forEach { spannable.removeSpan(it) }
+        ViewCompat.setTooltipText(toolbar.formatBold, getString(R.string.format_bold))
+        ViewCompat.setTooltipText(toolbar.formatItalic, getString(R.string.format_italic))
+        ViewCompat.setTooltipText(toolbar.formatStrikethrough, getString(R.string.format_strikethrough))
+        ViewCompat.setTooltipText(toolbar.formatUnderline, getString(R.string.format_underline))
+        ViewCompat.setTooltipText(toolbar.formatH1, getString(R.string.heading_h1))
+        ViewCompat.setTooltipText(toolbar.formatH2, getString(R.string.heading_h2))
+        ViewCompat.setTooltipText(toolbar.formatParagraph, getString(R.string.paragraph_normal))
+        ViewCompat.setTooltipText(toolbar.formatChecklist, getString(R.string.format_checklist))
 
-        if (level != null) {
-            val scale = if (level == 1) MarkdownFormatter.H1_SCALE else MarkdownFormatter.H2_SCALE
-            spannable.setSpan(
-                RelativeSizeSpan(scale),
-                paragraphStart,
-                paragraphEnd,
-                Spannable.SPAN_EXCLUSIVE_INCLUSIVE,
-            )
-            spannable.setSpan(
-                StyleSpan(Typeface.BOLD),
-                paragraphStart,
-                paragraphEnd,
-                Spannable.SPAN_EXCLUSIVE_INCLUSIVE,
-            )
+        content.onFormattingStateChanged = { state ->
+            toolbar.formatBold.isSelected = state.bold
+            toolbar.formatItalic.isSelected = state.italic
+            toolbar.formatStrikethrough.isSelected = state.strikethrough
+            toolbar.formatUnderline.isSelected = state.underline
+            toolbar.formatH1.isSelected = state.headingLevel == 1
+            toolbar.formatH2.isSelected = state.headingLevel == 2
+            toolbar.formatChecklist.isSelected = state.checklist
         }
     }
 

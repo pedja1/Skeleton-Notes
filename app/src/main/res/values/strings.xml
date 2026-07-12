@@ -12,12 +12,16 @@
     <string name="note_detail_content_hint">Start writing…</string>
 
     <!--Formatting Toolbar-->
+    <string name="format_formatting">Formatting</string>
     <string name="format_bold">Bold</string>
     <string name="format_italic">Italic</string>
+    <string name="format_strikethrough">Strikethrough</string>
+    <string name="format_underline">Underline</string>
     <string name="format_attach_file">Attach file</string>
     <string name="heading_h1">Heading 1</string>
     <string name="heading_h2">Heading 2</string>
     <string name="paragraph_normal">Paragraph</string>
+    <string name="format_checklist">Checklist</string>
 
     <!--Delete-->
     <string name="delete_note">Delete note</string>

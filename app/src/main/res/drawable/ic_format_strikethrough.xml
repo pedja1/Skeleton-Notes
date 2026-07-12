@@ -8,6 +8,6 @@
     <group android:translateY="960">
         <path
             android:fillColor="@android:color/white"
-            android:pathData="M275,-200v-560h228q66,0 114.5,42T666,-612q0,38 -21,70t-56,49v6q43,14 69.5,50t26.5,81q0,68 -52.5,112T510,-200H275ZM361,-276h144q38,0 66,-25t28,-63q0,-37 -28,-62t-66,-25H361v175ZM361,-523h136q35,0 60.5,-23t25.5,-58q0,-35 -25.5,-58.5T497,-686H361v163Z" />
+            android:pathData="M80,-410v-60h800v60H80ZM430,-530v-170H200v-100h560v100H530v170H430ZM430,-160v-190h100v190H430Z" />
     </group>
 </vector>
