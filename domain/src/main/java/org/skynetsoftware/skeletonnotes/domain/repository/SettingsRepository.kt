@@ -19,4 +19,8 @@ interface SettingsRepository {
     fun setSyncIntervalMinutes(minutes: Long)
 
     fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean)
+
+    fun shouldStopRequestingNotificationPermission(): Boolean
+
+    fun setStopRequestingNotificationPermission()
 }

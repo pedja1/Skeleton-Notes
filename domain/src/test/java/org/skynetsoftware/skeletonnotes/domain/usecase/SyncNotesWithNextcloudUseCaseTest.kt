@@ -22,6 +22,7 @@ import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudAttachment
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudConnectionInfo
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudHttpException
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiateLoginResult
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
@@ -551,8 +552,26 @@ class SyncNotesWithNextcloudUseCaseTest {
 
             assertTrue(result is Result.Success)
             assertTrue((result as Result.Success).data is SyncResult.Error)
-            // The last-sync timestamp must not advance so the failed push is retried next time.
             assertEquals(0L, (settingsRepository.nextcloudLastSyncTimestamp as MutableStateFlow).value)
+        }
+
+    @Test
+    fun syncPersistsAuthExpiredReasonWhenServerReturns401() =
+        runTest {
+            val ncRepo =
+                object : NextcloudRepository by FakeNextcloudRepo() {
+                    override suspend fun listFiles(): Result<List<NextcloudFileInfo>> =
+                        Result.Failure(NextcloudHttpException(401))
+                }
+            val settingsRepository = FakeSettingsRepository()
+            val useCase =
+                SyncNotesWithNextcloudUseCase(FakeNotesRepo(), ncRepo, settingsRepository, FakeAttachmentFileStorage())
+
+            val result = useCase()
+
+            val syncResult = (result as Result.Success).data
+            assertTrue(syncResult is SyncResult.Error)
+            assertEquals(SyncErrorReason.AUTH_EXPIRED, (syncResult as SyncResult.Error).reason)
         }
 
     @Test
@@ -804,5 +823,9 @@ class SyncNotesWithNextcloudUseCaseTest {
         override fun setSyncIntervalMinutes(minutes: Long) {}
 
         override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
+
+        override fun shouldStopRequestingNotificationPermission() = false
+
+        override fun setStopRequestingNotificationPermission() {}
     }
 }

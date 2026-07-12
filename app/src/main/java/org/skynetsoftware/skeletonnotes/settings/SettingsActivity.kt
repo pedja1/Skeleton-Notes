@@ -280,14 +280,14 @@ class SettingsActivity : ComponentActivity() {
         binding.sectionData.sectionTitle.text = getString(R.string.settings_section_data)
 
         binding.itemImport.itemTitle.text = getString(R.string.settings_item_import_tile)
-        binding.itemImport.itemSubtitle.text = getString(R.string.settings_item_import_subtile)
+        binding.itemImport.itemSubtitle.text = getString(R.string.settings_item_import_subtitle)
         binding.itemImport.itemSubtitle.visibility = View.VISIBLE
         binding.itemImport.root.setOnClickListener {
             importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
         }
 
         binding.itemExport.itemTitle.text = getString(R.string.settings_item_export_tile)
-        binding.itemExport.itemSubtitle.text = getString(R.string.settings_item_export_subtile)
+        binding.itemExport.itemSubtitle.text = getString(R.string.settings_item_export_subtitle)
         binding.itemExport.itemSubtitle.visibility = View.VISIBLE
         binding.itemExport.root.setOnClickListener {
             val timestamp = EXPORT_FILE_TIMESTAMP_FORMAT.format(Date())
@@ -311,19 +311,16 @@ class SettingsActivity : ComponentActivity() {
                     nextcloudConnectionInfo.serverUrl,
                 )
         }
-        if (settings.nextcloudLastSyncTimestamp <= 0L) {
-            binding.itemNextcloudSyncNow.itemSubtitle.text =
-                getString(
-                    R.string.settings_item_nextcloud_last_sync,
-                    getString(R.string.settings_item_nextcloud_last_sync_never),
-                )
-        } else {
-            binding.itemNextcloudSyncNow.itemSubtitle.text =
-                getString(
-                    R.string.settings_item_nextcloud_last_sync,
-                    LAST_SYNC_FORMAT.format(settings.nextcloudLastSyncTimestamp),
-                )
-        }
+
+        val lastSync =
+            if (settings.nextcloudLastSyncTimestamp <= 0L) {
+                getString(R.string.settings_item_nextcloud_last_sync_never)
+            } else {
+                LAST_SYNC_FORMAT.format(settings.nextcloudLastSyncTimestamp)
+            }
+        binding.itemNextcloudSyncNow.itemSubtitle.text =
+            getString(R.string.settings_item_nextcloud_last_sync, lastSync)
+
         binding.itemNextcloudPeriodicSync.itemSwitch.isChecked = settings.nextcloudPeriodicSyncEnabled
         val intervalLabel = syncIntervalLabel(settings.nextcloudSyncIntervalMinutes)
         binding.itemNextcloudSyncInterval.itemSubtitle.text =

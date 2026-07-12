@@ -17,6 +17,8 @@ import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetStopRequestingNotificationPermissionUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ShouldStopRequestingNotificationPermissionUseCase
 
 /**
  * ViewModel for the main screen that retrieves and exposes the list of notes
@@ -25,6 +27,8 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCa
 class MainViewModel(
     private val searchAndFilterNotesUseCase: SearchAndFilterNotesUseCase,
     private val getAllNotesUseCase: GetAllNotesUseCase,
+    private val shouldStopRequestingNotificationPermissionUseCase: ShouldStopRequestingNotificationPermissionUseCase,
+    private val setStopRequestingNotificationPermissionUseCase: SetStopRequestingNotificationPermissionUseCase,
 ) : ViewModel() {
     companion object {
         /**
@@ -36,6 +40,10 @@ class MainViewModel(
                     MainViewModel(
                         searchAndFilterNotesUseCase = AppDi.searchAndFilterNotesUseCase,
                         getAllNotesUseCase = AppDi.getAllNotesUseCase,
+                        shouldStopRequestingNotificationPermissionUseCase =
+                            AppDi.shouldStopRequestingNotificationPermissionUseCase,
+                        setStopRequestingNotificationPermissionUseCase =
+                            AppDi.setStopRequestingNotificationPermissionUseCase,
                     )
                 }
             }
@@ -86,4 +94,11 @@ class MainViewModel(
     fun setQuery(query: String) {
         _filter.value = _filter.value.copy(query = query)
     }
+
+    fun setStopRequestingNotificationPermission() {
+        setStopRequestingNotificationPermissionUseCase.invoke()
+    }
+
+    fun shouldStopRequestingNotificationPermissionRationale() =
+        shouldStopRequestingNotificationPermissionUseCase.invoke()
 }

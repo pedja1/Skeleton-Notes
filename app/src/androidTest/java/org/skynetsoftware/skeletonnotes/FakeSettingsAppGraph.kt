@@ -50,6 +50,9 @@ class FakeSettingsRepository(
     var nextcloudLastSyncTimestampValue: Long = lastSyncTimestamp
         private set
 
+    var shouldStopPermission: Boolean = false
+        private set
+
     override fun setPeriodicSyncEnabled(enabled: Boolean) {
         periodicSyncEnabled = enabled
         periodicSyncFlow.value = enabled
@@ -66,6 +69,12 @@ class FakeSettingsRepository(
 
     override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {
         syncOnlyOnUnmeteredFlow.value = onlyOnUnmetered
+    }
+
+    override fun shouldStopRequestingNotificationPermission() = shouldStopPermission
+
+    override fun setStopRequestingNotificationPermission() {
+        shouldStopPermission = true
     }
 }
 

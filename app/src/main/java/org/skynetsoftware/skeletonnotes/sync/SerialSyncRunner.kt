@@ -19,27 +19,27 @@ import kotlinx.coroutines.launch
  * coroutine itself.
  *
  * @param scope the scope the sync runs in; its lifetime is owned by the caller.
- * @param sync the suspending sync action to execute.
+ * @param sync the suspending sync action to execute; its result is handed to `onComplete`.
  */
-class SerialSyncRunner(
+class SerialSyncRunner<R>(
     private val scope: CoroutineScope,
-    private val sync: suspend () -> Unit,
+    private val sync: suspend () -> R,
 ) {
     private var currentJob: Job? = null
 
     /**
      * Starts a new [sync] run, first preempting and awaiting any in-flight run.
      *
-     * @param onComplete invoked after [sync] finishes normally; not invoked if the run is
-     * cancelled (by [stop] or by a subsequent [start]).
+     * @param onComplete invoked with the [sync] result after it finishes normally; not invoked if
+     * the run is cancelled (by [stop] or by a subsequent [start]).
      */
-    fun start(onComplete: () -> Unit) {
+    fun start(onComplete: (R) -> Unit) {
         val previous = currentJob
         currentJob =
             scope.launch {
                 previous?.cancelAndJoin()
-                sync()
-                onComplete()
+                val result = sync()
+                onComplete(result)
             }
     }
 

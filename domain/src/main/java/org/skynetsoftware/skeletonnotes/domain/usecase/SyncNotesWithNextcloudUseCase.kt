@@ -8,10 +8,12 @@ import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudAttachment
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudHttpException
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.NotesRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
+import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -39,13 +41,13 @@ open class SyncNotesWithNextcloudUseCase(
             val remoteFileMap =
                 when (val result = loadRemoteFileMap()) {
                     is Result.Success -> result.data
-                    is Result.Failure -> return Result.Success(SyncResult.Error(result.throwable))
+                    is Result.Failure -> return fail(result.throwable)
                 }
 
             val localNotes =
                 when (val result = notesRepository.getAllNotes()) {
                     is Result.Success -> result.data
-                    is Result.Failure -> return Result.Success(SyncResult.Error(result.throwable))
+                    is Result.Failure -> return fail(result.throwable)
                 }
 
             val localNoteMap = localNotes.associateBy { it.id }
@@ -69,7 +71,7 @@ open class SyncNotesWithNextcloudUseCase(
             if (errors.isNotEmpty()) {
                 // At least one note-level operation failed. Do not advance the last-sync timestamp
                 // and do not report success, so the failed changes are retried on the next sync.
-                return Result.Success(SyncResult.Error(aggregateError(errors)))
+                return fail(aggregateError(errors), errors.first().toSyncErrorReason())
             }
 
             val result =
@@ -83,9 +85,20 @@ open class SyncNotesWithNextcloudUseCase(
         } catch (c: CancellationException) {
             throw c
         } catch (t: Throwable) {
-            Result.Success(SyncResult.Error(t))
+            fail(t)
         }
     }
+
+    /**
+     * Persists the failure [reason] so it survives process death (and is surfaced on the Settings
+     * screen and via a notification), then wraps the [throwable] as a [SyncResult.Error]. The
+     * last-sync timestamp is intentionally left untouched so the failed changes are retried on the
+     * next sync.
+     */
+    private fun fail(
+        throwable: Throwable,
+        reason: SyncErrorReason = throwable.toSyncErrorReason(),
+    ): Result<SyncResult> = Result.Success(SyncResult.Error(throwable, reason))
 
     /**
      * Combines multiple per-operation failures into a single throwable, keeping the first as the
@@ -392,8 +405,40 @@ sealed class SyncResult {
     /** Sync failed due to an error. */
     data class Error(
         val throwable: Throwable,
+        val reason: SyncErrorReason = throwable.toSyncErrorReason(),
     ) : SyncResult()
 }
+
+/**
+ * User-facing category of a sync failure, used to show a friendly, localized message instead of a
+ * raw exception. The mapping is done by [toSyncErrorReason].
+ */
+enum class SyncErrorReason {
+    /** Could not reach the server (offline, DNS failure, timeout). */
+    NO_CONNECTION,
+
+    /** The server rejected the stored credentials (401/403); the app password likely expired. */
+    AUTH_EXPIRED,
+
+    /** The server responded with a 5xx error. */
+    SERVER_ERROR,
+
+    /** Anything else (unexpected exception, parse error, mixed failures). */
+    UNKNOWN,
+}
+
+/**
+ * Classifies a sync failure into a [SyncErrorReason]. HTTP failures are distinguished by status
+ * code ([NextcloudHttpException]); any other [IOException] is treated as a connectivity problem.
+ */
+fun Throwable.toSyncErrorReason(): SyncErrorReason =
+    when (this) {
+        is NextcloudHttpException if (code == 401 || code == 403) -> SyncErrorReason.AUTH_EXPIRED
+        is NextcloudHttpException if code >= 500 -> SyncErrorReason.SERVER_ERROR
+        is NextcloudHttpException -> SyncErrorReason.UNKNOWN
+        is IOException -> SyncErrorReason.NO_CONNECTION
+        else -> SyncErrorReason.UNKNOWN
+    }
 
 /**
  * Represents a sync conflict where both local and remote versions have changed.

@@ -49,5 +49,9 @@ class SetSyncIntervalUseCaseTest {
         }
 
         override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
+
+        override fun shouldStopRequestingNotificationPermission() = false
+
+        override fun setStopRequestingNotificationPermission() {}
     }
 }

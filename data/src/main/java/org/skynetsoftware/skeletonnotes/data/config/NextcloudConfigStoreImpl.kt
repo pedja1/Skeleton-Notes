@@ -31,7 +31,7 @@ internal class NextcloudConfigStoreImpl(
         /** Default sync interval: 6 hours. */
         private const val DEFAULT_SYNC_INTERVAL_MINUTES = 360L
 
-        fun from(context: Context): NextcloudConfigStoreImpl =
+        fun from(context: Context): NextcloudConfigStore =
             NextcloudConfigStoreImpl(context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE))
     }
 

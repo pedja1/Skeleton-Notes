@@ -41,9 +41,7 @@ class MainActivityTest {
     @Before
     fun setUp() {
         Intents.init()
-        // The schema is owned by SkeletonNotesDatabaseHelper.onCreate; instrumented tests run
-        // against an in-memory database (see SkeletonNotesTestRunner). Only clear leftover
-        // notes so tests within the same process are isolated.
+        DataDi.settingsRepository.setStopRequestingNotificationPermission()
         runBlocking {
             val allNotes = DataDi.notesRepository.getAllNotesFlow().first()
             if (allNotes is Result.Success) {

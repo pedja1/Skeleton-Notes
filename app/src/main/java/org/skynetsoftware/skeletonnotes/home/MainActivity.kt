@@ -1,12 +1,17 @@
 package org.skynetsoftware.skeletonnotes.home
 
+import android.Manifest
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doOnTextChanged
@@ -29,6 +34,13 @@ class MainActivity : ComponentActivity() {
 
     private val mainViewMode by viewModels<MainViewModel>(factoryProducer = { MainViewModel.Factory })
     private lateinit var binding: ActivityMainBinding
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) {
+            // No-op: notifications are only shown after sync failure
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,6 +112,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        maybeRequestNotificationPermission()
     }
 
     private fun setupSearch() {
@@ -141,5 +154,47 @@ class MainActivity : ComponentActivity() {
                 }.setNegativeButton(android.R.string.cancel, null)
                 .show()
         }
+    }
+
+    /**
+     * Requests the runtime notification permission (Android 13+) so background sync-failure
+     * notifications can be shown.
+     */
+    private fun maybeRequestNotificationPermission(skipRationaleCheck: Boolean = false) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            mainViewMode.shouldStopRequestingNotificationPermissionRationale()
+        ) {
+            return
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        if (!skipRationaleCheck &&
+            shouldShowRequestPermissionRationale(
+                Manifest.permission.POST_NOTIFICATIONS,
+            )
+        ) {
+            showNotificationPermissionRationale()
+            return
+        }
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    /**
+     * Show dialog explaining why notification permission is requested
+     */
+    private fun showNotificationPermissionRationale() {
+        AlertDialog
+            .Builder(this)
+            .setTitle(R.string.notification_permission_rationale_title)
+            .setMessage(R.string.notification_permission_rationale_message)
+            .setPositiveButton(R.string.notification_permission_rationale_ok) { _, _ ->
+                maybeRequestNotificationPermission(true)
+            }.setNegativeButton(R.string.notification_permission_rationale_cancel) { _, _ -> }
+            .setCancelable(false)
+            .show()
+        mainViewMode.setStopRequestingNotificationPermission()
     }
 }

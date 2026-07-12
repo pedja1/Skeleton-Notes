@@ -17,6 +17,7 @@ import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudConnectionInfo
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudFileInfo
+import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudHttpException
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudInitiateLoginResult
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
 import org.w3c.dom.Element
@@ -122,7 +123,7 @@ internal class NextcloudApiImpl(
                         )
                     } else {
                         Log.e(TAG, "initiateLoginFlow failed: ${resp.code} ${resp.body.string()}")
-                        Result.Failure(Exception("Server returned ${resp.code}"))
+                        Result.Failure(NextcloudHttpException(resp.code))
                     }
                 }
             } catch (t: Throwable) {
@@ -197,7 +198,7 @@ internal class NextcloudApiImpl(
                         parsePropfindResponse(xml, url)
                     } else {
                         Log.e(TAG, "listDirectory failed: ${resp.code} ${resp.body.string()}")
-                        Result.Failure(Exception("Server returned ${resp.code}"))
+                        Result.Failure(NextcloudHttpException(resp.code))
                     }
                 }
             } catch (t: Throwable) {
@@ -244,7 +245,7 @@ internal class NextcloudApiImpl(
                         Result.Success(Unit)
                     } else {
                         Log.e(TAG, "downloadFile failed: ${resp.code} ${resp.body.string()}")
-                        Result.Failure(Exception("Server returned ${resp.code}"))
+                        Result.Failure(NextcloudHttpException(resp.code))
                     }
                 }
             } catch (t: Throwable) {
@@ -293,7 +294,7 @@ internal class NextcloudApiImpl(
                         Result.Success(Unit)
                     } else {
                         Log.e(TAG, "uploadFile failed: ${resp.code} ${resp.body.string()}")
-                        Result.Failure(Exception("Server returned ${resp.code}"))
+                        Result.Failure(NextcloudHttpException(resp.code))
                     }
                 }
             } catch (t: Throwable) {
@@ -345,7 +346,7 @@ internal class NextcloudApiImpl(
                         Result.Success(Unit)
                     } else {
                         Log.e(TAG, "deleteFile failed: ${resp.code} ${resp.body.string()}")
-                        Result.Failure(Exception("Server returned ${resp.code}"))
+                        Result.Failure(NextcloudHttpException(resp.code))
                     }
                 }
             } catch (t: Throwable) {
@@ -375,7 +376,7 @@ internal class NextcloudApiImpl(
                         Result.Success(Unit)
                     } else {
                         Log.e(TAG, "createDirectory failed: ${resp.code} ${resp.body.string()}")
-                        Result.Failure(Exception("Server returned ${resp.code}"))
+                        Result.Failure(NextcloudHttpException(resp.code))
                     }
                 }
             } catch (t: Throwable) {

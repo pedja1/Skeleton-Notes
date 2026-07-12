@@ -9,21 +9,24 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
+import org.skynetsoftware.skeletonnotes.data.config.SystemConfigStore
 
 class SettingsRepositoryImplTest {
-    private lateinit var configStore: FakeConfigStore
+    private lateinit var nextcloudConfigStore: FakeNextcloudConfigStore
+    private lateinit var systemConfigStore: FakeSystemConfigStore
     private lateinit var repository: SettingsRepositoryImpl
 
     @Before
     fun setUp() {
-        configStore = FakeConfigStore()
-        repository = SettingsRepositoryImpl(configStore)
+        nextcloudConfigStore = FakeNextcloudConfigStore()
+        systemConfigStore = FakeSystemConfigStore()
+        repository = SettingsRepositoryImpl(nextcloudConfigStore, systemConfigStore)
     }
 
     @Test
     fun periodicSyncEnabledExposesConfigFlow() =
         runBlocking {
-            configStore.periodicSyncEnabledFlow.value = true
+            nextcloudConfigStore.periodicSyncEnabledFlow.value = true
 
             val value = repository.nextcloudPeriodicSync.first()
 
@@ -33,7 +36,7 @@ class SettingsRepositoryImplTest {
     @Test
     fun lastSyncTimestampExposesConfigFlow() =
         runBlocking {
-            configStore.lastSyncTimestampFlow.value = 5000L
+            nextcloudConfigStore.lastSyncTimestampFlow.value = 5000L
 
             val value = repository.nextcloudLastSyncTimestamp.first()
 
@@ -44,24 +47,24 @@ class SettingsRepositoryImplTest {
     fun setPeriodicSyncEnabledDelegatesToStore() {
         repository.setPeriodicSyncEnabled(true)
 
-        assertEquals(true, configStore.setPeriodicSyncEnabledValue)
+        assertEquals(true, nextcloudConfigStore.setPeriodicSyncEnabledValue)
     }
 
     @Test
     fun setPeriodicSyncEnabledDisableDelegatesToStore() {
         repository.setPeriodicSyncEnabled(false)
 
-        assertEquals(false, configStore.setPeriodicSyncEnabledValue)
+        assertEquals(false, nextcloudConfigStore.setPeriodicSyncEnabledValue)
     }
 
     @Test
     fun setLastSyncTimestampDelegatesToStore() {
         repository.setNextcloudLastSyncTimestamp(3000L)
 
-        assertEquals(3000L, configStore.setLastSyncTimestampValue)
+        assertEquals(3000L, nextcloudConfigStore.setLastSyncTimestampValue)
     }
 
-    private class FakeConfigStore : NextcloudConfigStore {
+    private class FakeNextcloudConfigStore : NextcloudConfigStore {
         val periodicSyncEnabledFlow = MutableStateFlow(false)
         val lastSyncTimestampFlow = MutableStateFlow(0L)
 
@@ -97,5 +100,11 @@ class SettingsRepositoryImplTest {
         override fun setSyncIntervalMinutes(minutes: Long) {}
 
         override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
+    }
+
+    private class FakeSystemConfigStore : SystemConfigStore {
+        override fun shouldStopRequestingNotificationPermission() = false
+
+        override fun setStopRequestingNotificationPermission() {}
     }
 }

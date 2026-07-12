@@ -18,8 +18,10 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.RestoreNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetStopRequestingNotificationPermissionUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ShouldStopRequestingNotificationPermissionUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
 import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
 
@@ -91,4 +93,10 @@ object AppDi {
 
     val createAttachmentUseCase: CreateAttachmentUseCase get() = graph.createAttachmentUseCase
     val deleteAttachmentLocalUseCase: DeleteAttachmentLocalUseCase get() = graph.deleteAttachmentLocalUseCase
+
+    val shouldStopRequestingNotificationPermissionUseCase: ShouldStopRequestingNotificationPermissionUseCase
+        get() = graph.shouldStopRequestingNotificationPermissionUseCase
+
+    val setStopRequestingNotificationPermissionUseCase: SetStopRequestingNotificationPermissionUseCase
+        get() = graph.setStopRequestingNotificationPermissionUseCase
 }

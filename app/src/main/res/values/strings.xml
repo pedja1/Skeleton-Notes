@@ -10,6 +10,11 @@
     <string name="note_detail_new_note_title">New Note</string>
     <string name="note_detail_title_hint">Title</string>
     <string name="note_detail_content_hint">Start writing…</string>
+    <string name="note_details_error_adding_attachment">Error adding attachment</string>
+    <string name="attachment_saved">Attachment saved</string>
+    <string name="attachment_save_error">Could not save attachment</string>
+    <string name="cannot_open_link">Can\'t open link</string>
+    <string name="open_link">Open link</string>
 
     <!--Formatting Toolbar-->
     <string name="format_formatting">Formatting</string>
@@ -82,9 +87,9 @@
     <string name="settings_item_sync_now_title">Sync Now</string>
     <string name="settings_section_data">Data</string>
     <string name="settings_item_import_tile">Import Notes</string>
-    <string name="settings_item_import_subtile">Import Notes from file</string>
+    <string name="settings_item_import_subtitle">Import Notes from file</string>
     <string name="settings_item_export_tile">Export Notes</string>
-    <string name="settings_item_export_subtile">Export Notes to file</string>
+    <string name="settings_item_export_subtitle">Export Notes to file</string>
     <string name="export_default_file_name">skeleton-notes-backup-%s.zip</string>
     <string name="export_success">Exported %1$d notes</string>
     <string name="import_success">Imported %1$d, updated %2$d, skipped %3$d</string>
@@ -101,9 +106,15 @@
     <string name="settings_item_nextcloud_connected_subtitle">user: %s, Server: %s</string>
     <string name="settings_item_nextcloud_last_sync">Last Sync: %s</string>
     <string name="settings_item_nextcloud_last_sync_never">Never</string>
+    <string name="sync_error_no_connection">Could not reach the server</string>
+    <string name="sync_error_auth_expired">Login expired, please reconnect</string>
+    <string name="sync_error_server">Server error</string>
+    <string name="sync_error_unknown">Unknown error</string>
+    <string name="sync_notification_title">Note sync failed</string>
+    <string name="sync_notification_channel_name">Sync status</string>
     <string name="settings_item_nextcloud_connecting_title">Connecting</string>
     <string name="settings_item_nextcloud_connecting_subtitle">Initiating Login</string>
-    <string name="settings_item_nextcloud_logging_in_subtitle">Loggin In</string>
+    <string name="settings_item_nextcloud_logging_in_subtitle">Logging In</string>
     <string name="settings_item_nextcloud_connect_error_subtitle">Error connecting to NextCloud</string>
     <string name="nextcloud_server_url_hint">https://nextcloud.server.tld</string>
     <string name="nextcloud_server_url_title">Nextcloud Server URL</string>
@@ -118,9 +129,8 @@
     <string name="settings_sync_interval_6h">6 hours</string>
     <string name="settings_sync_interval_24h">24 hours</string>
     <string name="settings_sync_interval_dialog_title">Sync Interval</string>
-    <string name="note_details_error_adding_attachment">Error adding attachment</string>
-    <string name="attachment_saved">Attachment saved</string>
-    <string name="attachment_save_error">Could not save attachment</string>
-    <string name="cannot_open_link">Can\'t open link</string>
-    <string name="open_link">Open link</string>
+    <string name="notification_permission_rationale_title">Notification Permission</string>
+    <string name="notification_permission_rationale_message">Notification permission is needed to show Nextcloud Sync errors. This is optional. If you don\'t use Nextcloud Sync or dont wan\'t to be notified of errors you can reject this permission. Bear in mind that this is the only way to be notified of sync errors.</string>
+    <string name="notification_permission_rationale_ok">OK</string>
+    <string name="notification_permission_rationale_cancel">Cancel</string>
 </resources>

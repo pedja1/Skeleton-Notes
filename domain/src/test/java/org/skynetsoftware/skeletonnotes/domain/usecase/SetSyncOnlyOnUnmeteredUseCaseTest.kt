@@ -47,5 +47,9 @@ class SetSyncOnlyOnUnmeteredUseCaseTest {
         override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {
             capturedValue = onlyOnUnmetered
         }
+
+        override fun shouldStopRequestingNotificationPermission() = false
+
+        override fun setStopRequestingNotificationPermission() {}
     }
 }

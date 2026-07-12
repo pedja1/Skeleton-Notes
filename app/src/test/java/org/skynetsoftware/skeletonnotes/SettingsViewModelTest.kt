@@ -343,6 +343,10 @@ class SettingsViewModelTest {
         override fun setSyncIntervalMinutes(minutes: Long) {}
 
         override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
+
+        override fun shouldStopRequestingNotificationPermission() = false
+
+        override fun setStopRequestingNotificationPermission() {}
     }
 
     private class FakeNextcloudRepoForSettings(

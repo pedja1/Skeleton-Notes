@@ -2,6 +2,8 @@ package org.skynetsoftware.skeletonnotes
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -13,8 +15,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
+import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetAllNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetStopRequestingNotificationPermissionUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ShouldStopRequestingNotificationPermissionUseCase
 import org.skynetsoftware.skeletonnotes.home.MainViewModel
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -47,7 +52,10 @@ class MainViewModelTest {
                     )
                 val useCase = GetAllNotesUseCase(FakeNotesRepository(notes))
                 val searchAndFilter = SearchAndFilterNotesUseCase()
-                val viewModel = MainViewModel(searchAndFilter, useCase)
+                val settingsRepo = FakeNotificationSettingsRepo()
+                val shouldStopUseCase = ShouldStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val setStopUseCase = SetStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val viewModel = MainViewModel(searchAndFilter, useCase, shouldStopUseCase, setStopUseCase)
 
                 val job =
                     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -75,7 +83,10 @@ class MainViewModelTest {
             try {
                 val useCase = GetAllNotesUseCase(FakeNotesRepository(emptyList()))
                 val searchAndFilter = SearchAndFilterNotesUseCase()
-                val viewModel = MainViewModel(searchAndFilter, useCase)
+                val settingsRepo = FakeNotificationSettingsRepo()
+                val shouldStopUseCase = ShouldStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val setStopUseCase = SetStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val viewModel = MainViewModel(searchAndFilter, useCase, shouldStopUseCase, setStopUseCase)
 
                 val job =
                     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -122,7 +133,10 @@ class MainViewModelTest {
                     )
                 val searchAndFilter = SearchAndFilterNotesUseCase()
                 val useCase = GetAllNotesUseCase(FakeNotesRepository(notes))
-                val viewModel = MainViewModel(searchAndFilter, useCase)
+                val settingsRepo = FakeNotificationSettingsRepo()
+                val shouldStopUseCase = ShouldStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val setStopUseCase = SetStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val viewModel = MainViewModel(searchAndFilter, useCase, shouldStopUseCase, setStopUseCase)
 
                 val job =
                     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -171,7 +185,10 @@ class MainViewModelTest {
                     )
                 val searchAndFilter = SearchAndFilterNotesUseCase()
                 val useCase = GetAllNotesUseCase(FakeNotesRepository(notes))
-                val viewModel = MainViewModel(searchAndFilter, useCase)
+                val settingsRepo = FakeNotificationSettingsRepo()
+                val shouldStopUseCase = ShouldStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val setStopUseCase = SetStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val viewModel = MainViewModel(searchAndFilter, useCase, shouldStopUseCase, setStopUseCase)
 
                 val job =
                     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -222,7 +239,10 @@ class MainViewModelTest {
                     )
                 val searchAndFilter = SearchAndFilterNotesUseCase()
                 val useCase = GetAllNotesUseCase(FakeNotesRepository(notes))
-                val viewModel = MainViewModel(searchAndFilter, useCase)
+                val settingsRepo = FakeNotificationSettingsRepo()
+                val shouldStopUseCase = ShouldStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val setStopUseCase = SetStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val viewModel = MainViewModel(searchAndFilter, useCase, shouldStopUseCase, setStopUseCase)
 
                 val job =
                     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -276,7 +296,10 @@ class MainViewModelTest {
                     )
                 val searchAndFilter = SearchAndFilterNotesUseCase()
                 val useCase = GetAllNotesUseCase(FakeNotesRepository(notes))
-                val viewModel = MainViewModel(searchAndFilter, useCase)
+                val settingsRepo = FakeNotificationSettingsRepo()
+                val shouldStopUseCase = ShouldStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val setStopUseCase = SetStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val viewModel = MainViewModel(searchAndFilter, useCase, shouldStopUseCase, setStopUseCase)
 
                 val job =
                     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -306,7 +329,10 @@ class MainViewModelTest {
             try {
                 val searchAndFilter = SearchAndFilterNotesUseCase()
                 val useCase = GetAllNotesUseCase(FakeNotesRepository(emptyList()))
-                val viewModel = MainViewModel(searchAndFilter, useCase)
+                val settingsRepo = FakeNotificationSettingsRepo()
+                val shouldStopUseCase = ShouldStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val setStopUseCase = SetStopRequestingNotificationPermissionUseCase(settingsRepo)
+                val viewModel = MainViewModel(searchAndFilter, useCase, shouldStopUseCase, setStopUseCase)
 
                 val job =
                     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -335,4 +361,26 @@ class MainViewModelTest {
                 Dispatchers.resetMain()
             }
         }
+
+    private class FakeNotificationSettingsRepo : SettingsRepository {
+        override val nextcloudPeriodicSync: Flow<Boolean> = flowOf(false)
+
+        override val nextcloudLastSyncTimestamp: Flow<Long> = flowOf(0L)
+
+        override val nextcloudSyncIntervalMinutes: Flow<Long> = flowOf(360L)
+
+        override val nextcloudSyncOnlyOnUnmetered: Flow<Boolean> = flowOf(true)
+
+        override fun setPeriodicSyncEnabled(enabled: Boolean) {}
+
+        override fun setNextcloudLastSyncTimestamp(timestamp: Long) {}
+
+        override fun setSyncIntervalMinutes(minutes: Long) {}
+
+        override fun setSyncOnlyOnUnmetered(onlyOnUnmetered: Boolean) {}
+
+        override fun shouldStopRequestingNotificationPermission() = false
+
+        override fun setStopRequestingNotificationPermission() {}
+    }
 }

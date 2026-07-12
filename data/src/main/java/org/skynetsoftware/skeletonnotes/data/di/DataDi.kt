@@ -4,6 +4,8 @@ import android.app.Application
 import org.skynetsoftware.skeletonnotes.data.attachment.AttachmentStorageImpl
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStore
 import org.skynetsoftware.skeletonnotes.data.config.NextcloudConfigStoreImpl
+import org.skynetsoftware.skeletonnotes.data.config.SystemConfigStore
+import org.skynetsoftware.skeletonnotes.data.config.SystemConfigStoreImpl
 import org.skynetsoftware.skeletonnotes.data.database.NotesDataSource
 import org.skynetsoftware.skeletonnotes.data.database.NotesDataSourceImpl
 import org.skynetsoftware.skeletonnotes.data.database.SkeletonNotesDatabaseHelper
@@ -53,6 +55,8 @@ object DataDi {
 
     private val nextcloudConfigStore: NextcloudConfigStore by lazy { NextcloudConfigStoreImpl.from(application) }
 
+    private val systemConfigStore: SystemConfigStore by lazy { SystemConfigStoreImpl.from(application) }
+
     private val nextcloudApi: NextcloudApi by lazy {
         val versionName =
             try {
@@ -78,6 +82,7 @@ object DataDi {
     val settingsRepository: SettingsRepository by lazy {
         SettingsRepositoryImpl(
             nextcloudConfigStore,
+            systemConfigStore,
         )
     }
 }

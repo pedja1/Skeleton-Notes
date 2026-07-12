@@ -19,8 +19,10 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.RestoreNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetStopRequestingNotificationPermissionUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ShouldStopRequestingNotificationPermissionUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
 import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
 import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncSchedulerImpl
@@ -52,6 +54,8 @@ interface AppGraph {
     val nextcloudSyncScheduler: NextcloudSyncScheduler
     val createAttachmentUseCase: CreateAttachmentUseCase
     val deleteAttachmentLocalUseCase: DeleteAttachmentLocalUseCase
+    val setStopRequestingNotificationPermissionUseCase: SetStopRequestingNotificationPermissionUseCase
+    val shouldStopRequestingNotificationPermissionUseCase: ShouldStopRequestingNotificationPermissionUseCase
 }
 
 /**
@@ -120,4 +124,12 @@ class ProductionAppGraph(
     override val deleteAttachmentLocalUseCase: DeleteAttachmentLocalUseCase by lazy {
         DomainDi.deleteAttachmentLocalUseCase
     }
+    override val shouldStopRequestingNotificationPermissionUseCase: ShouldStopRequestingNotificationPermissionUseCase
+        by lazy {
+            DomainDi.shouldStopRequestingNotificationPermissionUseCase
+        }
+    override val setStopRequestingNotificationPermissionUseCase: SetStopRequestingNotificationPermissionUseCase
+        by lazy {
+            DomainDi.setStopRequestingNotificationPermissionUseCase
+        }
 }

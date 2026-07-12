@@ -22,8 +22,10 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.RestoreNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SaveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SearchAndFilterNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.SetStopRequestingNotificationPermissionUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
+import org.skynetsoftware.skeletonnotes.domain.usecase.ShouldStopRequestingNotificationPermissionUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
 
 /**
@@ -127,5 +129,13 @@ object DomainDi {
         DeleteAttachmentLocalUseCase(
             attachmentFileStorage,
         )
+    }
+
+    val shouldStopRequestingNotificationPermissionUseCase: ShouldStopRequestingNotificationPermissionUseCase by lazy {
+        ShouldStopRequestingNotificationPermissionUseCase(settingsRepository)
+    }
+
+    val setStopRequestingNotificationPermissionUseCase: SetStopRequestingNotificationPermissionUseCase by lazy {
+        SetStopRequestingNotificationPermissionUseCase(settingsRepository)
     }
 }

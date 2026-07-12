@@ -8,4 +8,5 @@
     <color name="tag_chip_background">#FFEEEEEE</color>
     <color name="tag_chip_text">#8A000000</color>
     <color name="formatting_button_selected_bg">#1F808080</color>
+    <color name="sync_error">#FFB00020</color>
 </resources>
