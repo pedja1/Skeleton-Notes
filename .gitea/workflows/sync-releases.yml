@@ -1,0 +1,22 @@
+name: Sync Releases to GitHub
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # every 6h; picks up nightly (3:00) and manual tags
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync Gitea releases to GitHub
+    runs-on: linux_amd64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync releases
+        env:
+          GITEA_API_URL: ${{ github.server_url }}/api/v1
+          GITEA_REPO: ${{ github.repository }}
+          GITEA_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: pedja1/Skeleton-Notes
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: bash scripts/sync_releases_to_github.sh
