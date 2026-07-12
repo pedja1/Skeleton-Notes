@@ -684,6 +684,8 @@ class SyncNotesWithNextcloudUseCaseTest {
 
         override fun logout() {}
 
+        override fun isSupported(): Boolean = true
+
         override suspend fun listFiles(): Result<List<NextcloudFileInfo>> {
             if (listFails) return Result.Failure(Exception("listing failed"))
             return if (uploadCalled) Result.Success(afterUploadFiles) else Result.Success(remoteFiles)

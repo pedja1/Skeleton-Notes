@@ -3,6 +3,9 @@ package org.skynetsoftware.skeletonnotes.di
 import android.app.Application
 import org.skynetsoftware.skeletonnotes.data.di.DataDi
 import org.skynetsoftware.skeletonnotes.domain.di.DomainDi
+import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
+import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
+import org.skynetsoftware.skeletonnotes.domain.sync.NextcloudSyncScheduler
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteAttachmentLocalUseCase
@@ -22,8 +25,6 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUse
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
-import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
-import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncSchedulerImpl
 
 /**
  * The application's object graph: the [Application] plus every use case exposed to the UI
@@ -50,6 +51,7 @@ interface AppGraph {
     val initiateNextcloudLoginUseCase: InitiateNextcloudLoginUseCase
     val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase
     val nextcloudSyncScheduler: NextcloudSyncScheduler
+    val isNextcloudSupported: Boolean
     val createAttachmentUseCase: CreateAttachmentUseCase
     val deleteAttachmentLocalUseCase: DeleteAttachmentLocalUseCase
 }
@@ -60,17 +62,22 @@ interface AppGraph {
  * @param application the application context used by the data layer.
  * @param inMemoryDatabase when `true` the data layer is backed by an in-memory database,
  * used by instrumented tests to avoid touching the on-disk database.
+ * @param nextcloudRepository the Nextcloud repository implementation.
+ * @param settingsRepository the Settings repository implementation.
  */
 class ProductionAppGraph(
     override val application: Application,
     inMemoryDatabase: Boolean = false,
+    private val nextcloudRepository: NextcloudRepository,
+    settingsRepository: SettingsRepository,
+    scheduler: NextcloudSyncScheduler,
 ) : AppGraph {
     init {
         DataDi.init(application, inMemoryDatabase)
         DomainDi.init(
             DataDi.notesRepository,
-            DataDi.nextcloudRepository,
-            DataDi.settingsRepository,
+            nextcloudRepository,
+            settingsRepository,
             DataDi.backupRepository,
             DataDi.attachmentFileStorage,
         )
@@ -113,9 +120,10 @@ class ProductionAppGraph(
 
     override val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase get() = DomainDi.pollNextcloudLoginUseCase
 
-    override val nextcloudSyncScheduler: NextcloudSyncScheduler by lazy {
-        NextcloudSyncSchedulerImpl(application, DomainDi.getSettingsUseCase)
-    }
+    override val nextcloudSyncScheduler: NextcloudSyncScheduler = scheduler
+
+    override val isNextcloudSupported: Boolean get() = nextcloudRepository.isSupported()
+
     override val createAttachmentUseCase: CreateAttachmentUseCase by lazy { DomainDi.createAttachmentUseCase }
     override val deleteAttachmentLocalUseCase: DeleteAttachmentLocalUseCase by lazy {
         DomainDi.deleteAttachmentLocalUseCase

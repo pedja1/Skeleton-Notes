@@ -4,6 +4,8 @@ import android.app.Application
 import org.skynetsoftware.skeletonnotes.di.AppDi
 import org.skynetsoftware.skeletonnotes.di.AppGraph
 import org.skynetsoftware.skeletonnotes.di.ProductionAppGraph
+import org.skynetsoftware.skeletonnotes.domain.sync.SyncBridge
+import org.skynetsoftware.skeletonnotes.nextcloud.NextcloudWiring
 
 /**
  * Application entry point. Builds the object graph and installs it into [AppDi].
@@ -14,12 +16,19 @@ import org.skynetsoftware.skeletonnotes.di.ProductionAppGraph
 open class SkeletonNotesApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        AppDi.install(createGraph())
-        AppDi.nextcloudSyncScheduler.reschedulePeriodicSync()
+        val graph = createGraph()
+        AppDi.install(graph)
+        if (graph.isNextcloudSupported) {
+            SyncBridge.action = { AppDi.syncNotesWithNextcloudUseCase() }
+            graph.nextcloudSyncScheduler.reschedulePeriodicSync()
+        }
     }
 
     /**
      * Creates the [AppGraph] to install. Override in tests to substitute the object graph.
      */
-    protected open fun createGraph(): AppGraph = ProductionAppGraph(this)
+    protected open fun createGraph(): AppGraph {
+        val (ncRepo, settingsRepo, scheduler) = NextcloudWiring.wire(this)
+        return ProductionAppGraph(this, false, ncRepo, settingsRepo, scheduler)
+    }
 }

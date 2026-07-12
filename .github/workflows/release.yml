@@ -70,5 +70,7 @@ jobs:
           body: Release ${{ github.ref_name }}
           prerelease: ${{ steps.prerelease.outputs.prerelease }}
           files: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/full/release/*.apk
+            app/build/outputs/apk/lite/release/*.apk
+            app/build/outputs/apk/full/debug/*.apk
+            app/build/outputs/apk/lite/debug/*.apk

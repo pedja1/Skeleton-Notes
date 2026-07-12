@@ -31,6 +31,16 @@ android {
         testInstrumentationRunner = "org.skynetsoftware.skeletonnotes.SkeletonNotesTestRunner"
     }
 
+    flavorDimensions += "nextcloud"
+    productFlavors {
+        create("full") {
+            dimension = "nextcloud"
+        }
+        create("lite") {
+            dimension = "nextcloud"
+        }
+    }
+
     signingConfigs {
         val keystoreFile = System.getenv("KEYSTORE_FILE")
         if (keystoreFile != null) {
@@ -80,11 +90,11 @@ android {
 dependencies {
     implementation(project(":data"))
     implementation(project(":domain"))
+    "fullImplementation"(project(":nextcloud"))
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.androidx.activity.ktx)
-    implementation(libs.androidx.browser)
     implementation(libs.androidx.recyclerview)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

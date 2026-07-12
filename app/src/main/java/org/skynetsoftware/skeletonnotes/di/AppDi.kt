@@ -2,6 +2,7 @@ package org.skynetsoftware.skeletonnotes.di
 
 import android.app.Application
 import org.skynetsoftware.skeletonnotes.di.AppDi.init
+import org.skynetsoftware.skeletonnotes.domain.sync.NextcloudSyncScheduler
 import org.skynetsoftware.skeletonnotes.domain.usecase.ArchiveNoteUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.CreateAttachmentUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.DeleteAttachmentLocalUseCase
@@ -21,7 +22,6 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUse
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SyncNotesWithNextcloudUseCase
-import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
 
 /**
  * Top-level dependency injection container. Delegates to a swappable [AppGraph] so tests can
@@ -40,7 +40,11 @@ object AppDi {
         application: Application,
         inMemoryDatabase: Boolean = false,
     ) {
-        install(ProductionAppGraph(application, inMemoryDatabase))
+        val (ncRepo, settingsRepo, scheduler) =
+            org.skynetsoftware.skeletonnotes.nextcloud.NextcloudWiring.wire(
+                application,
+            )
+        install(ProductionAppGraph(application, inMemoryDatabase, ncRepo, settingsRepo, scheduler))
     }
 
     /**
@@ -88,6 +92,8 @@ object AppDi {
     val pollNextcloudLoginUseCase: PollNextcloudLoginUseCase get() = graph.pollNextcloudLoginUseCase
 
     val nextcloudSyncScheduler: NextcloudSyncScheduler get() = graph.nextcloudSyncScheduler
+
+    val isNextcloudSupported: Boolean get() = graph.isNextcloudSupported
 
     val createAttachmentUseCase: CreateAttachmentUseCase get() = graph.createAttachmentUseCase
     val deleteAttachmentLocalUseCase: DeleteAttachmentLocalUseCase get() = graph.deleteAttachmentLocalUseCase

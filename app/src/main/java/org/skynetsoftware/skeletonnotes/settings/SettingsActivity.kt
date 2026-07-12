@@ -1,9 +1,7 @@
 package org.skynetsoftware.skeletonnotes.settings
 
 import android.app.AlertDialog
-import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -11,9 +9,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.browser.customtabs.CustomTabsClient
-import androidx.browser.customtabs.CustomTabsIntent
-import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
@@ -25,6 +20,7 @@ import org.skynetsoftware.skeletonnotes.databinding.ActivitySettingsBinding
 import org.skynetsoftware.skeletonnotes.databinding.DialogImportConflictBinding
 import org.skynetsoftware.skeletonnotes.databinding.DialogNextcloudServerUrlBinding
 import org.skynetsoftware.skeletonnotes.databinding.ItemSettingsClickableBinding
+import org.skynetsoftware.skeletonnotes.di.AppDi
 import org.skynetsoftware.skeletonnotes.domain.model.Note
 import org.skynetsoftware.skeletonnotes.domain.model.Settings
 import org.skynetsoftware.skeletonnotes.domain.repository.ConflictResolution
@@ -83,23 +79,34 @@ class SettingsActivity : ComponentActivity() {
             setOnClickListener { finish() }
         }
 
-        setupNextcloudSection()
+        if (AppDi.isNextcloudSupported) {
+            setupNextcloudSection()
+        } else {
+            binding.sectionNextcloudSync.root.visibility = View.GONE
+            binding.itemNextcloudConnect.root.visibility = View.GONE
+            binding.itemNextcloudPeriodicSync.root.visibility = View.GONE
+            binding.itemNextcloudSyncInterval.root.visibility = View.GONE
+            binding.itemNextcloudSyncOnlyOnUnmetered.root.visibility = View.GONE
+            binding.itemNextcloudSyncNow.root.visibility = View.GONE
+        }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    settingsViewModel.settings.collect { settings ->
-                        updateNextcloudSync(settings)
+                if (AppDi.isNextcloudSupported) {
+                    launch {
+                        settingsViewModel.settings.collect { settings ->
+                            updateNextcloudSync(settings)
+                        }
                     }
-                }
-                launch {
-                    settingsViewModel.nextcloudLoginState.collect { nextcloudLoginState ->
-                        updateNextcloudConnectionState(nextcloudLoginState)
+                    launch {
+                        settingsViewModel.nextcloudLoginState.collect { nextcloudLoginState ->
+                            updateNextcloudConnectionState(nextcloudLoginState)
+                        }
                     }
-                }
-                launch {
-                    settingsViewModel.authEvents.collect { event ->
-                        handleAuthEvent(event)
+                    launch {
+                        settingsViewModel.authEvents.collect { event ->
+                            handleAuthEvent(event)
+                        }
                     }
                 }
                 launch {
@@ -192,50 +199,14 @@ class SettingsActivity : ComponentActivity() {
 
     private fun handleAuthEvent(event: NextcloudAuthEvent) {
         when (event) {
-            is NextcloudAuthEvent.LaunchAuthUrl -> launchLogin(event.url.toUri())
+            is NextcloudAuthEvent.LaunchAuthUrl -> NextcloudLoginHelper.launcher?.invoke(this, event.url)
 
             NextcloudAuthEvent.LoginSucceeded -> {
-                // Bring this activity to the front, which dismisses the Custom Tab
-                // that is stacked on top of it within the same task.
                 startActivity(
                     Intent(this, SettingsActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 )
             }
-        }
-    }
-
-    /**
-     * Opens the login [url] in a Custom Tab when a Custom Tabs-capable browser is
-     * available, so the tab can be auto-dismissed on success. Otherwise (or if the
-     * detected browser cannot actually service the intent) falls back to the user's
-     * default browser via [Intent.ACTION_VIEW].
-     */
-    private fun launchLogin(url: Uri) {
-        val customTabsPackage = CustomTabsClient.getPackageName(this, null)
-        if (customTabsPackage != null) {
-            try {
-                val customTabsIntent = CustomTabsIntent.Builder().build()
-                customTabsIntent.intent.setPackage(customTabsPackage)
-                customTabsIntent.launchUrl(this, url)
-                return
-            } catch (_: ActivityNotFoundException) {
-                // A browser advertised the Custom Tabs service but cannot launch it;
-                // fall through to the plain browser below.
-            }
-        }
-        launchExternalBrowser(url)
-    }
-
-    private fun launchExternalBrowser(url: Uri) {
-        val intent =
-            Intent(Intent.ACTION_VIEW, url).apply {
-                addCategory(Intent.CATEGORY_BROWSABLE)
-            }
-        if (intent.resolveActivity(packageManager) != null) {
-            startActivity(intent)
-        } else {
-            Toast.makeText(this, R.string.nextcloud_no_browser, Toast.LENGTH_SHORT).show()
         }
     }
 

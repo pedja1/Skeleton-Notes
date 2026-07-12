@@ -24,6 +24,7 @@ import org.skynetsoftware.skeletonnotes.domain.repository.ConflictResolution
 import org.skynetsoftware.skeletonnotes.domain.repository.ImportSummary
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
+import org.skynetsoftware.skeletonnotes.domain.sync.NextcloudSyncScheduler
 import org.skynetsoftware.skeletonnotes.domain.usecase.ExportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.ImportNotesUseCase
@@ -34,7 +35,6 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
 import org.skynetsoftware.skeletonnotes.settings.NextcloudLoginState
 import org.skynetsoftware.skeletonnotes.settings.SettingsViewModel
-import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -363,6 +363,8 @@ class SettingsViewModelTest {
         override fun connectionInfo(): Flow<NextcloudConnectionInfo?> = flowOf(connectionInfo)
 
         override fun logout() {}
+
+        override fun isSupported(): Boolean = true
 
         override suspend fun listFiles(): Result<List<NextcloudFileInfo>> = Result.Success(emptyList())
 

@@ -95,4 +95,10 @@ interface NextcloudRepository {
      * Deletes the entire note directory including all attachment files.
      */
     suspend fun deleteNoteDirectory(uuid: String): Result<Unit>
+
+    /**
+     * Returns whether the Nextcloud backend is supported on this device.
+     * A no-op implementation returns `false` for the lite flavor.
+     */
+    fun isSupported(): Boolean
 }

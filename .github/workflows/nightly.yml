@@ -86,5 +86,7 @@ jobs:
           prerelease: true
           target_commitish: ${{ github.sha }}
           files: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/full/release/*.apk
+            app/build/outputs/apk/lite/release/*.apk
+            app/build/outputs/apk/full/debug/*.apk
+            app/build/outputs/apk/lite/debug/*.apk

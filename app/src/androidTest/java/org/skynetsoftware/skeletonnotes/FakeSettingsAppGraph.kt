@@ -12,13 +12,13 @@ import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudNote
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
 import org.skynetsoftware.skeletonnotes.domain.repository.NextcloudRepository
 import org.skynetsoftware.skeletonnotes.domain.repository.SettingsRepository
+import org.skynetsoftware.skeletonnotes.domain.sync.NextcloudSyncScheduler
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.InitiateNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
-import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
 import java.io.InputStream
 
 /**
@@ -102,6 +102,8 @@ class FakeSettingsNextcloudRepository(
     ): NextcloudPollStatus = pollResult
 
     override fun logout() {}
+
+    override fun isSupported(): Boolean = true
 
     override suspend fun listFiles(): Result<List<NextcloudFileInfo>> = Result.Success(emptyList())
 

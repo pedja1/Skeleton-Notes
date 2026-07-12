@@ -28,6 +28,7 @@ import org.skynetsoftware.skeletonnotes.domain.model.Result
 import org.skynetsoftware.skeletonnotes.domain.model.Settings
 import org.skynetsoftware.skeletonnotes.domain.model.nextcloud.NextcloudPollStatus
 import org.skynetsoftware.skeletonnotes.domain.repository.ConflictResolution
+import org.skynetsoftware.skeletonnotes.domain.sync.NextcloudSyncScheduler
 import org.skynetsoftware.skeletonnotes.domain.usecase.ExportNotesUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.GetSettingsUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.ImportNotesUseCase
@@ -36,7 +37,6 @@ import org.skynetsoftware.skeletonnotes.domain.usecase.PollNextcloudLoginUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetPeriodicSyncEnabledUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncIntervalUseCase
 import org.skynetsoftware.skeletonnotes.domain.usecase.SetSyncOnlyOnUnmeteredUseCase
-import org.skynetsoftware.skeletonnotes.sync.NextcloudSyncScheduler
 import kotlin.time.Duration.Companion.milliseconds
 
 /**

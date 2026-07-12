@@ -30,20 +30,51 @@ val coverageClassDirs = files()
 
 rootProject.subprojects.forEach { sub ->
     sub.afterEvaluate {
-        val dirPath = if (plugins.hasPlugin("com.android.application") || plugins.hasPlugin("com.android.library")) {
-            "intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"
-        } else {
-            "classes/kotlin/main"
-        }
         val buildDir = layout.buildDirectory.get().asFile
-        coverageClassDirs.from({
-            val dir = java.io.File(buildDir, dirPath)
-            if (dir.exists()) {
-                fileTree(dir) { exclude(fileFilter) }
+        val hasAppPlugin = plugins.hasPlugin("com.android.application")
+        val hasLibPlugin = plugins.hasPlugin("com.android.library")
+        if (hasAppPlugin || hasLibPlugin) {
+            val dirPathPattern = if (hasAppPlugin) {
+                // Application module with flavors: both full and lite debug class dirs
+                Regex("""intermediates/built_in_kotlinc/\w+Debug/compile\w+DebugKotlin/classes""")
             } else {
-                files()
+                // Library module
+                "intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"
             }
-        })
+            coverageClassDirs.from({
+                val dir = java.io.File(buildDir, if (hasLibPlugin) dirPathPattern as String else "")
+                if (hasAppPlugin) {
+                    val pattern = dirPathPattern as Regex
+                    val files = mutableListOf<java.io.File>()
+                    buildDir.walkTopDown().forEach { candidate ->
+                        val relative = candidate.relativeTo(buildDir).path
+                        if (pattern.matches(relative) && candidate.isDirectory) {
+                            files.add(candidate)
+                        }
+                    }
+                    files.forEach { dir ->
+                        fileTree(dir) { exclude(fileFilter) }
+                    }
+                    files
+                } else {
+                    if (dir.exists()) {
+                        fileTree(dir) { exclude(fileFilter) }
+                    } else {
+                        files()
+                    }
+                }
+            })
+        } else {
+            val dirPath = "classes/kotlin/main"
+            coverageClassDirs.from({
+                val dir = java.io.File(buildDir, dirPath)
+                if (dir.exists()) {
+                    fileTree(dir) { exclude(fileFilter) }
+                } else {
+                    files()
+                }
+            })
+        }
     }
 }
 
@@ -69,7 +100,7 @@ tasks.register<JacocoReport>("jacocoFullReport") {
         rootProject.subprojects.flatMap { sub ->
             sub.tasks.matching { task ->
                 task.name == "test" ||
-                    task.name.startsWith("testDebug") ||
+                    task.name.contains("DebugUnitTest") ||
                     task.name.startsWith("compile")
             }
         }
