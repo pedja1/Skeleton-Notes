@@ -57,7 +57,14 @@ while IFS= read -r rel; do
       else {target_commitish: .target_commitish} end)')
   resp=$(gh -X POST "https://api.github.com/repos/${GH_REPO}/releases" -d "$payload")
   rel_id=$(echo "$resp" | jq -r '.id')
-  if [ -z "$rel_id" ] || [ "$rel_id" = "null" ]; then echo "  ! create failed: $resp" >&2; exit 1; fi
+  if [ -z "$rel_id" ] || [ "$rel_id" = "null" ]; then
+    echo "  ! create failed: $resp" >&2
+    case "$(echo "$resp" | jq -r '.status // empty')" in
+      404) echo "  ! HTTP 404: GH_PAT cannot see ${GH_REPO} for writing — grant the repo to the token (fine-grained: Repository access) and use an account with write access." >&2 ;;
+      403) echo "  ! HTTP 403: GH_PAT lacks write permission for ${GH_REPO} — set Contents to 'Read and write' (fine-grained) or 'repo'/'public_repo' scope (classic), re-paste it into the GH_PAT secret, and if ${GH_REPO%%/*} is an org, approve/allow fine-grained tokens." >&2 ;;
+    esac
+    exit 1
+  fi
   CURRENT_RELEASE_ID="$rel_id"
 
   while IFS= read -r asset; do
