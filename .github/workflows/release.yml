@@ -2,7 +2,9 @@ name: Release
 
 on:
   push:
-    tags: ['*']
+    tags:
+      - '*'
+      - '!nightly-*'
 
 permissions:
   contents: write

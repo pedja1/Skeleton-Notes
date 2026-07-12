@@ -79,7 +79,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.timestamp }}
+          tag_name: nightly-${{ steps.version.outputs.timestamp }}
           name: Nightly ${{ steps.version.outputs.timestamp }}
           body: Nightly build
           draft: false

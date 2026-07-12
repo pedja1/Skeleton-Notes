@@ -80,7 +80,7 @@ jobs:
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d "{\"tag_name\": \"${VERSION_NAME}\", \"name\": \"Nightly ${VERSION_NAME}\", \"body\": \"Nightly build\", \"prerelease\": true, \"target_commitish\": \"${HEAD}\"}" \
+            -d "{\"tag_name\": \"nightly-${VERSION_NAME}\", \"name\": \"Nightly ${VERSION_NAME}\", \"body\": \"Nightly build\", \"prerelease\": true, \"target_commitish\": \"${HEAD}\"}" \
             "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases")
 
           RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
