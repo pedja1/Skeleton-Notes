@@ -1,6 +1,13 @@
 # 💀 Skeleton Notes
 ## Dead simple note taking app ⚰️
 
+<p float="left">
+  <img src="./screenshots/Screenshot_1783929563.png" width="20%" />
+  <img src="./screenshots/Screenshot_1783929571.png" width="20%" />
+  <img src="./screenshots/Screenshot_1783929583.png" width="20%" />
+  <img src="./screenshots/Screenshot_1783929873.png" width="20%" />
+</p>
+
 ### Feature
 - Taking notes
 - That is all 😶
