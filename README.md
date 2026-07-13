@@ -15,7 +15,8 @@
 ### Installing
 - Install from release page, it is not that hard 🙄[^1]
 - Or from these sources...  
-[![fdroid](docs/badges/fdroid.png)](https://www.example.com)
+[<img src="docs/badges/obtainium.png" alt="Get it on Obtainium" height="100">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/pedja1/Skeleton-Notes)
+[<img src="docs/badges/github.png" alt="Get it on GitHub" height="100">](https://github.com/pedja1/Skeleton-Notes/releases/latest)
 
 ### Building
 - Ok, sure, this is a bit more complicated, but also, not really
