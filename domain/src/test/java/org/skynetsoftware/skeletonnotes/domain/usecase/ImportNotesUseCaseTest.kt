@@ -27,6 +27,7 @@ class ImportNotesUseCaseTest {
                     override suspend fun importNotes(
                         inputStream: InputStream,
                         onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
+                        onProgress: (current: Int, total: Int) -> Unit,
                     ): Result<ImportSummary> {
                         receivedStream = inputStream
                         receivedHandler = onConflict
@@ -50,23 +51,29 @@ class ImportNotesUseCaseTest {
                     override suspend fun importNotes(
                         inputStream: InputStream,
                         onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
+                        onProgress: (current: Int, total: Int) -> Unit,
                     ): Result<ImportSummary> = failure
                 }
 
             val result =
-                ImportNotesUseCase(repository).invoke(ByteArrayInputStream(ByteArray(0))) { _, _ ->
-                    ConflictResolution.KEEP_EXISTING
-                }
+                ImportNotesUseCase(repository).invoke(
+                    ByteArrayInputStream(ByteArray(0)),
+                    onConflict = { _, _ -> ConflictResolution.KEEP_EXISTING },
+                )
 
             assertEquals(failure, result)
         }
 
     private open class StubBackupRepository : BackupRepository {
-        override suspend fun exportNotes(outputStream: OutputStream): Result<Int> = Result.Success(0)
+        override suspend fun exportNotes(
+            outputStream: OutputStream,
+            onProgress: (current: Int, total: Int) -> Unit,
+        ): Result<Int> = Result.Success(0)
 
         override suspend fun importNotes(
             inputStream: InputStream,
             onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
+            onProgress: (current: Int, total: Int) -> Unit,
         ): Result<ImportSummary> = Result.Success(ImportSummary(0, 0, 0))
     }
 }

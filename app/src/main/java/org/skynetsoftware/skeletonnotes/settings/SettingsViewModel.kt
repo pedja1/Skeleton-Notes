@@ -95,6 +95,10 @@ class SettingsViewModel(
     private val _dataOperation = MutableStateFlow(DataOperation.NONE)
     val dataOperation: StateFlow<DataOperation> = _dataOperation.asStateFlow()
 
+    /** Live `current/total` progress of the running import/export, or `null` when idle. */
+    private val _dataTransferProgress = MutableStateFlow<DataTransferProgress?>(null)
+    val dataTransferProgress: StateFlow<DataTransferProgress?> = _dataTransferProgress.asStateFlow()
+
     private val _dataTransferEvents = MutableSharedFlow<DataTransferEvent>(extraBufferCapacity = 4)
     val dataTransferEvents: SharedFlow<DataTransferEvent> = _dataTransferEvents.asSharedFlow()
 
@@ -232,6 +236,7 @@ class SettingsViewModel(
     fun export(uri: Uri) {
         if (_dataOperation.value != DataOperation.NONE) return
         _dataOperation.value = DataOperation.EXPORT
+        _dataTransferProgress.value = null
         viewModelScope.launch {
             val event =
                 try {
@@ -239,7 +244,12 @@ class SettingsViewModel(
                         AppDi.application.contentResolver.openOutputStream(uri)
                             ?: error("Cannot open output stream")
                     outputStream.use { stream ->
-                        when (val result = exportNotes(stream)) {
+                        when (
+                            val result =
+                                exportNotes(stream) { current, total ->
+                                    _dataTransferProgress.value = DataTransferProgress(current, total)
+                                }
+                        ) {
                             is Result.Success -> DataTransferEvent.ExportSuccess(result.data)
                             is Result.Failure -> DataTransferEvent.Error
                         }
@@ -248,6 +258,7 @@ class SettingsViewModel(
                     Log.w("export", null, t)
                     DataTransferEvent.Error
                 }
+            _dataTransferProgress.value = null
             _dataOperation.value = DataOperation.NONE
             _dataTransferEvents.emit(event)
         }
@@ -262,6 +273,7 @@ class SettingsViewModel(
     fun import(uri: Uri) {
         if (_dataOperation.value != DataOperation.NONE) return
         _dataOperation.value = DataOperation.IMPORT
+        _dataTransferProgress.value = null
         applyToAllResolution = null
         viewModelScope.launch {
             val event =
@@ -274,7 +286,11 @@ class SettingsViewModel(
                             val result =
                                 importNotes(
                                     stream,
-                                ) { existing, incoming -> resolveConflict(existing, incoming) }
+                                    onConflict = { existing, incoming -> resolveConflict(existing, incoming) },
+                                    onProgress = { current, total ->
+                                        _dataTransferProgress.value = DataTransferProgress(current, total)
+                                    },
+                                )
                         ) {
                             is Result.Success -> DataTransferEvent.ImportSuccess(result.data)
                             is Result.Failure -> DataTransferEvent.Error
@@ -286,6 +302,7 @@ class SettingsViewModel(
                 }
             conflictDeferred = null
             _pendingConflict.value = null
+            _dataTransferProgress.value = null
             _dataOperation.value = DataOperation.NONE
             _dataTransferEvents.emit(event)
         }

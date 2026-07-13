@@ -10,6 +10,16 @@ import org.skynetsoftware.skeletonnotes.domain.repository.ImportSummary
 enum class DataOperation { NONE, EXPORT, IMPORT }
 
 /**
+ * Live progress of the running import/export, rendered as `current/total` in the settings item
+ * subtitle. [current] is the number of notes processed so far, [total] the number of notes in the
+ * operation.
+ */
+data class DataTransferProgress(
+    val current: Int,
+    val total: Int,
+)
+
+/**
  * One-shot events emitted by [SettingsViewModel] for completed import/export operations.
  */
 sealed interface DataTransferEvent {

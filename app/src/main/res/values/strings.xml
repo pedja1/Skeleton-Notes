@@ -94,6 +94,7 @@
     <string name="export_success">Exported %1$d notes</string>
     <string name="import_success">Imported %1$d, updated %2$d, skipped %3$d</string>
     <string name="data_transfer_error">Operation failed</string>
+    <string name="data_transfer_progress">%1$d/%2$d</string>
     <string name="import_conflict_title">Note already exists</string>
     <string name="import_conflict_message">A note titled \"%1$s\" already exists. What would you like to do?</string>
     <string name="import_conflict_keep_existing">Keep existing</string>

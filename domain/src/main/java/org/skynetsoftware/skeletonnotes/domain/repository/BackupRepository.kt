@@ -43,19 +43,29 @@ interface BackupRepository {
      * Writes every note, together with its attachment files, as a ZIP archive to
      * [outputStream]. The stream is fully consumed but not closed by this method.
      *
+     * [onProgress] is invoked as notes are written with `current` (notes done so far) and
+     * `total` (notes to export), so callers can surface `current/total` progress.
+     *
      * @return [Result.Success] with the number of notes exported, or [Result.Failure] on error.
      */
-    suspend fun exportNotes(outputStream: OutputStream): Result<Int>
+    suspend fun exportNotes(
+        outputStream: OutputStream,
+        onProgress: (current: Int, total: Int) -> Unit = { _, _ -> },
+    ): Result<Int>
 
     /**
      * Reads a ZIP archive produced by [exportNotes] from [inputStream] and imports its notes.
      * For every incoming note whose id already exists locally, [onConflict] is invoked with the
      * existing and incoming note and must return the [ConflictResolution] to apply.
      *
+     * [onProgress] is invoked as incoming notes are processed with `current` (notes handled so
+     * far) and `total` (notes in the archive), so callers can surface `current/total` progress.
+     *
      * @return [Result.Success] with an [ImportSummary], or [Result.Failure] on error.
      */
     suspend fun importNotes(
         inputStream: InputStream,
         onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
+        onProgress: (current: Int, total: Int) -> Unit = { _, _ -> },
     ): Result<ImportSummary>
 }

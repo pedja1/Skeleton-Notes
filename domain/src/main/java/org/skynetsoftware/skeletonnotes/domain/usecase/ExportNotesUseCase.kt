@@ -11,9 +11,12 @@ class ExportNotesUseCase(
     private val backupRepository: BackupRepository,
 ) {
     /**
-     * Exports all notes to [outputStream].
+     * Exports all notes to [outputStream], reporting `current/total` note progress via [onProgress].
      *
      * @return [Result.Success] with the number of notes exported, or [Result.Failure] on error.
      */
-    suspend operator fun invoke(outputStream: OutputStream): Result<Int> = backupRepository.exportNotes(outputStream)
+    suspend operator fun invoke(
+        outputStream: OutputStream,
+        onProgress: (current: Int, total: Int) -> Unit = { _, _ -> },
+    ): Result<Int> = backupRepository.exportNotes(outputStream, onProgress)
 }

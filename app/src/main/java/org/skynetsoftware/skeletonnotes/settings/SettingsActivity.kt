@@ -108,6 +108,11 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
                 launch {
+                    settingsViewModel.dataTransferProgress.collect { progress ->
+                        updateDataProgress(progress)
+                    }
+                }
+                launch {
                     settingsViewModel.dataTransferEvents.collect { event ->
                         handleDataTransferEvent(event)
                     }
@@ -127,6 +132,24 @@ class SettingsActivity : ComponentActivity() {
         val idle = operation == DataOperation.NONE
         binding.itemExport.root.isEnabled = idle
         binding.itemImport.root.isEnabled = idle
+        if (idle) resetDataSubtitles()
+    }
+
+    /** Renders live `current/total` progress into the active row's subtitle. */
+    private fun updateDataProgress(progress: DataTransferProgress?) {
+        if (progress == null || progress.total <= 0) return
+        val text = getString(R.string.data_transfer_progress, progress.current, progress.total)
+        when (settingsViewModel.dataOperation.value) {
+            DataOperation.EXPORT -> binding.itemExport.itemSubtitle.text = text
+            DataOperation.IMPORT -> binding.itemImport.itemSubtitle.text = text
+            DataOperation.NONE -> Unit
+        }
+    }
+
+    /** Restores the import/export rows to their default subtitles once no operation is running. */
+    private fun resetDataSubtitles() {
+        binding.itemImport.itemSubtitle.text = getString(R.string.settings_item_import_subtitle)
+        binding.itemExport.itemSubtitle.text = getString(R.string.settings_item_export_subtitle)
     }
 
     private fun setDataItemBusy(

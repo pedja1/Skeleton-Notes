@@ -14,12 +14,14 @@ class ImportNotesUseCase(
     private val backupRepository: BackupRepository,
 ) {
     /**
-     * Imports notes from [inputStream], delegating id-collision handling to [onConflict].
+     * Imports notes from [inputStream], delegating id-collision handling to [onConflict] and
+     * reporting `current/total` note progress via [onProgress].
      *
      * @return [Result.Success] with an [ImportSummary], or [Result.Failure] on error.
      */
     suspend operator fun invoke(
         inputStream: InputStream,
         onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
-    ): Result<ImportSummary> = backupRepository.importNotes(inputStream, onConflict)
+        onProgress: (current: Int, total: Int) -> Unit = { _, _ -> },
+    ): Result<ImportSummary> = backupRepository.importNotes(inputStream, onConflict, onProgress)
 }

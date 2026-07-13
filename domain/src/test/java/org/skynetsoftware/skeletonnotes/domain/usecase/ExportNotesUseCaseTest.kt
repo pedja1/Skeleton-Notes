@@ -21,7 +21,10 @@ class ExportNotesUseCaseTest {
             var received: OutputStream? = null
             val repository =
                 object : StubBackupRepository() {
-                    override suspend fun exportNotes(outputStream: OutputStream): Result<Int> {
+                    override suspend fun exportNotes(
+                        outputStream: OutputStream,
+                        onProgress: (current: Int, total: Int) -> Unit,
+                    ): Result<Int> {
                         received = outputStream
                         return expected
                     }
@@ -39,18 +42,25 @@ class ExportNotesUseCaseTest {
             val failure = Result.Failure<Int>(IllegalStateException("nope"))
             val repository =
                 object : StubBackupRepository() {
-                    override suspend fun exportNotes(outputStream: OutputStream): Result<Int> = failure
+                    override suspend fun exportNotes(
+                        outputStream: OutputStream,
+                        onProgress: (current: Int, total: Int) -> Unit,
+                    ): Result<Int> = failure
                 }
 
             assertEquals(failure, ExportNotesUseCase(repository).invoke(OutputStream.nullOutputStream()))
         }
 
     private open class StubBackupRepository : BackupRepository {
-        override suspend fun exportNotes(outputStream: OutputStream): Result<Int> = Result.Success(0)
+        override suspend fun exportNotes(
+            outputStream: OutputStream,
+            onProgress: (current: Int, total: Int) -> Unit,
+        ): Result<Int> = Result.Success(0)
 
         override suspend fun importNotes(
             inputStream: InputStream,
             onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
+            onProgress: (current: Int, total: Int) -> Unit,
         ): Result<ImportSummary> = Result.Success(ImportSummary(0, 0, 0))
     }
 }

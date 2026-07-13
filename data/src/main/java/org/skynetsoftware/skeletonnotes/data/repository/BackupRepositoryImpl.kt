@@ -44,7 +44,10 @@ internal class BackupRepositoryImpl(
         private const val ATTACHMENTS_DIR = "attachments/"
     }
 
-    override suspend fun exportNotes(outputStream: OutputStream): Result<Int> =
+    override suspend fun exportNotes(
+        outputStream: OutputStream,
+        onProgress: (current: Int, total: Int) -> Unit,
+    ): Result<Int> =
         withContext(coroutineDispatcher) {
             try {
                 val notes =
@@ -52,18 +55,22 @@ internal class BackupRepositoryImpl(
                         is Result.Success -> result.data
                         is Result.Failure -> return@withContext Result.Failure(result.throwable)
                     }
+                onProgress(0, notes.size)
                 val zip = ZipOutputStream(outputStream)
                 zip.putNextEntry(ZipEntry(NOTES_ENTRY))
                 zip.write(notes.toJsonString().toByteArray(Charsets.UTF_8))
                 zip.closeEntry()
 
-                notes.flatMap { it.attachments }.forEach { attachment ->
-                    val file = attachmentFileStorage.getFile(attachment.id)
-                    if (file.exists()) {
-                        zip.putNextEntry(ZipEntry("$ATTACHMENTS_DIR${attachment.id}"))
-                        file.inputStream().use { it.copyTo(zip) }
-                        zip.closeEntry()
+                notes.forEachIndexed { index, note ->
+                    note.attachments.forEach { attachment ->
+                        val file = attachmentFileStorage.getFile(attachment.id)
+                        if (file.exists()) {
+                            zip.putNextEntry(ZipEntry("$ATTACHMENTS_DIR${attachment.id}"))
+                            file.inputStream().use { it.copyTo(zip) }
+                            zip.closeEntry()
+                        }
                     }
+                    onProgress(index + 1, notes.size)
                 }
                 // finish() writes the central directory without closing the caller-owned stream.
                 zip.finish()
@@ -76,10 +83,11 @@ internal class BackupRepositoryImpl(
     override suspend fun importNotes(
         inputStream: InputStream,
         onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
+        onProgress: (current: Int, total: Int) -> Unit,
     ): Result<ImportSummary> =
         withContext(coroutineDispatcher) {
             try {
-                Result.Success(importArchive(inputStream, onConflict))
+                Result.Success(importArchive(inputStream, onConflict, onProgress))
             } catch (t: Throwable) {
                 Result.Failure(t)
             }
@@ -126,6 +134,7 @@ internal class BackupRepositoryImpl(
     private suspend fun importArchive(
         inputStream: InputStream,
         onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
+        onProgress: (current: Int, total: Int) -> Unit,
     ): ImportSummary {
         val plans = mutableListOf<ImportPlan>()
         val attachmentsBySourceId = mutableMapOf<String, MutableList<AttachmentPlan>>()
@@ -139,7 +148,8 @@ internal class BackupRepositoryImpl(
                 when {
                     name == NOTES_ENTRY -> {
                         notesSeen = true
-                        planNotes(zip.readBytes().toString(Charsets.UTF_8), onConflict).forEach { decision ->
+                        val notesJson = zip.readBytes().toString(Charsets.UTF_8)
+                        planNotes(notesJson, onConflict, onProgress).forEach { decision ->
                             when (decision) {
                                 ImportDecision.Skipped -> skipped++
                                 is ImportDecision.Planned -> {
@@ -165,10 +175,14 @@ internal class BackupRepositoryImpl(
     private suspend fun planNotes(
         notesJson: String,
         onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
-    ): List<ImportDecision> =
-        JSONArray(notesJson).toNotes().map { incoming ->
-            planNote(incoming, onConflict)
+        onProgress: (current: Int, total: Int) -> Unit,
+    ): List<ImportDecision> {
+        val incoming = JSONArray(notesJson).toNotes()
+        return incoming.mapIndexed { index, note ->
+            onProgress(index + 1, incoming.size)
+            planNote(note, onConflict)
         }
+    }
 
     /** Returns true when [attachmentId] can only name a file inside attachment storage. */
     private fun isSafeAttachmentId(attachmentId: String): Boolean =

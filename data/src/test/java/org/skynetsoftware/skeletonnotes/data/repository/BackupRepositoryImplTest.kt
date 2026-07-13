@@ -75,6 +75,24 @@ class BackupRepositoryImplTest {
         }
 
     @Test
+    fun exportReportsPerNoteProgress() =
+        runTest {
+            setup()
+            notesRepo.notesResult =
+                Result.Success(
+                    listOf(
+                        NoteWithAttachments(Note("n1", "t1", "b", 1L, 2L, emptySet()), emptyList()),
+                        NoteWithAttachments(Note("n2", "t2", "b", 1L, 2L, emptySet()), emptyList()),
+                    ),
+                )
+            val progress = mutableListOf<Pair<Int, Int>>()
+
+            repository.exportNotes(ByteArrayOutputStream()) { current, total -> progress += current to total }
+
+            assertEquals(listOf(0 to 2, 1 to 2, 2 to 2), progress)
+        }
+
+    @Test
     fun exportReturnsFailureWhenRepositoryFails() =
         runTest {
             setup()
@@ -100,9 +118,10 @@ class BackupRepositoryImplTest {
                 )
 
             val result =
-                repository.importNotes(ByteArrayInputStream(archive)) { _, _ ->
-                    error("onConflict should not be called for a new note")
-                }
+                repository.importNotes(
+                    ByteArrayInputStream(archive),
+                    onConflict = { _, _ -> error("onConflict should not be called for a new note") },
+                )
 
             assertEquals(Result.Success(summary(imported = 1)), result)
             val saved = notesRepo.saved.single()
@@ -126,9 +145,10 @@ class BackupRepositoryImplTest {
             val archive = buildArchive(incoming)
 
             val result =
-                repository.importNotes(ByteArrayInputStream(archive)) { _, _ ->
-                    ConflictResolution.KEEP_EXISTING
-                }
+                repository.importNotes(
+                    ByteArrayInputStream(archive),
+                    onConflict = { _, _ -> ConflictResolution.KEEP_EXISTING },
+                )
 
             assertEquals(Result.Success(summary(skipped = 1)), result)
             assertTrue(notesRepo.saved.isEmpty())
@@ -147,9 +167,10 @@ class BackupRepositoryImplTest {
             val archive = buildArchive(incoming, mapOf("a1" to "x".toByteArray()))
 
             val result =
-                repository.importNotes(ByteArrayInputStream(archive)) { _, _ ->
-                    ConflictResolution.OVERWRITE
-                }
+                repository.importNotes(
+                    ByteArrayInputStream(archive),
+                    onConflict = { _, _ -> ConflictResolution.OVERWRITE },
+                )
 
             assertEquals(Result.Success(summary(overwritten = 1)), result)
             val saved = notesRepo.saved.single()
@@ -170,9 +191,10 @@ class BackupRepositoryImplTest {
             val archive = buildArchive(incoming, mapOf("a1" to "x".toByteArray()))
 
             val result =
-                repository.importNotes(ByteArrayInputStream(archive)) { _, _ ->
-                    ConflictResolution.KEEP_BOTH
-                }
+                repository.importNotes(
+                    ByteArrayInputStream(archive),
+                    onConflict = { _, _ -> ConflictResolution.KEEP_BOTH },
+                )
 
             assertEquals(Result.Success(summary(imported = 1)), result)
             val saved = notesRepo.saved.single()
@@ -196,9 +218,10 @@ class BackupRepositoryImplTest {
             val archive = buildArchive(incoming, attachmentBytes = emptyMap())
 
             val result =
-                repository.importNotes(ByteArrayInputStream(archive)) { _, _ ->
-                    ConflictResolution.OVERWRITE
-                }
+                repository.importNotes(
+                    ByteArrayInputStream(archive),
+                    onConflict = { _, _ -> ConflictResolution.OVERWRITE },
+                )
 
             assertEquals(Result.Success(summary(imported = 1)), result)
             assertTrue(
@@ -216,7 +239,11 @@ class BackupRepositoryImplTest {
             notesRepo.saveResult = Result.Failure(IllegalStateException("db down"))
             val archive = buildArchive(NoteWithAttachments(Note("n1", "t", "c", 1L, 2L, emptySet()), emptyList()))
 
-            val result = repository.importNotes(ByteArrayInputStream(archive)) { _, _ -> ConflictResolution.OVERWRITE }
+            val result =
+                repository.importNotes(
+                    ByteArrayInputStream(archive),
+                    onConflict = { _, _ -> ConflictResolution.OVERWRITE },
+                )
 
             assertEquals(Result.Success(summary(skipped = 1)), result)
         }
@@ -227,7 +254,11 @@ class BackupRepositoryImplTest {
             setup()
             val emptyZip = ByteArrayOutputStream().also { ZipOutputStream(it).finish() }.toByteArray()
 
-            val result = repository.importNotes(ByteArrayInputStream(emptyZip)) { _, _ -> ConflictResolution.OVERWRITE }
+            val result =
+                repository.importNotes(
+                    ByteArrayInputStream(emptyZip),
+                    onConflict = { _, _ -> ConflictResolution.OVERWRITE },
+                )
 
             assertTrue(result is Result.Failure)
         }
@@ -253,9 +284,10 @@ class BackupRepositoryImplTest {
             val destRepository = BackupRepositoryImpl(destRepo, destStorage)
 
             val result =
-                destRepository.importNotes(ByteArrayInputStream(out.toByteArray())) { _, _ ->
-                    error("no conflicts expected")
-                }
+                destRepository.importNotes(
+                    ByteArrayInputStream(out.toByteArray()),
+                    onConflict = { _, _ -> error("no conflicts expected") },
+                )
 
             assertEquals(Result.Success(summary(imported = 1)), result)
             val saved = destRepo.saved.single()
@@ -277,9 +309,10 @@ class BackupRepositoryImplTest {
             val archive = buildArchive(incoming, mapOf("../outside" to "evil".toByteArray()))
 
             val result =
-                repository.importNotes(ByteArrayInputStream(archive)) { _, _ ->
-                    error("onConflict should not be called for a new note")
-                }
+                repository.importNotes(
+                    ByteArrayInputStream(archive),
+                    onConflict = { _, _ -> error("onConflict should not be called for a new note") },
+                )
 
             assertEquals(Result.Success(summary(imported = 1)), result)
             assertTrue(
@@ -310,14 +343,37 @@ class BackupRepositoryImplTest {
                 )
 
             val result =
-                repository.importNotes(ByteArrayInputStream(archive)) { _, _ ->
-                    error("onConflict should not be called for a new note")
-                }
+                repository.importNotes(
+                    ByteArrayInputStream(archive),
+                    onConflict = { _, _ -> error("onConflict should not be called for a new note") },
+                )
 
             assertEquals(Result.Success(summary(imported = 1)), result)
             assertEquals("first", File(attachmentDir, "a1").readText())
             assertEquals("second", File(attachmentDir, "a2").readText())
             assertEquals(2, storage.writeStreamCallCount)
+        }
+
+    @Test
+    fun importReportsPerNoteProgress() =
+        runTest {
+            setup()
+            val archive =
+                buildArchive(
+                    listOf(
+                        NoteWithAttachments(Note("n1", "t1", "b", 1L, 2L, emptySet()), emptyList()),
+                        NoteWithAttachments(Note("n2", "t2", "b", 1L, 2L, emptySet()), emptyList()),
+                    ),
+                )
+            val progress = mutableListOf<Pair<Int, Int>>()
+
+            repository.importNotes(
+                ByteArrayInputStream(archive),
+                onConflict = { _, _ -> error("no conflicts expected") },
+                onProgress = { current, total -> progress += current to total },
+            )
+
+            assertEquals(listOf(1 to 2, 2 to 2), progress)
         }
 
     private fun summary(
@@ -330,11 +386,16 @@ class BackupRepositoryImplTest {
     private fun buildArchive(
         note: NoteWithAttachments,
         attachmentBytes: Map<String, ByteArray> = emptyMap(),
+    ): ByteArray = buildArchive(listOf(note), attachmentBytes)
+
+    private fun buildArchive(
+        notes: List<NoteWithAttachments>,
+        attachmentBytes: Map<String, ByteArray> = emptyMap(),
     ): ByteArray {
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { zip ->
             zip.putNextEntry(ZipEntry("notes.json"))
-            zip.write(listOf(note).toJsonString().toByteArray())
+            zip.write(notes.toJsonString().toByteArray())
             zip.closeEntry()
             attachmentBytes.forEach { (id, bytes) ->
                 zip.putNextEntry(ZipEntry("attachments/$id"))

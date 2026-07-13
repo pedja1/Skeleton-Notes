@@ -320,11 +320,15 @@ class SettingsViewModelTest {
         )
 
     private open class FakeBackupRepository : BackupRepository {
-        override suspend fun exportNotes(outputStream: OutputStream): Result<Int> = Result.Success(0)
+        override suspend fun exportNotes(
+            outputStream: OutputStream,
+            onProgress: (current: Int, total: Int) -> Unit,
+        ): Result<Int> = Result.Success(0)
 
         override suspend fun importNotes(
             inputStream: InputStream,
             onConflict: suspend (existing: Note, incoming: Note) -> ConflictResolution,
+            onProgress: (current: Int, total: Int) -> Unit,
         ): Result<ImportSummary> = Result.Success(ImportSummary(0, 0, 0))
     }
 
