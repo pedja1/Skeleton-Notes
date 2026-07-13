@@ -116,7 +116,6 @@ class NoteDetailActivity : ComponentActivity() {
     private fun setupViews() {
         binding.toolbar.toolbarSettings.visibility = View.GONE
         binding.toolbar.toolbarAddNote.visibility = View.GONE
-        binding.toolbar.toolbarDelete.visibility = View.GONE
         binding.editNoteContent.onLinkContextChanged = { url, x, y ->
             if (url != null) showLinkPopup(url, x, y) else dismissLinkPopup()
         }
@@ -141,7 +140,6 @@ class NoteDetailActivity : ComponentActivity() {
         binding.toolbar.toolbarBack.visibility = View.VISIBLE
         binding.toolbar.toolbarBack.setOnClickListener { saveAndFinish() }
         binding.toolbar.toolbarTitle.setText(R.string.note_detail_title)
-        binding.toolbar.toolbarOverflow.visibility = View.GONE
     }
 
     private fun observeViewModel() {

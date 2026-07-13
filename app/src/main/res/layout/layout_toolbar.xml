@@ -36,27 +36,6 @@
         tools:text="Very long title asda dasd asd ad adad" />
 
     <ImageView
-        android:id="@+id/toolbar_delete"
-        android:layout_width="@dimen/toolbar_icon_size"
-        android:layout_height="@dimen/toolbar_icon_size"
-        android:layout_marginEnd="@dimen/toolbar_icon_margin"
-        android:background="?android:selectableItemBackgroundBorderless"
-        android:contentDescription="@string/delete_note"
-        android:src="@drawable/ic_delete"
-        android:tint="?android:textColorPrimary"
-        android:visibility="gone" />
-
-    <ImageView
-        android:id="@+id/toolbar_overflow"
-        android:layout_width="@dimen/toolbar_icon_size"
-        android:layout_height="@dimen/toolbar_icon_size"
-        android:background="?android:selectableItemBackgroundBorderless"
-        android:contentDescription="@string/toolbar_more"
-        android:src="@drawable/ic_more_vert"
-        android:tint="?android:textColorPrimary"
-        android:visibility="gone" />
-
-    <ImageView
         android:id="@+id/toolbar_add_note"
         android:layout_width="@dimen/toolbar_icon_size"
         android:layout_height="@dimen/toolbar_icon_size"
@@ -70,7 +49,6 @@
         android:id="@+id/toolbar_settings"
         android:layout_width="@dimen/toolbar_icon_size"
         android:layout_height="@dimen/toolbar_icon_size"
-        android:layout_marginEnd="@dimen/toolbar_icon_margin"
         android:background="?android:selectableItemBackgroundBorderless"
         android:contentDescription="@string/settings_title"
         android:src="@drawable/ic_settings"
