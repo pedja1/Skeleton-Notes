@@ -45,40 +45,9 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
-      - name: Debug CI variables
-        run: |
-          echo "=== Debug: GIT/REF Variables ==="
-          echo "GITHUB_REF: ${GITHUB_REF}"
-          echo "GITHUB_REF_NAME: ${GITHUB_REF_NAME}"
-          echo "GITHUB_REF_TYPE: ${GITHUB_REF_TYPE}"
-          echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}"
-          echo "GITHUB_SERVER_URL: ${GITHUB_SERVER_URL}"
-          echo "GITHUB_API_URL: ${GITHUB_API_URL}"
-          echo ""
-          echo "=== Debug: Prerelease detection ==="
-          case "${GITHUB_REF_NAME}" in
-            *_pre[0-9]*)
-              echo "Pre-release tag detected (matches *_pre[0-9]*)"
-              IS_PRERELEASE=true
-              ;;
-            *)
-              echo "Regular release tag"
-              IS_PRERELEASE=false
-              ;;
-          esac
-          echo "IS_PRERELEASE: ${IS_PRERELEASE}"
-          echo "=== Debug: JSON payload preview ==="
-          echo "{\"tag_name\": \"${GITHUB_REF_NAME}\", \"name\": \"${GITHUB_REF_NAME}\", \"body\": \"Release ${GITHUB_REF_NAME}\", \"prerelease\": ${IS_PRERELEASE}}"
-          echo ""
-          echo "=== Debug: Check if tag is non-empty ==="
-          if [ -z "${GITHUB_REF_NAME}" ]; then
-            echo "WARNING: GITHUB_REF_NAME is EMPTY!"
-          else
-            echo "GITHUB_REF_NAME is non-empty: [${GITHUB_REF_NAME}]"
-          fi
-
       - name: Create Gitea Release
         run: |
+          set -euo pipefail
           RELEASE_APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
           DEBUG_APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
           echo "Release APK: ${RELEASE_APK}"
@@ -87,18 +56,45 @@ jobs:
           HEAD=$(git rev-parse "${GITHUB_REF_NAME}^{}")
 
           case "${GITHUB_REF_NAME}" in
-            *_pre[0-9]*)
-              PRERELEASE_JSON=', "prerelease": true'
-              ;;
-            *)
-              PRERELEASE_JSON=''
-              ;;
+            *_pre[0-9]*) IS_PRERELEASE=true ;;
+            *)           IS_PRERELEASE=false ;;
           esac
+
+          # Exclude both nightly tag formats: prefixed (nightly-*) and the legacy
+          # bare 12-digit timestamps (YYYYMMDDHHMM) from before the prefix migration.
+          NIGHTLY_EXCLUDE="--exclude=nightly-* --exclude=[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]"
+
+          # Most recent relevant tag before this one (empty on first release):
+          #   pre-release -> last non-nightly tag (may be an earlier pre-release)
+          #   stable      -> last stable tag (also skip pre-releases)
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            PREV_TAG=$(git describe --tags --abbrev=0 $NIGHTLY_EXCLUDE "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          else
+            PREV_TAG=$(git describe --tags --abbrev=0 $NIGHTLY_EXCLUDE --exclude='*_pre[0-9]*' "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          fi
+          if [ -n "$PREV_TAG" ]; then RANGE="${PREV_TAG}..${GITHUB_REF_NAME}"; else RANGE="${GITHUB_REF_NAME}"; fi
+          echo "Changelog range: ${RANGE}"
+
+          CHANGELOG=$(git log --no-merges --pretty=format:'- %s' "$RANGE")
+          [ -z "$CHANGELOG" ] && CHANGELOG="- No changes"
+
+          BODY="## Changes"$'\n\n'"${CHANGELOG}"
+          if [ -n "$PREV_TAG" ]; then
+            BODY="${BODY}"$'\n\n'"**Full changelog:** ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${PREV_TAG}...${GITHUB_REF_NAME}"
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg tag "${GITHUB_REF_NAME}" \
+            --arg name "${GITHUB_REF_NAME}" \
+            --arg body "${BODY}" \
+            --arg target "${HEAD}" \
+            --argjson prerelease "${IS_PRERELEASE}" \
+            '{tag_name: $tag, name: $name, body: $body, target_commitish: $target, prerelease: $prerelease}')
 
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d "{\"tag_name\": \"${GITHUB_REF_NAME}\", \"name\": \"${GITHUB_REF_NAME}\", \"body\": \"Release ${GITHUB_REF_NAME}\", \"target_commitish\": \"${HEAD}\"${PRERELEASE_JSON}}" \
+            -d "${PAYLOAD}" \
             "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases")
 
           RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
