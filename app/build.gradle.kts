@@ -1,7 +1,12 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
+}
+val versionProps = Properties().apply {
+    rootProject.file("version.properties").inputStream().use { load(it) }
 }
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
@@ -20,13 +25,14 @@ android {
                 minorApiLevel = 0
             }
     }
+    buildToolsVersion = "37.0.0"
 
     defaultConfig {
         applicationId = "org.skynetsoftware.skeletonnotes"
         minSdk = 24
         targetSdk = 37
-        versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
-        versionName = System.getenv("VERSION_NAME") ?: "dev"
+        versionCode = (System.getenv("VERSION_CODE") ?: versionProps.getProperty("VERSION_CODE")).toInt()
+        versionName = System.getenv("VERSION_NAME") ?: versionProps.getProperty("VERSION_NAME")
 
         testInstrumentationRunner = "org.skynetsoftware.skeletonnotes.SkeletonNotesTestRunner"
     }
