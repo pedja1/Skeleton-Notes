@@ -5,9 +5,10 @@ plugins {
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
 }
-val versionProps = Properties().apply {
-    rootProject.file("version.properties").inputStream().use { load(it) }
-}
+val versionProps =
+    Properties().apply {
+        rootProject.file("version.properties").inputStream().use { load(it) }
+    }
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     setSource(
