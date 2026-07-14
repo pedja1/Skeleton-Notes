@@ -5,10 +5,6 @@ plugins {
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
 }
-val versionProps =
-    Properties().apply {
-        rootProject.file("version.properties").inputStream().use { load(it) }
-    }
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     setSource(
@@ -39,8 +35,8 @@ android {
         applicationId = "org.skynetsoftware.skeletonnotes"
         minSdk = 24
         targetSdk = 37
-        versionCode = (System.getenv("VERSION_CODE") ?: versionProps.getProperty("VERSION_CODE")).toInt()
-        versionName = System.getenv("VERSION_NAME") ?: versionProps.getProperty("VERSION_NAME")
+        versionCode = 78
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "org.skynetsoftware.skeletonnotes.SkeletonNotesTestRunner"
     }
