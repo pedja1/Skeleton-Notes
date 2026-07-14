@@ -28,6 +28,13 @@ android {
     }
     buildToolsVersion = "37.0.0"
 
+    dependenciesInfo {
+        // Disables dependency metadata when building APKs.
+        includeInApk = false
+        // Disables dependency metadata when building Android App Bundles.
+        includeInBundle = false
+    }
+
     defaultConfig {
         applicationId = "org.skynetsoftware.skeletonnotes"
         minSdk = 24
