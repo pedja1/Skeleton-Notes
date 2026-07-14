@@ -17,7 +17,7 @@
 - Or from these sources...  
 [<img src="docs/badges/obtainium.png" alt="Get it on Obtainium" height="100">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/pedja1/Skeleton-Notes)
 [<img src="docs/badges/github.png" alt="Get it on GitHub" height="100">](https://github.com/pedja1/Skeleton-Notes/releases/latest)
-
+- SHA-256: `CB:2E:16:E4:D0:95:24:BF:48:5A:0E:A4:F2:6A:E7:06:AA:30:CD:F6:0A:F0:B0:73:B2:9C:61:68:12:0D:83:94`
 ### Building
 - Ok, sure, this is a bit more complicated, but also, not really
 - Install Android Sutdio
