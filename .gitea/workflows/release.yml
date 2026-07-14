@@ -47,14 +47,10 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
-
       - name: Create Gitea Release
         run: |
           set -euo pipefail
           RELEASE_APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
-          DEBUG_APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
           echo "Release APK: ${RELEASE_APK}"
           echo "Debug APK: ${DEBUG_APK}"
           echo "Uploading for tag ${GITHUB_REF_NAME}"
@@ -115,13 +111,7 @@ jobs:
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/vnd.android.package-archive" \
             --data-binary "@${RELEASE_APK}" \
-            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=$(basename ${RELEASE_APK})"
-
-          curl -s -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            --data-binary "@${DEBUG_APK}" \
-            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=$(basename ${DEBUG_APK})"
+            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=Skeleton-Notes-${VERSION_NAME}.apk"
 
           echo "Upload complete"
 
