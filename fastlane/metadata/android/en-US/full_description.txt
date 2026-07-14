@@ -1,0 +1,11 @@
+Skeleton Notes is a simple, lightweight note taking app. No clutter, no bloat.
+
+Features:
+* Rich text formatting: bold, italic, strikethrough and underline
+* Checklists
+* Attach images and files to your notes
+* Optional Nextcloud sync over WebDAV (self-hosted, your data stays yours)
+* Import and export all your notes as a zip backup
+* APK is 600KB
+
+Free and open source (GPLv3). Runs on Android 7.0 and newer.
