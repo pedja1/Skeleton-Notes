@@ -1,4 +1,8 @@
 # 💀 Skeleton Notes
+
+> [!IMPORTANT]
+> This project is considered feature-complete. Going forward, it will primarily receive bug fixes and maintenance updates to ensure compatibility with new Android versions.
+> 
 ## Dead simple note taking app ⚰️
 
 <p float="left">
