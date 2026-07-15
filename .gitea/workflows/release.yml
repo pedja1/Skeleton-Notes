@@ -18,13 +18,13 @@ jobs:
       - name: Compute version
         run: |
           set -euo pipefail
-          VERSION_NAME=$(grep '^VERSION_NAME=' version.properties | cut -d= -f2)
-          VERSION_CODE=$(grep '^VERSION_CODE=' version.properties | cut -d= -f2)
+          VERSION_NAME=$(grep -m1 'versionName *=' app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/')
+          VERSION_CODE=$(grep -m1 'versionCode *=' app/build.gradle.kts | sed -E 's/[^0-9]*([0-9]+).*/\1/')
           # Accept the exact version tag (1.0.0) or a pre-release tag (1.0.0_pre1, 1.0.0_pre2, ...).
           case "${GITHUB_REF_NAME}" in
             "${VERSION_NAME}"|"${VERSION_NAME}"_pre[0-9]*) ;;
             *)
-              echo "Tag ${GITHUB_REF_NAME} does not match VERSION_NAME=${VERSION_NAME} (expected ${VERSION_NAME} or ${VERSION_NAME}_preN) in version.properties" >&2
+              echo "Tag ${GITHUB_REF_NAME} does not match VERSION_NAME=${VERSION_NAME} (expected ${VERSION_NAME} or ${VERSION_NAME}_preN) in app/build.gradle.kts" >&2
               exit 1
               ;;
           esac
