@@ -1,7 +1,9 @@
 package org.skynetsoftware.skeletonnotes
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -110,6 +112,64 @@ class NoteDetailViewModelTest {
                 viewModel.saveNote("Title", "Content", "Content")
 
                 assertTrue(repository.savedNoteWithAttachments == null)
+                // The screen must still be closeable after a failed load: back goes through
+                // saveNote, which signals close-without-saving instead of trapping the user.
+                assertEquals(NoteDetailViewModel.UiState.CloseWithoutSaving, viewModel.uiState.value)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun saveWhileExistingNoteStillLoadingClosesWithoutSaving() =
+        runTest {
+            val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+            Dispatchers.setMain(testDispatcher)
+            try {
+                val loadStarted = CompletableDeferred<Unit>()
+                val repository =
+                    object : FakeNoteDetailRepository() {
+                        override suspend fun getNoteById(id: String): Result<NoteWithAttachments> {
+                            loadStarted.complete(Unit)
+                            awaitCancellation()
+                        }
+                    }
+                val viewModel = createViewModel("existing", repository)
+                loadStarted.await()
+
+                // Back pressed before the load completed: the editor is empty, so saving would
+                // overwrite the stored note with an empty one.
+                viewModel.saveNote(null, "", "")
+
+                assertTrue(repository.savedNoteWithAttachments == null)
+                assertEquals(NoteDetailViewModel.UiState.CloseWithoutSaving, viewModel.uiState.value)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun shouldPopulateEditorReturnsTrueOnlyOnce() =
+        runTest {
+            val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+            Dispatchers.setMain(testDispatcher)
+            try {
+                val note =
+                    Note(
+                        id = "1",
+                        title = "Test",
+                        content = "Content",
+                        createdAt = 1000L,
+                        modifiedAt = 1000L,
+                        tags = emptySet(),
+                    )
+                val repository = FakeNoteDetailRepository(note = note)
+                val viewModel = createViewModel("1", repository)
+
+                // The sticky NoteLoaded state is re-delivered on every lifecycle restart; the
+                // editor must be populated from it exactly once or in-progress edits are lost.
+                assertTrue(viewModel.shouldPopulateEditor())
+                assertFalse(viewModel.shouldPopulateEditor())
             } finally {
                 Dispatchers.resetMain()
             }
@@ -646,7 +706,11 @@ class NoteDetailViewModelTest {
             isNewNote = isNewNote,
             getNoteByIdUseCase = GetNoteByIdUseCase(repository),
             saveNoteUseCase = SaveNoteUseCase(repository),
-            deleteNoteUseCase = DeleteNoteUseCase(repository),
+            deleteNoteUseCase =
+                DeleteNoteUseCase(
+                    repository,
+                    DeleteAttachmentLocalUseCase(storage, UnconfinedTestDispatcher()),
+                ),
             moveToTrashUseCase = MoveToTrashUseCase(repository),
             archiveNoteUseCase = ArchiveNoteUseCase(repository),
             restoreNoteUseCase = RestoreNoteUseCase(repository),
@@ -686,7 +750,7 @@ class NoteDetailViewModelTest {
         }
     }
 
-    private class FakeNoteDetailRepository(
+    private open class FakeNoteDetailRepository(
         private val note: Note? = null,
         private val attachments: List<Attachment> = emptyList(),
         private val shouldFailLoad: Boolean = false,

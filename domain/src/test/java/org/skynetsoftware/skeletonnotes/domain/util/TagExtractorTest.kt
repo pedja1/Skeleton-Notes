@@ -58,4 +58,28 @@ class TagExtractorTest {
         val tags = TagExtractor.extractTags("text @#tag text")
         assertEquals(setOf("tag"), tags)
     }
+
+    @Test
+    fun extractsUnicodeTags() {
+        val tags = TagExtractor.extractTags("Dinner at the #café with #über_friends and #日本語")
+        assertEquals(setOf("café", "über_friends", "日本語"), tags)
+    }
+
+    @Test
+    fun urlFragmentIsNotATag() {
+        val tags = TagExtractor.extractTags("see https://example.com/page#section for details")
+        assertTrue(tags.isEmpty())
+    }
+
+    @Test
+    fun hashInsideWordIsNotATag() {
+        val tags = TagExtractor.extractTags("issue ABC#123 and item42#note")
+        assertTrue(tags.isEmpty())
+    }
+
+    @Test
+    fun doubleHashIsNotATag() {
+        val tags = TagExtractor.extractTags("markdown heading ##NotATag")
+        assertTrue(tags.isEmpty())
+    }
 }

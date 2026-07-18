@@ -99,7 +99,8 @@ internal class NextcloudRepositoryImpl(
 
     /**
      * Downloads an attachment file from the note's subdirectory on the server.
-     * Returns the local file path.
+     * Returns the local file path on success. On failure the partially written local file is
+     * removed so a truncated download is never mistaken for a valid attachment.
      */
     override suspend fun downloadAttachment(
         noteId: String,
@@ -108,12 +109,18 @@ internal class NextcloudRepositoryImpl(
     ): Result<String> {
         val rawExt = filename.substringAfterLast('.', "")
         val extension = if (rawExt.isNotBlank() && rawExt != filename) ".$rawExt" else null
-        val path =
-            attachmentFileStorage.openWriteStream(attachmentId, extension).use { target ->
-                nextcloudApi.downloadFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}", target.outputStream)
-                target.path
+        val target = attachmentFileStorage.openWriteStream(attachmentId, extension)
+        val downloadResult =
+            target.use {
+                nextcloudApi.downloadFile("$noteId/${attachmentId}_${sanitizeSegment(filename)}", it.outputStream)
             }
-        return Result.Success(path)
+        return when (downloadResult) {
+            is Result.Success -> Result.Success(target.path)
+            is Result.Failure -> {
+                attachmentFileStorage.deleteFile(attachmentId)
+                Result.Failure(downloadResult.throwable)
+            }
+        }
     }
 
     /**

@@ -5,6 +5,7 @@ import android.graphics.Typeface
 import android.text.Editable
 import android.text.Spannable
 import android.text.Spanned
+import android.text.TextUtils
 import android.text.TextWatcher
 import android.text.style.RelativeSizeSpan
 import android.text.style.StrikethroughSpan
@@ -355,14 +356,16 @@ class RichEditText
             selStart: Int,
             selEnd: Int,
         ): Pair<Int, Int> {
-            val s = text?.toString() ?: return 0 to 0
+            // Scans the CharSequence directly: this runs several times per keystroke, and a
+            // toString() here would copy the whole document each time.
+            val s = text ?: return 0 to 0
             val start = selStart.coerceIn(0, s.length)
             val end = selEnd.coerceIn(0, s.length)
             val pStart =
-                s
-                    .lastIndexOf('\n', (start - 1).coerceAtLeast(0))
+                TextUtils
+                    .lastIndexOf(s, '\n', (start - 1).coerceAtLeast(0))
                     .let { if (it < 0) 0 else it + 1 }
-            val pEnd = s.indexOf('\n', end).let { if (it < 0) s.length else it }
+            val pEnd = TextUtils.indexOf(s, '\n', end).let { if (it < 0) s.length else it }
             return pStart to pEnd
         }
 
@@ -404,8 +407,8 @@ class RichEditText
             changeEnd: Int,
         ) {
             if (changeEnd <= changeStart || changeStart > editable.length) return
-            val searchStart = (changeStart - 2048).coerceAtLeast(0)
-            val searchEnd = (changeEnd + 2048).coerceAtMost(editable.length)
+            val searchStart = (changeStart - URL_CONTEXT_WINDOW).coerceAtLeast(0)
+            val searchEnd = (changeEnd + URL_CONTEXT_WINDOW).coerceAtMost(editable.length)
             if (searchEnd <= searchStart) return
 
             editable
@@ -428,9 +431,13 @@ class RichEditText
             searchEnd: Int,
         ) {
             val matcher = Patterns.WEB_URL.matcher(editable)
+            // Confine the scan to the search window: without a region the regex walks the whole
+            // document from position 0 on every keystroke. The region end stays at the document
+            // end (with an early break below) so a URL crossing searchEnd is skipped whole
+            // instead of being matched truncated at the region boundary.
+            matcher.region(searchStart, editable.length)
             while (matcher.find()) {
                 val start = matcher.start()
-                if (start < searchStart) continue
                 if (start >= searchEnd) break
                 val end = matcher.end()
                 if (end > searchEnd) continue
@@ -489,13 +496,18 @@ class RichEditText
             val urlSpan = editable.getSpans(offset, offset, URLSpan::class.java).firstOrNull()
             if (urlSpan != null) return urlSpan.url
 
-            val text = editable.toString()
-            val matcher = Patterns.WEB_URL.matcher(text)
+            // Match directly on the CharSequence within a window around the cursor: a toString()
+            // plus full-document scan here would run on every cursor move in a large note.
+            val windowStart = (offset - URL_CONTEXT_WINDOW).coerceAtLeast(0)
+            val windowEnd = (offset + URL_CONTEXT_WINDOW).coerceAtMost(editable.length)
+            val matcher = Patterns.WEB_URL.matcher(editable)
+            matcher.region(windowStart, windowEnd)
             while (matcher.find()) {
                 if (offset in matcher.start() until matcher.end()) {
                     val url = matcher.group()
                     return if (url.startsWith("http://") || url.startsWith("https://")) url else "https://$url"
                 }
+                if (matcher.start() > offset) break
             }
             return null
         }
@@ -717,5 +729,8 @@ class RichEditText
 
         private companion object {
             private const val SCALE_TOLERANCE = 0.05f
+
+            /** Characters scanned around the change/cursor when (re-)detecting raw URLs. */
+            private const val URL_CONTEXT_WINDOW = 2048
         }
     }

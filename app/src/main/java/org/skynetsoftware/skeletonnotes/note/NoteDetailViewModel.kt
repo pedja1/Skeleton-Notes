@@ -109,6 +109,13 @@ class NoteDetailViewModel(
         /** The note has been restored from trash or archive. */
         object Restored : UiState()
 
+        /**
+         * The screen should close without saving: the note failed to load, or the user backed
+         * out before the load completed. Saving in either case would overwrite the stored note
+         * with empty or stale editor content.
+         */
+        object CloseWithoutSaving : UiState()
+
         /** An error occurred. */
         data class Error(
             val throwable: Throwable,
@@ -124,18 +131,22 @@ class NoteDetailViewModel(
     private val _showToast = MutableSharedFlow<String>(replay = 0)
     val showToast: Flow<String> get() = _showToast
 
-    private var isInitialized = false
-
     /**
      * The note as loaded from the repository, retained so that a save preserves original metadata
      * (creation timestamp, status, remote sync marker) that the edit screen does not expose.
      */
     private var loadedNote: NoteWithAttachments? = null
 
+    /**
+     * Whether the editor fields were already populated from the loaded note. The sticky [uiState]
+     * re-delivers [UiState.NoteLoaded] on every lifecycle restart (backgrounding, attachment
+     * picking, opening a link); re-applying the originally loaded content then would silently
+     * overwrite the user's in-progress edits.
+     */
+    private var editorPopulated = false
+
     init {
-        if (isNewNote) {
-            isInitialized = true
-        } else {
+        if (!isNewNote) {
             viewModelScope.launch {
                 when (val result = getNoteByIdUseCase(noteId)) {
                     is Result.Success -> {
@@ -144,13 +155,25 @@ class NoteDetailViewModel(
                         loadedNote = data
                         _uiState.value = UiState.NoteLoaded(data.note, data.attachments)
                     }
+
                     is Result.Failure -> {
                         _uiState.value = UiState.Error(result.throwable)
                     }
                 }
-                isInitialized = true
             }
         }
+    }
+
+    /**
+     * Returns true exactly once after a note is loaded, telling the activity to populate the
+     * editor fields from [UiState.NoteLoaded]. Subsequent deliveries of the same sticky state
+     * (lifecycle restarts) return false so in-progress edits are not reset; after a configuration
+     * change the edited text is restored from the view hierarchy's saved instance state instead.
+     */
+    fun shouldPopulateEditor(): Boolean {
+        if (editorPopulated) return false
+        editorPopulated = true
+        return true
     }
 
     /**
@@ -159,13 +182,20 @@ class NoteDetailViewModel(
      * is the markup-free text used for tag extraction (HTML markup can split a `#tag`
      * across inline elements and hide it from the extractor).
      * On success emits [UiState.Saved], on failure emits [UiState.Error].
+     *
+     * When the note failed to load, or an existing note has not finished loading yet, emits
+     * [UiState.CloseWithoutSaving] instead of saving: the editor content cannot represent the
+     * stored note in those states, and saving would overwrite it with empty or stale content.
      */
     fun saveNote(
         title: String?,
         content: String,
         plainTextContent: String,
     ) {
-        if (uiState.value is UiState.Error) return
+        if (uiState.value is UiState.Error || (!isNewNote && loadedNote == null)) {
+            _uiState.value = UiState.CloseWithoutSaving
+            return
+        }
         val attachmentsUnchanged =
             attachments.value.map { it.id }.toSet() ==
                 loadedNote
@@ -210,6 +240,7 @@ class NoteDetailViewModel(
                     removedIds.forEach { deleteAttachmentLocal(it) }
                     _uiState.value = UiState.Saved
                 }
+
                 is Result.Failure -> {
                     _uiState.value = UiState.Error(result.throwable)
                 }
@@ -228,6 +259,7 @@ class NoteDetailViewModel(
                 is Result.Success -> {
                     _uiState.value = UiState.Deleted
                 }
+
                 is Result.Failure -> {
                     _uiState.value = UiState.Error(result.throwable)
                 }
@@ -246,6 +278,7 @@ class NoteDetailViewModel(
                 is Result.Success -> {
                     _uiState.value = UiState.MovedToTrash
                 }
+
                 is Result.Failure -> {
                     _uiState.value = UiState.Error(result.throwable)
                 }
@@ -264,6 +297,7 @@ class NoteDetailViewModel(
                 is Result.Success -> {
                     _uiState.value = UiState.Archived
                 }
+
                 is Result.Failure -> {
                     _uiState.value = UiState.Error(result.throwable)
                 }
@@ -282,6 +316,7 @@ class NoteDetailViewModel(
                 is Result.Success -> {
                     _uiState.value = UiState.Restored
                 }
+
                 is Result.Failure -> {
                     _uiState.value = UiState.Error(result.throwable)
                 }
@@ -329,8 +364,13 @@ class NoteDetailViewModel(
         _showToast.emit(message)
     }
 
+    /**
+     * Imports the file picked at [uri] as a new attachment and adds it to [attachments].
+     * Runs on an IO dispatcher because resolving the mime type and display name are blocking
+     * cross-process calls into the source content provider. Emits a toast on failure.
+     */
     fun onAttachmentPicked(uri: Uri?) =
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             if (uri == null) return@launch
 
             val createAttachmentResult =
@@ -340,11 +380,13 @@ class NoteDetailViewModel(
                     mimeType = AppDi.application.contentResolver.getType(uri),
                     filename = resolveDisplayName(uri),
                 )
+
             when (createAttachmentResult) {
                 is Result.Failure<Attachment> -> {
                     Log.w(TAG, null, createAttachmentResult.throwable)
                     _showToast.emit(AppDi.application.getString(R.string.note_details_error_adding_attachment))
                 }
+
                 is Result.Success<Attachment> -> {
                     val mutableAttachments = attachments.value.toMutableList()
                     mutableAttachments.add(createAttachmentResult.data)

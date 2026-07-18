@@ -67,7 +67,9 @@ object DomainDi {
 
     val importNotesUseCase: ImportNotesUseCase by lazy { ImportNotesUseCase(backupRepository) }
 
-    val deleteNoteUseCase: DeleteNoteUseCase by lazy { DeleteNoteUseCase(notesRepository) }
+    val deleteNoteUseCase: DeleteNoteUseCase by lazy {
+        DeleteNoteUseCase(notesRepository, deleteAttachmentLocalUseCase)
+    }
 
     val moveToTrashUseCase: MoveToTrashUseCase by lazy { MoveToTrashUseCase(notesRepository) }
 

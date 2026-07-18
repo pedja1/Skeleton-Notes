@@ -273,20 +273,26 @@ internal class NotesDataSourceImpl(
     override suspend fun deleteNote(id: String): Result<Unit> =
         withContext(coroutineDispatcher) {
             var database: SQLiteDatabase? = null
+            var committed = false
             try {
                 database = skeletonNotesDatabaseHelper.writableDatabase
                 database.beginTransaction()
                 database.delete(TABLE_NOTES, "$COLUMN_ID = ?", arrayOf(id))
                 database.delete(TABLE_ATTACHMENTS, "$COLUMN_NOTE_ID = ?", arrayOf(id))
                 database.setTransactionSuccessful()
+                committed = true
                 Log.d(TAG, "deleteNote: $id")
-                notifyNotesChanged(id)
                 Result.Success(Unit)
             } catch (t: Throwable) {
                 Log.e(TAG, null, t)
                 Result.Failure(t)
             } finally {
                 database?.endTransaction()
+                if (committed) {
+                    // Notify only after the transaction is committed, like saveNote/saveNotes;
+                    // notifying inside the transaction lets observers re-query pre-commit state.
+                    notifyNotesChanged(id)
+                }
             }
         }
 
@@ -321,6 +327,10 @@ internal class NotesDataSourceImpl(
                 val values =
                     ContentValues().apply {
                         put(COLUMN_STATUS, NoteStatus.ARCHIVE.value)
+                        // Sync detects local changes via the modified timestamp; without bumping it
+                        // a status-only change would never be pushed and a later remote edit would
+                        // silently revert the status.
+                        put(COLUMN_MODIFIED, System.currentTimeMillis())
                     }
                 database.update(TABLE_NOTES, values, "$COLUMN_ID = ?", arrayOf(id))
                 Log.d(TAG, "archiveNote: $id")
@@ -342,6 +352,10 @@ internal class NotesDataSourceImpl(
                 val values =
                     ContentValues().apply {
                         put(COLUMN_STATUS, NoteStatus.ACTIVE.value)
+                        // Sync detects local changes via the modified timestamp; the bump also
+                        // makes sync re-upload a restored note whose remote copy was already
+                        // deleted, instead of re-trashing it as remotely deleted.
+                        put(COLUMN_MODIFIED, System.currentTimeMillis())
                     }
                 database.update(TABLE_NOTES, values, "$COLUMN_ID = ?", arrayOf(id))
                 Log.d(TAG, "restoreNote: $id")

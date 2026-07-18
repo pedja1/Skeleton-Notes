@@ -27,9 +27,29 @@ class NextcloudSyncJobService : JobService() {
     private val runner = SerialSyncRunner(scope) { AppDi.syncNotesWithNextcloudUseCase() }
     private val syncNotifier by lazy { SyncNotifier(applicationContext) }
 
+    /**
+     * The [JobParameters] of the in-flight run. Needed because a preempted run's `onComplete`
+     * never fires (see [SerialSyncRunner.start]), so its job must be finished explicitly when a
+     * new job takes over, and [onStopJob] must only cancel the run belonging to its own params.
+     * Written on the main thread (all [JobService] callbacks) and cleared from the completion
+     * callback on an IO thread, hence volatile.
+     */
+    @Volatile
+    private var currentParams: JobParameters? = null
+
     override fun onStartJob(params: JobParameters): Boolean {
+        currentParams?.let { preempted ->
+            // The runner is about to cancel the preempted run, whose onComplete (the only other
+            // jobFinished call) will never fire; without this, JobScheduler keeps the preempted
+            // job running (holding its wakelock) until the execution limit.
+            jobFinished(preempted, false)
+        }
+        currentParams = params
         runner.start { result ->
             handleSyncResult(result)
+            if (currentParams === params) {
+                currentParams = null
+            }
             jobFinished(params, false)
         }
         return true
@@ -49,8 +69,14 @@ class NextcloudSyncJobService : JobService() {
     }
 
     override fun onStopJob(params: JobParameters): Boolean {
-        runner.stop()
-        return true
+        // Only stop the runner when the stopped job is the one currently running: a late stop for
+        // an already-preempted job must not cancel the newer run that replaced it.
+        if (currentParams === params) {
+            runner.stop()
+            currentParams = null
+            return true
+        }
+        return false
     }
 
     override fun onDestroy() {

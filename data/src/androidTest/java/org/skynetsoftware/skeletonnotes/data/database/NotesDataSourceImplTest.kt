@@ -14,6 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.skynetsoftware.skeletonnotes.domain.model.Attachment
 import org.skynetsoftware.skeletonnotes.domain.model.Note
+import org.skynetsoftware.skeletonnotes.domain.model.NoteStatus
 import org.skynetsoftware.skeletonnotes.domain.model.NoteWithAttachments
 import org.skynetsoftware.skeletonnotes.domain.model.Result
 import java.util.UUID
@@ -62,6 +63,62 @@ class NotesDataSourceImplTest {
             assertEquals(id, loaded.id)
             assertEquals("Title", loaded.title)
             assertEquals("Content", loaded.content)
+        }
+
+    @Test
+    fun archiveNoteBumpsModifiedTimestamp() =
+        runTest(timeout = 5.seconds) {
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+            val id = UUID.randomUUID().toString()
+            val note =
+                Note(
+                    id = id,
+                    title = "Title",
+                    content = "Content",
+                    createdAt = 1000L,
+                    modifiedAt = 1000L,
+                    tags = emptySet(),
+                    remoteLastModified = 1000L,
+                )
+            dataSource.saveNote(NoteWithAttachments(note, emptyList()))
+
+            val before = System.currentTimeMillis()
+            assertTrue(dataSource.archiveNote(id) is Result.Success)
+
+            val loaded = (dataSource.getNoteById(id) as Result.Success).data.note
+            assertEquals(NoteStatus.ARCHIVE, loaded.status)
+            // The bump makes sync detect the status change as a local change and push it.
+            assertTrue(loaded.modifiedAt >= before)
+            assertTrue(loaded.modifiedAt > loaded.remoteLastModified)
+        }
+
+    @Test
+    fun restoreNoteBumpsModifiedTimestamp() =
+        runTest(timeout = 5.seconds) {
+            val dataSource = NotesDataSourceImpl(databaseHelper)
+            val id = UUID.randomUUID().toString()
+            val note =
+                Note(
+                    id = id,
+                    title = "Title",
+                    content = "Content",
+                    createdAt = 1000L,
+                    modifiedAt = 1000L,
+                    tags = emptySet(),
+                    status = NoteStatus.TRASH,
+                    remoteLastModified = 1000L,
+                )
+            dataSource.saveNote(NoteWithAttachments(note, emptyList()))
+
+            val before = System.currentTimeMillis()
+            assertTrue(dataSource.restoreNote(id) is Result.Success)
+
+            val loaded = (dataSource.getNoteById(id) as Result.Success).data.note
+            assertEquals(NoteStatus.ACTIVE, loaded.status)
+            // The bump makes sync re-upload a restored note whose remote copy was deleted
+            // instead of re-trashing it as remotely deleted.
+            assertTrue(loaded.modifiedAt >= before)
+            assertTrue(loaded.modifiedAt > loaded.remoteLastModified)
         }
 
     @Test

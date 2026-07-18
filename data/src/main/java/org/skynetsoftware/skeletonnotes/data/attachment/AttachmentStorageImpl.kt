@@ -88,10 +88,15 @@ internal class AttachmentStorageImpl(
     }
 
     /**
-     * Deletes the local file for the given [attachmentId].
+     * Deletes the local file for the given [attachmentId], resolving any extension the file may
+     * have been stored with (e.g. {uuid}.jpg), mirroring the lookup in [getFile].
      */
     override fun deleteFile(attachmentId: String) {
-        attachmentFile(attachmentId).delete()
+        require(isSafeAttachmentId(attachmentId)) { "Unsafe attachment id" }
+        attachmentsDir
+            .listFiles { f ->
+                f.name == attachmentId || f.name.startsWith("$attachmentId.")
+            }?.forEach { it.delete() }
     }
 
     /** Returns a file for [attachmentId] (plus optional [extension]) after enforcing attachment-directory containment. */

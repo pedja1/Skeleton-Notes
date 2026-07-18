@@ -98,8 +98,13 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
                 launch {
-                    settingsViewModel.authEvents.collect { event ->
-                        handleAuthEvent(event)
+                    settingsViewModel.pendingAuthEvent.collect { event ->
+                        // State survives the activity being STOPPED behind the login Custom Tab;
+                        // consume it before handling so it is not re-delivered on restart.
+                        if (event != null) {
+                            settingsViewModel.authEventHandled()
+                            handleAuthEvent(event)
+                        }
                     }
                 }
                 launch {

@@ -57,6 +57,60 @@ class BackupNoteMapperTest {
     }
 
     @Test
+    fun attachmentFilenameRoundTrips() {
+        val original =
+            listOf(
+                NoteWithAttachments(
+                    note = Note("note-1", null, "body", 100L, 200L, emptySet()),
+                    attachments =
+                        listOf(
+                            Attachment(
+                                id = "att-1",
+                                noteId = "note-1",
+                                uri = "/tmp/att-1",
+                                mimeType = "application/pdf",
+                                filename = "report.pdf",
+                            ),
+                        ),
+                ),
+            )
+
+        val restored = JSONArray(original.toJsonString()).toNotes()
+
+        // Losing the filename on a backup round-trip would degrade the display name locally
+        // and the upload name on the next Nextcloud push.
+        assertEquals(
+            "report.pdf",
+            restored
+                .single()
+                .attachments
+                .single()
+                .filename,
+        )
+    }
+
+    @Test
+    fun attachmentWithoutFilenameRoundTripsAsNull() {
+        val original =
+            listOf(
+                NoteWithAttachments(
+                    note = Note("note-1", null, "body", 100L, 200L, emptySet()),
+                    attachments = listOf(Attachment(id = "att-1", noteId = "note-1", uri = "/tmp/att-1")),
+                ),
+            )
+
+        val restored = JSONArray(original.toJsonString()).toNotes()
+
+        assertNull(
+            restored
+                .single()
+                .attachments
+                .single()
+                .filename,
+        )
+    }
+
+    @Test
     fun `blank title serializes and deserializes as null`() {
         val notes =
             listOf(

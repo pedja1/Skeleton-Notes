@@ -154,10 +154,14 @@ class NoteDetailActivity : ComponentActivity() {
 
                         is NoteDetailViewModel.UiState.NoteLoaded -> {
                             binding.toolbar.toolbarTitle.setText(R.string.note_detail_title)
-                            binding.editNoteTitle.setText(state.note.title ?: "")
-                            binding.editNoteContent.setContentSilently(
-                                MarkdownFormatter.fromMarkdown(state.note.content),
-                            )
+                            // The sticky state is re-delivered on every lifecycle restart;
+                            // populating the editor again would wipe in-progress edits.
+                            if (viewModel.shouldPopulateEditor()) {
+                                binding.editNoteTitle.setText(state.note.title ?: "")
+                                binding.editNoteContent.setContentSilently(
+                                    MarkdownFormatter.fromMarkdown(state.note.content),
+                                )
+                            }
                             updateActionButtons(state.note.status)
                         }
 
@@ -166,6 +170,7 @@ class NoteDetailActivity : ComponentActivity() {
                         NoteDetailViewModel.UiState.MovedToTrash -> finish()
                         NoteDetailViewModel.UiState.Archived -> finish()
                         NoteDetailViewModel.UiState.Restored -> finish()
+                        NoteDetailViewModel.UiState.CloseWithoutSaving -> finish()
                         is NoteDetailViewModel.UiState.Error -> {
                             Toast
                                 .makeText(

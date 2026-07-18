@@ -239,7 +239,7 @@ class SyncNotesWithNextcloudUseCaseTest {
         }
 
     @Test
-    fun syncSkipsAttachmentWhenDownloadFails() =
+    fun syncReturnsErrorWhenAttachmentDownloadFails() =
         runTest {
             val notesRepo = FakeNotesRepo(notes = emptyList())
             val ncRepo =
@@ -262,15 +262,12 @@ class SyncNotesWithNextcloudUseCaseTest {
 
             val result = useCase()
 
+            // The pull must be aborted without saving the note: saving would advance
+            // remoteLastModified past the failed download, so the attachment would never be
+            // retried and a later push would drop its reference remotely.
             assertTrue(result is Result.Success)
-            assertTrue((result as Result.Success).data is SyncResult.Success)
-            assertTrue(notesRepo.savedNoteWithAttachments.isNotEmpty())
-            assertTrue(
-                notesRepo.savedNoteWithAttachments
-                    .first()
-                    .attachments
-                    .isEmpty(),
-            )
+            assertTrue((result as Result.Success).data is SyncResult.Error)
+            assertTrue(notesRepo.savedNoteWithAttachments.isEmpty())
         }
 
     @Test
@@ -526,6 +523,47 @@ class SyncNotesWithNextcloudUseCaseTest {
         }
 
     @Test
+    fun locallyModifiedNoteWithDeletedRemoteIsRePushedNotTrashed() =
+        runTest {
+            // The note was synced before (remoteLastModified > 0), its remote copy was deleted,
+            // and it was changed locally since the last sync (e.g. edited, or restored from trash
+            // which bumps modifiedAt). The local change must win: re-upload, don't re-trash.
+            val notesRepo =
+                FakeNotesRepo(
+                    notes =
+                        listOf(
+                            Note(
+                                id = "note1",
+                                title = "Restored",
+                                content = "content",
+                                createdAt = 1000L,
+                                modifiedAt = 3000L,
+                                tags = emptySet(),
+                                remoteLastModified = 2000L,
+                            ),
+                        ),
+                )
+            val ncRepo =
+                FakeNextcloudRepo(
+                    remoteFiles = emptyList(),
+                    afterUploadFiles = listOf(NextcloudFileInfo("note1.json", 4000L)),
+                )
+            val useCase = createUseCase(notesRepo, ncRepo)
+
+            val result = useCase()
+
+            assertTrue((result as Result.Success).data is SyncResult.Success)
+            assertTrue(notesRepo.trashedNoteIds.isEmpty())
+            assertEquals("note1", ncRepo.uploadedNotes.first().id)
+            assertEquals(
+                4000L,
+                notesRepo.savedNoteWithAttachments
+                    .last()
+                    .note.remoteLastModified,
+            )
+        }
+
+    @Test
     fun syncReturnsErrorAndKeepsTimestampWhenUploadFails() =
         runTest {
             val notesRepo =
@@ -553,6 +591,109 @@ class SyncNotesWithNextcloudUseCaseTest {
             assertTrue(result is Result.Success)
             assertTrue((result as Result.Success).data is SyncResult.Error)
             assertEquals(0L, (settingsRepository.nextcloudLastSyncTimestamp as MutableStateFlow).value)
+        }
+
+    @Test
+    fun failedUploadDoesNotStampRemoteMtimeOrTrashNote() =
+        runTest {
+            val notesRepo =
+                FakeNotesRepo(
+                    notes =
+                        listOf(
+                            Note(
+                                id = "note1",
+                                title = "Local",
+                                content = "content",
+                                createdAt = 1000L,
+                                modifiedAt = 3000L,
+                                tags = emptySet(),
+                                remoteLastModified = 0L,
+                            ),
+                        ),
+                )
+            val ncRepo = FakeNextcloudRepo(remoteFiles = emptyList(), uploadNoteFails = true)
+            val useCase = createUseCase(notesRepo, ncRepo)
+
+            val result = useCase()
+
+            // A note whose upload failed must keep remoteLastModified == 0 so it is pushed again
+            // on the next sync; stamping it would make the next sync classify the never-uploaded
+            // note as remotely deleted and trash it.
+            assertTrue((result as Result.Success).data is SyncResult.Error)
+            assertTrue(notesRepo.savedNoteWithAttachments.isEmpty())
+            assertTrue(notesRepo.trashedNoteIds.isEmpty())
+        }
+
+    @Test
+    fun failedAttachmentUploadDoesNotStampRemoteMtime() =
+        runTest {
+            val notesRepo =
+                FakeNotesRepo(
+                    notes =
+                        listOf(
+                            Note(
+                                id = "note1",
+                                title = "Local",
+                                content = "content",
+                                createdAt = 1000L,
+                                modifiedAt = 3000L,
+                                tags = emptySet(),
+                                remoteLastModified = 0L,
+                            ),
+                        ),
+                    attachments =
+                        listOf(
+                            org.skynetsoftware.skeletonnotes.domain.model.Attachment(
+                                id = "att1",
+                                noteId = "note1",
+                                uri = "/data/note1/att1_photo.jpg",
+                            ),
+                        ),
+                )
+            val ncRepo =
+                FakeNextcloudRepo(
+                    remoteFiles = emptyList(),
+                    afterUploadFiles = listOf(NextcloudFileInfo("note1.json", 3000L)),
+                    uploadAttachmentFails = true,
+                )
+            val useCase = createUseCase(notesRepo, ncRepo)
+
+            val result = useCase()
+
+            // Even when the note JSON upload succeeds, a failed attachment upload must keep the
+            // note un-stamped so the attachment is re-uploaded on the next sync.
+            assertTrue((result as Result.Success).data is SyncResult.Error)
+            assertTrue(notesRepo.savedNoteWithAttachments.isEmpty())
+        }
+
+    @Test
+    fun pushedNoteMissingFromRefreshedListingIsNotStamped() =
+        runTest {
+            val notesRepo =
+                FakeNotesRepo(
+                    notes =
+                        listOf(
+                            Note(
+                                id = "note1",
+                                title = "Local",
+                                content = "content",
+                                createdAt = 1000L,
+                                modifiedAt = 3000L,
+                                tags = emptySet(),
+                                remoteLastModified = 0L,
+                            ),
+                        ),
+                )
+            // Upload succeeds but the refreshed listing does not report the file (e.g. eventual
+            // consistency); fabricating an mtime would mark the note as synced prematurely.
+            val ncRepo = FakeNextcloudRepo(remoteFiles = emptyList(), afterUploadFiles = emptyList())
+            val useCase = createUseCase(notesRepo, ncRepo)
+
+            val result = useCase()
+
+            assertTrue((result as Result.Success).data is SyncResult.Success)
+            assertTrue(notesRepo.savedNoteWithAttachments.isEmpty())
+            assertTrue(notesRepo.trashedNoteIds.isEmpty())
         }
 
     @Test
@@ -682,6 +823,7 @@ class SyncNotesWithNextcloudUseCaseTest {
         private val listFails: Boolean = false,
         private val attachmentDownloadFails: Boolean = false,
         private val uploadNoteFails: Boolean = false,
+        private val uploadAttachmentFails: Boolean = false,
     ) : NextcloudRepository {
         val uploadedNotes = mutableListOf<NextcloudNote>()
         val uploadedAttachments = mutableListOf<Triple<String, String, String>>()
@@ -733,7 +875,11 @@ class SyncNotesWithNextcloudUseCaseTest {
             uploadAttachmentStreamCallCount++
             inputStream.readBytes()
             uploadedAttachments.add(Triple(noteId, attachmentId, filename))
-            return Result.Success(Unit)
+            return if (uploadAttachmentFails) {
+                Result.Failure(Exception("attachment upload failed"))
+            } else {
+                Result.Success(Unit)
+            }
         }
 
         override suspend fun downloadAttachment(

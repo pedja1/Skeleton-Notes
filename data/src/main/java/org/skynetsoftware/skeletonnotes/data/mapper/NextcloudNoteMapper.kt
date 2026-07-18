@@ -56,13 +56,7 @@ internal fun JSONObject.toNextcloudNote(): NextcloudNote {
                 )
             }
         }
-    val tagsArray = optJSONArray("tags") ?: JSONArray()
-    val tags =
-        buildSet {
-            for (i in 0 until tagsArray.length()) {
-                add(tagsArray.getString(i))
-            }
-        }
+    val tags = (optJSONArray("tags") ?: JSONArray()).toStringSet()
     return NextcloudNote(
         id = getString("id"),
         title = optString("title").takeIf { it.isNotEmpty() },

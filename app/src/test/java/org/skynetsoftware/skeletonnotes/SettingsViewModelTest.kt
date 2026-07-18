@@ -231,6 +231,37 @@ class SettingsViewModelTest {
         }
 
     @Test
+    fun loginSucceededEventIsRetainedUntilHandled() =
+        runTest {
+            val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+            Dispatchers.setMain(testDispatcher)
+            try {
+                val connectionInfo = NextcloudConnectionInfo("https://cloud.example.com", "user")
+                val ncRepo =
+                    FakeNextcloudRepoForSettings(
+                        initiateLoginResult = Result.Success(NextcloudInitiateLoginResult("t", "e", "url")),
+                        pollLoginResult = NextcloudPollStatus.Authenticated(connectionInfo),
+                    )
+                val viewModel = createViewModel(nextcloudRepo = ncRepo)
+
+                viewModel.initiateNextcloudLogin("https://cloud.example.com")
+                testScheduler.advanceUntilIdle()
+
+                // Login completes while the activity is STOPPED behind the Custom Tab (no active
+                // collector): the event must be retained as state, not dropped, so the activity
+                // can redirect the user back when it restarts — and cleared once handled.
+                assertEquals(
+                    org.skynetsoftware.skeletonnotes.settings.NextcloudAuthEvent.LoginSucceeded,
+                    viewModel.pendingAuthEvent.value,
+                )
+                viewModel.authEventHandled()
+                assertEquals(null, viewModel.pendingAuthEvent.value)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun initiateLoginFailureSetsLoginError() =
         runTest {
             val testDispatcher = UnconfinedTestDispatcher(testScheduler)

@@ -1,6 +1,7 @@
 package org.skynetsoftware.skeletonnotes.home
 
 import android.text.TextUtils
+import android.util.LruCache
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
@@ -28,6 +29,14 @@ class NoteAdapter(
     private val onTagClick: (String) -> Unit,
 ) : RecyclerView.Adapter<NoteAdapter.ViewHolder>() {
     private var notes: List<NoteWithAttachments> = emptyList()
+
+    /**
+     * Cache of parsed markdown previews keyed by `noteId:modifiedAt`. Markdown parsing walks the
+     * whole note body; without the cache every rebind (scrolling, DiffUtil updates) re-parses on
+     * the main thread, causing jank with long notes. The modification time in the key invalidates
+     * an entry naturally when the note changes.
+     */
+    private val previewCache = LruCache<String, CharSequence>(PREVIEW_CACHE_SIZE)
 
     /**
      * Updates the notes list and dispatches minimal changes via [DiffUtil].
@@ -66,7 +75,7 @@ class NoteAdapter(
         holder: ViewHolder,
         position: Int,
     ) {
-        holder.bind(notes[position], scope, onNoteClick, onTagClick)
+        holder.bind(notes[position], scope, previewCache, onNoteClick, onTagClick)
     }
 
     /**
@@ -81,6 +90,7 @@ class NoteAdapter(
         fun bind(
             noteWithAttachments: NoteWithAttachments,
             scope: CoroutineScope,
+            previewCache: LruCache<String, CharSequence>,
             onNoteClick: (Note) -> Unit,
             onTagClick: (String) -> Unit,
         ) {
@@ -92,11 +102,13 @@ class NoteAdapter(
             )
 
             binding.noteTile.text = note.title
+            val previewKey = "${note.id}:${note.modifiedAt}"
             binding.notePreview.text =
-                MarkdownFormatter
-                    .fromMarkdown(
-                        note.content,
-                    ).trimEnd()
+                previewCache.get(previewKey)
+                    ?: MarkdownFormatter
+                        .fromMarkdown(note.content)
+                        .trimEnd()
+                        .also { previewCache.put(previewKey, it) }
 
             if (note.title.isNullOrBlank()) {
                 binding.noteTile.visibility = View.GONE
@@ -215,6 +227,11 @@ class NoteAdapter(
                         ).apply { setMargins(0, 0, margin, margin) }
             }
         }
+    }
+
+    private companion object {
+        /** Enough entries for several screens of cards without retaining every note forever. */
+        const val PREVIEW_CACHE_SIZE = 100
     }
 
     /**

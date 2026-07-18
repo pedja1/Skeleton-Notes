@@ -39,15 +39,6 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Compute version
-        if: steps.check.outputs.skip != 'true'
-        run: |
-          TIMESTAMP=$(date -u +'%Y%m%d%H%M')
-          VERSION_CODE=$(git rev-list --count HEAD)
-          echo "VERSION_NAME=${TIMESTAMP}" >> "$GITHUB_ENV"
-          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
-          echo "versionName=${TIMESTAMP}, versionCode=${VERSION_CODE}"
-
       - name: Decode keystore
         if: steps.check.outputs.skip != 'true'
         run: |
@@ -69,8 +60,12 @@ jobs:
       - name: Create Gitea Nightly Release
         if: steps.check.outputs.skip != 'true'
         run: |
+          set -euo pipefail
           HEAD=$(git rev-parse HEAD)
-          echo "Nightly version: ${VERSION_NAME}"
+          # The APK itself keeps the hardcoded version from app/build.gradle.kts (intentional);
+          # nightlies are identified only by this timestamped tag.
+          TIMESTAMP=$(date -u +'%Y%m%d%H%M')
+          echo "Nightly version: ${TIMESTAMP}"
 
           RELEASE_APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
           DEBUG_APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
@@ -80,7 +75,7 @@ jobs:
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d "{\"tag_name\": \"nightly-${VERSION_NAME}\", \"name\": \"Nightly ${VERSION_NAME}\", \"body\": \"Nightly build\", \"prerelease\": true, \"target_commitish\": \"${HEAD}\"}" \
+            -d "{\"tag_name\": \"nightly-${TIMESTAMP}\", \"name\": \"Nightly ${TIMESTAMP}\", \"body\": \"Nightly build\", \"prerelease\": true, \"target_commitish\": \"${HEAD}\"}" \
             "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases")
 
           RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
@@ -92,17 +87,24 @@ jobs:
 
           echo "Created nightly release ${RELEASE_ID}"
 
-          curl -s -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            --data-binary "@${RELEASE_APK}" \
-            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=$(basename ${RELEASE_APK})"
+          # curl exits 0 on HTTP 4xx/5xx without -f, so each upload response must be
+          # checked or a failed upload would publish a release with no APK attached.
+          upload_asset() {
+            local file="$1"
+            local response
+            response=$(curl -s -X POST \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Content-Type: application/vnd.android.package-archive" \
+              --data-binary "@${file}" \
+              "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=$(basename "${file}")")
+            if [ -z "$(echo "$response" | jq -r '.id // empty')" ]; then
+              echo "Failed to upload $(basename "${file}"): ${response}"
+              exit 1
+            fi
+          }
 
-          curl -s -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            --data-binary "@${DEBUG_APK}" \
-            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=$(basename ${DEBUG_APK})"
+          upload_asset "${RELEASE_APK}"
+          upload_asset "${DEBUG_APK}"
 
           echo "Upload complete"
 

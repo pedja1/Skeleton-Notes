@@ -110,11 +110,19 @@ jobs:
 
           echo "Created release ${RELEASE_ID}"
 
-          curl -s -X POST \
+          # curl exits 0 on HTTP 4xx/5xx without -f, so the upload response must be checked
+          # or a failed upload would publish a release with no APK attached (and the
+          # sync-releases workflow would mirror the asset-less release to GitHub).
+          UPLOAD_RESPONSE=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/vnd.android.package-archive" \
             --data-binary "@${RELEASE_APK}" \
-            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=Skeleton-Notes-${VERSION_NAME}.apk"
+            "${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=Skeleton-Notes-${VERSION_NAME}.apk")
+
+          if [ -z "$(echo "$UPLOAD_RESPONSE" | jq -r '.id // empty')" ]; then
+            echo "Failed to upload APK: ${UPLOAD_RESPONSE}"
+            exit 1
+          fi
 
           echo "Upload complete"
 

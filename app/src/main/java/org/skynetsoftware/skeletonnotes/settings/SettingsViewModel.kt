@@ -89,8 +89,20 @@ class SettingsViewModel(
 
     private val nextcloudLoginError = MutableStateFlow<String?>(null)
 
-    private val _authEvents = MutableSharedFlow<NextcloudAuthEvent>(extraBufferCapacity = 1)
-    val authEvents: SharedFlow<NextcloudAuthEvent> = _authEvents.asSharedFlow()
+    /**
+     * Latest unhandled auth event, modeled as state rather than a fire-and-forget flow:
+     * [NextcloudAuthEvent.LoginSucceeded] is emitted while the activity is STOPPED behind the
+     * login Custom Tab (its collectors cancelled), so a replay-less SharedFlow would drop it and
+     * the user would never be redirected back to the app. The activity consumes the event via
+     * [authEventHandled].
+     */
+    private val _pendingAuthEvent = MutableStateFlow<NextcloudAuthEvent?>(null)
+    val pendingAuthEvent: StateFlow<NextcloudAuthEvent?> = _pendingAuthEvent.asStateFlow()
+
+    /** Clears [pendingAuthEvent] once the activity has acted on it, so it is not re-delivered. */
+    fun authEventHandled() {
+        _pendingAuthEvent.value = null
+    }
 
     private val _dataOperation = MutableStateFlow(DataOperation.NONE)
     val dataOperation: StateFlow<DataOperation> = _dataOperation.asStateFlow()
@@ -164,7 +176,7 @@ class SettingsViewModel(
                 is Result.Success -> {
                     val data = result.data
                     _nextcloudLoginState.value = NextcloudLoginState.WaitingForLogin
-                    _authEvents.tryEmit(NextcloudAuthEvent.LaunchAuthUrl(data.loginUrl))
+                    _pendingAuthEvent.value = NextcloudAuthEvent.LaunchAuthUrl(data.loginUrl)
                     startPolling(data.token, data.endpoint)
                 }
                 is Result.Failure -> {
@@ -201,7 +213,7 @@ class SettingsViewModel(
                     }
                 if (authenticated != null) {
                     _nextcloudLoginState.value = NextcloudLoginState.Connected(authenticated)
-                    _authEvents.tryEmit(NextcloudAuthEvent.LoginSucceeded)
+                    _pendingAuthEvent.value = NextcloudAuthEvent.LoginSucceeded
                 } else {
                     _nextcloudLoginState.value = NextcloudLoginState.LoginError
                 }

@@ -8,7 +8,10 @@
 #   GITEA_REPO     owner/repo on Gitea              (= $GITHUB_REPOSITORY)
 #   GITEA_TOKEN    Gitea token                      (= secrets.GITHUB_TOKEN)
 #   GH_REPO        owner/repo on GitHub
-#   GH_PAT         GitHub token with contents:write on $GH_REPO
+#   GH_PAT         GitHub token with contents:write AND workflows:write on $GH_REPO
+#                  (workflows:write is required because creating a release makes GitHub
+#                  create the tag ref server-side, which touches commits that modify
+#                  .github/workflows/ and is rejected with 403 otherwise)
 set -euo pipefail
 : "${GITEA_API_URL:?}"; : "${GITEA_REPO:?}"; : "${GITEA_TOKEN:?}"; : "${GH_REPO:?}"; : "${GH_PAT:?}"
 
@@ -61,7 +64,7 @@ while IFS= read -r rel; do
     echo "  ! create failed: $resp" >&2
     case "$(echo "$resp" | jq -r '.status // empty')" in
       404) echo "  ! HTTP 404: GH_PAT cannot see ${GH_REPO} for writing — grant the repo to the token (fine-grained: Repository access) and use an account with write access." >&2 ;;
-      403) echo "  ! HTTP 403: GH_PAT lacks write permission for ${GH_REPO} — set Contents to 'Read and write' (fine-grained) or 'repo'/'public_repo' scope (classic), re-paste it into the GH_PAT secret, and if ${GH_REPO%%/*} is an org, approve/allow fine-grained tokens." >&2 ;;
+      403) echo "  ! HTTP 403: GH_PAT lacks write permission for ${GH_REPO} — set BOTH Contents and Workflows to 'Read and write' (fine-grained; Workflows is needed because the created tag can point at commits touching .github/workflows/) or 'repo'+'workflow' scope (classic), re-paste it into the GH_PAT secret, and if ${GH_REPO%%/*} is an org, approve/allow fine-grained tokens." >&2 ;;
     esac
     exit 1
   fi

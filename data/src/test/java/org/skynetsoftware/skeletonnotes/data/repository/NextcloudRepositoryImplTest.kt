@@ -244,6 +244,19 @@ class NextcloudRepositoryImplTest {
         }
 
     @Test
+    fun downloadAttachmentPropagatesFailureAndRemovesPartialFile() =
+        runBlocking {
+            api.downloadFileResult = Result.Failure(Exception("connection dropped"))
+
+            val result = repository.downloadAttachment("note1", "att1", "file.png")
+
+            // A failed download must not be reported as Success: the sync layer would persist
+            // the truncated file and never re-download it.
+            assertTrue(result is Result.Failure)
+            assertTrue(fakeAttachmentStorage.deletedIds.contains("att1"))
+        }
+
+    @Test
     fun deleteAttachmentDelegatesToApi() =
         runBlocking {
             api.deleteFileResult = Result.Success(Unit)
@@ -278,6 +291,7 @@ class NextcloudRepositoryImplTest {
 
     private class FakeAttachmentStorage : AttachmentFileStorage {
         private val written = mutableMapOf<String, ByteArray>()
+        val deletedIds = mutableListOf<String>()
 
         fun getWritten(attachmentId: String): ByteArray = written[attachmentId] ?: byteArrayOf()
 
@@ -313,6 +327,7 @@ class NextcloudRepositoryImplTest {
 
         override fun deleteFile(attachmentId: String) {
             written.remove(attachmentId)
+            deletedIds.add(attachmentId)
         }
     }
 

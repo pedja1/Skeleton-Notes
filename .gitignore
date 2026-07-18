@@ -19,3 +19,7 @@
 .cxx
 local.properties
 release.jks
+
+# Python
+__pycache__/
+*.pyc

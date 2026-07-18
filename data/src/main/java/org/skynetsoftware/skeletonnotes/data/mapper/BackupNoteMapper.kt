@@ -29,6 +29,7 @@ internal fun List<NoteWithAttachments>.toJsonString(): String {
                                 JSONObject().apply {
                                     put("id", att.id)
                                     att.mimeType?.let { put("mimeType", it) }
+                                    att.filename?.let { put("filename", it) }
                                 },
                             )
                         }
@@ -57,17 +58,12 @@ internal fun JSONArray.toNotes(): List<NoteWithAttachments> =
                                 noteId = noteId,
                                 uri = "",
                                 mimeType = att.optString("mimeType").takeIf { it.isNotEmpty() },
+                                filename = att.optString("filename").takeIf { it.isNotEmpty() },
                             ),
                         )
                     }
                 }
-            val tagsArray = obj.optJSONArray("tags") ?: JSONArray()
-            val tags =
-                buildSet {
-                    for (j in 0 until tagsArray.length()) {
-                        add(tagsArray.getString(j))
-                    }
-                }
+            val tags = (obj.optJSONArray("tags") ?: JSONArray()).toStringSet()
             add(
                 NoteWithAttachments(
                     note =
