@@ -374,13 +374,14 @@ class NoteDetailViewModel(
             if (uri == null) return@launch
 
             val createAttachmentResult =
-                createAttachment(
-                    noteId = noteId,
-                    sourceUri = uri.toString(),
-                    mimeType = AppDi.application.contentResolver.getType(uri),
-                    filename = resolveDisplayName(uri),
-                )
-
+                withContext(Dispatchers.IO) {
+                    createAttachment(
+                        noteId = noteId,
+                        sourceUri = uri.toString(),
+                        mimeType = AppDi.application.contentResolver.getType(uri),
+                        filename = resolveDisplayName(uri),
+                    )
+                }
             when (createAttachmentResult) {
                 is Result.Failure<Attachment> -> {
                     Log.w(TAG, null, createAttachmentResult.throwable)
