@@ -33,8 +33,8 @@ android {
         applicationId = "org.skynetsoftware.skeletonnotes"
         minSdk = 24
         targetSdk = 37
-        versionCode = 78
-        versionName = "1.0.0"
+        versionCode = 79
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "org.skynetsoftware.skeletonnotes.SkeletonNotesTestRunner"
     }
