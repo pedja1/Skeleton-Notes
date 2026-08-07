@@ -1,6 +1,7 @@
 package org.skynetsoftware.skeletonnotes.note
 
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Typeface
 import android.text.Editable
 import android.text.Spannable
@@ -33,7 +34,7 @@ import kotlin.math.min
  * Formatting is represented with the same spans the rest of the app uses (see [MarkdownFormatter]):
  * bold/italic as [StyleSpan], strikethrough/underline as [StrikethroughSpan]/[UnderlineSpan], H1/H2
  * as a paragraph-wide [RelativeSizeSpan] plus bold [StyleSpan], and checklist items as a
- * [ChecklistSpan].
+ * [ChecklistItemSpan] (the rendering [ChecklistSpan] subclass on non-empty paragraphs).
  */
 @Suppress("TooManyFunctions") // A cohesive rich-text widget; its span helpers read best kept together.
 class RichEditText
@@ -73,16 +74,30 @@ class RichEditText
         /** False until construction finishes, so super-constructor callbacks are ignored safely. */
         private var ready = false
 
-        // Insertion bookkeeping captured in onTextChanged and consumed in afterTextChanged.
-        private var insertStart = -1
-        private var insertCount = 0
+        // Change bookkeeping captured in beforeTextChanged/onTextChanged and consumed in
+        // afterTextChanged. Bounds are accumulated (min/max) so a change delivered in several
+        // onTextChanged segments is still processed as one region.
+        private var changedStart = -1
+        private var changedEnd = -1
+        private var insertedCount = 0
+        private var removedCount = 0
 
-        // Start offset of a line armed to become a checklist item when typed into (Enter continuation).
-        private var pendingChecklistLineStart = -1
+        /**
+         * The checklist items present just before a text change. Editable implementations differ in
+         * how they move (or drop) a zero-length paragraph span when text is inserted at its position,
+         * so [reanchorChecklistItems] uses this snapshot to restore any item the change knocked loose.
+         */
+        private var checklistSnapshot: List<ChecklistItemSnapshot> = emptyList()
+
+        private data class ChecklistItemSnapshot(
+            val paragraphStart: Int,
+            val checked: Boolean,
+            val span: ChecklistItemSpan,
+        )
 
         private val checkboxRegionWidthPx =
-            (ChecklistSpan.BOX_SIZE_DP + ChecklistSpan.GAP_DP) * resources.displayMetrics.density
-        private var armedChecklistSpan: ChecklistSpan? = null
+            (ChecklistItemSpan.BOX_SIZE_DP + ChecklistItemSpan.GAP_DP) * resources.displayMetrics.density
+        private var armedChecklistSpan: ChecklistItemSpan? = null
 
         init {
             addTextChangedListener(ComposeWatcher())
@@ -145,12 +160,7 @@ class RichEditText
             if (existing != null) {
                 editable.removeSpan(existing)
             } else {
-                editable.setSpan(
-                    ChecklistSpan(false),
-                    pStart,
-                    paragraphSpanEnd(editable, pEnd),
-                    Spannable.SPAN_PARAGRAPH,
-                )
+                setChecklistSpan(editable, pStart, paragraphSpanEnd(editable, pEnd), checked = false)
             }
             applyingInternally = false
             emitState()
@@ -195,6 +205,33 @@ class RichEditText
                 MotionEvent.ACTION_CANCEL -> armedChecklistSpan = null
             }
             return super.onTouchEvent(event)
+        }
+
+        /**
+         * Paints the checkbox of every empty checklist item. The framework can't: paragraph spans of
+         * a zero-length line are invisible to [android.text.Layout.getParagraphSpans], and on an
+         * empty buffer the hint layout is drawn instead of the text layout. The span still carries
+         * the item (state, serialization), so only its checkbox needs drawing here.
+         */
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val editable = text ?: return
+            val currentLayout = layout ?: return
+            editable.getSpans(0, editable.length, ChecklistItemSpan::class.java).forEach { span ->
+                val start = editable.getSpanStart(span)
+                if (start != editable.getSpanEnd(span)) return@forEach
+                val line = currentLayout.getLineForOffset(start)
+                val dir = currentLayout.getParagraphDirection(line)
+                val x = if (dir >= 0) totalPaddingLeft else width - totalPaddingRight
+                paint.color = currentTextColor
+                span.drawCheckbox(
+                    canvas,
+                    paint,
+                    x.toFloat(),
+                    dir,
+                    (currentLayout.getLineBaseline(line) + totalPaddingTop).toFloat(),
+                )
+            }
         }
 
         /**
@@ -383,12 +420,12 @@ class RichEditText
         private fun checklistSpanAtTouch(
             x: Float,
             y: Float,
-        ): ChecklistSpan? {
+        ): ChecklistItemSpan? {
             if (x > totalPaddingLeft + checkboxRegionWidthPx) return null
             val editable = text ?: return null
             val currentLayout = layout ?: return null
             val verticalInLayout = y - totalPaddingTop + scrollY
-            return editable.getSpans(0, editable.length, ChecklistSpan::class.java).firstOrNull { span ->
+            return editable.getSpans(0, editable.length, ChecklistItemSpan::class.java).firstOrNull { span ->
                 val line = currentLayout.getLineForOffset(editable.getSpanStart(span))
                 verticalInLayout >= currentLayout.getLineTop(line) &&
                     verticalInLayout <= currentLayout.getLineBottom(line)
@@ -550,7 +587,19 @@ class RichEditText
                 start: Int,
                 count: Int,
                 after: Int,
-            ) = Unit
+            ) {
+                if (!ready || applyingInternally || s !is Spanned) return
+                removedCount += count
+                checklistSnapshot =
+                    s.getSpans(0, s.length, ChecklistItemSpan::class.java).map { span ->
+                        val spanStart = s.getSpanStart(span)
+                        ChecklistItemSnapshot(
+                            paragraphStart = paragraphRange(spanStart, spanStart).first,
+                            checked = span.checked,
+                            span = span,
+                        )
+                    }
+            }
 
             override fun onTextChanged(
                 s: CharSequence?,
@@ -559,28 +608,27 @@ class RichEditText
                 count: Int,
             ) {
                 if (!ready || applyingInternally) return
-                insertStart = start
-                insertCount = count
+                changedStart = if (changedStart < 0) start else min(changedStart, start)
+                changedEnd = max(changedEnd, start + count)
+                insertedCount += count
             }
 
             override fun afterTextChanged(s: Editable?) {
                 if (!ready || applyingInternally || s == null) return
-                val start = insertStart
-                val count = insertCount
-                insertStart = -1
-                insertCount = 0
-                if (start < 0 || count <= 0) return
+                val start = changedStart
+                val end = changedEnd.coerceAtMost(s.length)
+                val inserted = insertedCount
+                val removed = removedCount
+                val snapshot = checklistSnapshot
+                changedStart = -1
+                changedEnd = -1
+                insertedCount = 0
+                removedCount = 0
+                checklistSnapshot = emptyList()
+                if (start < 0) return
                 applyingInternally = true
                 try {
-                    val end = (start + count).coerceAtMost(s.length)
-                    for (style in pendingInline) applyInlineStyle(s, style, start, end)
-                    if (count == 1 && start < s.length && s[start] == '\n') {
-                        handleChecklistNewline(s, start)
-                    } else {
-                        continuePendingChecklist(s, start)
-                    }
-                    normalizeChecklistSpans(s)
-                    applyAutoDetectedLinks(s, start, end)
+                    processTextChange(s, start, end, inserted, removed, snapshot)
                 } finally {
                     applyingInternally = false
                 }
@@ -589,107 +637,164 @@ class RichEditText
         }
 
         /**
+         * Reconciles spans with a just-committed text change: styles newly typed text with the
+         * pending inline styles, restores checklist items the change knocked loose, continues or
+         * ends a checklist for every newline in the inserted region (soft keyboards commit Enter
+         * inside a batched replace, so the region is scanned rather than expecting a lone '\n'),
+         * and re-snaps every checklist span to its paragraph.
+         */
+        private fun processTextChange(
+            s: Editable,
+            start: Int,
+            end: Int,
+            inserted: Int,
+            removed: Int,
+            snapshot: List<ChecklistItemSnapshot>,
+        ) {
+            if (inserted > 0 && end > start) {
+                for (style in pendingInline) applyInlineStyle(s, style, start, end)
+            }
+            reanchorChecklistItems(s, snapshot, start, inserted - removed)
+            if (inserted > 0) {
+                for (i in start until end) {
+                    if (s[i] == '\n') handleChecklistNewline(s, i)
+                }
+            }
+            normalizeChecklistSpans(s)
+            if (inserted > 0 && end > start) applyAutoDetectedLinks(s, start, end)
+        }
+
+        /**
          * Handles a just-typed newline at [newlineIndex] for checklist continuation. If the line that
-         * ended was a checklist item with content, the new line immediately becomes a checklist item
-         * (so its checkbox shows at once) and is also armed so the span is re-applied once typed into,
-         * in case the empty-paragraph span is dropped meanwhile. Enter on an empty item ends the list.
+         * ended was a checklist item with content, the new line immediately becomes a checklist item —
+         * even while still empty — so its checkbox shows at once. Enter on an empty item ends the list.
          */
         private fun handleChecklistNewline(
             editable: Editable,
             newlineIndex: Int,
         ) {
-            val content = editable.toString()
             val prevLineStart =
-                content
-                    .lastIndexOf('\n', (newlineIndex - 1).coerceAtLeast(0))
+                TextUtils
+                    .lastIndexOf(editable, '\n', (newlineIndex - 1).coerceAtLeast(0))
                     .let { if (it < 0) 0 else it + 1 }
-            val prevEmpty = newlineIndex == prevLineStart
             // Only a span that starts on the previous line counts; the line before it can bleed a
             // SPAN_PARAGRAPH across the boundary, and removing that would wrongly clear another item.
-            val prevChecklist =
-                editable
-                    .getSpans(
-                        prevLineStart,
-                        maxOf((prevLineStart + 1).coerceAtMost(editable.length), newlineIndex),
-                        ChecklistSpan::class.java,
-                    ).firstOrNull { editable.getSpanStart(it) >= prevLineStart }
-            val inChecklist = prevChecklist != null || pendingChecklistLineStart == prevLineStart
-            pendingChecklistLineStart = -1
-            if (!inChecklist) return
-            if (prevEmpty) {
-                prevChecklist?.let { editable.removeSpan(it) }
+            val prevChecklist = checklistSpanStartingIn(editable, prevLineStart, newlineIndex) ?: return
+            if (newlineIndex == prevLineStart) {
+                // Enter on an empty item ends the list.
+                editable.removeSpan(prevChecklist)
                 return
             }
-            val newLineStart = newlineIndex + 1
-            pendingChecklistLineStart = newLineStart
-            // Apply immediately only when the new line already has content (e.g. Enter split a line).
-            // An empty new line can't render a checkbox and would serialize a stray "- [ ] ", so it is
-            // left armed and turned into a checklist item on the first keystroke instead.
-            val (nStart, nEnd) = paragraphRange(newLineStart, newLineStart)
-            if (nEnd > nStart) applyChecklistToParagraphAt(editable, newLineStart)
+            applyChecklistToParagraphAt(editable, newlineIndex + 1)
         }
 
-        /** Re-applies the checklist span to the line armed by [handleChecklistNewline] once it gets content. */
-        private fun continuePendingChecklist(
+        /**
+         * Restores checklist items that a text change detached. When a change covers a span's whole
+         * range the span either collapses to a point that rides to the end of the inserted text
+         * (a zero-length item's position, or an item fully rewritten by the IME) or is dropped from
+         * the editable outright. Each such item from [snapshot] is re-applied to its paragraph
+         * (whose start is remapped across the change by [delta]) with its checked state preserved.
+         */
+        private fun reanchorChecklistItems(
             editable: Editable,
-            at: Int,
+            snapshot: List<ChecklistItemSnapshot>,
+            changeStart: Int,
+            delta: Int,
         ) {
-            val armed = pendingChecklistLineStart
-            pendingChecklistLineStart = -1
-            if (armed >= 0 && paragraphRange(at, at).first == armed) applyChecklistToParagraphAt(editable, at)
+            for (item in snapshot) {
+                val mapped =
+                    if (item.paragraphStart > changeStart) item.paragraphStart + delta else item.paragraphStart
+                if (isParagraphStart(editable, mapped)) reanchorItem(editable, item, mapped)
+            }
+        }
+
+        private fun isParagraphStart(
+            editable: Editable,
+            offset: Int,
+        ): Boolean =
+            offset in 0..editable.length &&
+                (offset == 0 || editable[offset - 1] == '\n')
+
+        /** Re-applies [item] at [mapped] if its span was dropped or collapsed away by the change. */
+        private fun reanchorItem(
+            editable: Editable,
+            item: ChecklistItemSnapshot,
+            mapped: Int,
+        ) {
+            val current = editable.getSpanStart(item.span)
+            val collapsedAway = current >= 0 && current == editable.getSpanEnd(item.span) && current != mapped
+            if (current >= 0 && !collapsedAway) return
+            if (collapsedAway) editable.removeSpan(item.span)
+            applyChecklistToParagraphAt(editable, mapped, item.checked)
         }
 
         /** Adds a checklist span to the paragraph containing [at] unless it already starts one. */
         private fun applyChecklistToParagraphAt(
             editable: Editable,
             at: Int,
+            checked: Boolean = false,
         ) {
             val (pStart, pEnd) = paragraphRange(at, at)
             if (checklistSpanStartingIn(editable, pStart, pEnd) == null) {
-                editable.setSpan(
-                    ChecklistSpan(false),
-                    pStart,
-                    paragraphSpanEnd(editable, pEnd),
-                    Spannable.SPAN_PARAGRAPH,
-                )
+                setChecklistSpan(editable, pStart, paragraphSpanEnd(editable, pEnd), checked)
             }
         }
 
         /**
+         * Marks [start]..[end] as a checklist item, picking the class by emptiness: a zero-length
+         * item (empty trailing paragraph) gets the non-rendering [ChecklistItemSpan] base — see its
+         * docs for why it must not carry a paragraph style — and any other item the rendering
+         * [ChecklistSpan].
+         */
+        private fun setChecklistSpan(
+            editable: Editable,
+            start: Int,
+            end: Int,
+            checked: Boolean,
+        ) {
+            val span = if (end > start) ChecklistSpan(checked) else ChecklistItemSpan(checked)
+            editable.setSpan(span, start, end, Spannable.SPAN_PARAGRAPH)
+        }
+
+        /**
          * The checklist span that starts in the paragraph [pStart]..[pEnd], or null. Filtering by start
-         * offset ignores a previous paragraph's [ChecklistSpan] that a boundary query can return.
+         * offset ignores a previous paragraph's [ChecklistItemSpan] that a boundary query can return.
          */
         private fun checklistSpanStartingIn(
             editable: Editable,
             pStart: Int,
             pEnd: Int,
-        ): ChecklistSpan? =
+        ): ChecklistItemSpan? =
             editable
                 .getSpans(
                     pStart,
                     maxOf((pStart + 1).coerceAtMost(editable.length), pEnd),
-                    ChecklistSpan::class.java,
+                    ChecklistItemSpan::class.java,
                 ).firstOrNull { editable.getSpanStart(it) >= pStart }
 
-        /** Snaps every checklist span to exactly one paragraph and drops duplicates/empties. */
+        /**
+         * Snaps every checklist span to exactly one paragraph and drops duplicates. A zero-length
+         * span on an empty trailing paragraph is the canonical representation of an empty checklist
+         * item (serialized as a bare `- [ ] ` by [MarkdownFormatter]) and is painted by [onDraw];
+         * it must be the non-rendering [ChecklistItemSpan] base, so the classes are swapped here
+         * whenever a paragraph's emptiness changed.
+         */
         private fun normalizeChecklistSpans(editable: Editable) {
             val seenParagraphStarts = HashSet<Int>()
-            editable.getSpans(0, editable.length, ChecklistSpan::class.java).forEach { span ->
+            editable.getSpans(0, editable.length, ChecklistItemSpan::class.java).forEach { span ->
                 val spanStart = editable.getSpanStart(span)
-                if (spanStart >= editable.length && editable.isNotEmpty()) {
-                    editable.removeSpan(span)
-                    return@forEach
-                }
+                if (spanStart < 0) return@forEach
                 val (pStart, pEnd) = paragraphRange(spanStart, spanStart)
                 val paraEnd = paragraphSpanEnd(editable, pEnd)
                 if (!seenParagraphStarts.add(pStart)) {
                     editable.removeSpan(span)
                     return@forEach
                 }
-                if (editable.getSpanStart(span) != pStart || editable.getSpanEnd(span) != paraEnd) {
-                    val checked = span.checked
+                if ((span is ChecklistSpan) != (paraEnd > pStart)) {
                     editable.removeSpan(span)
-                    editable.setSpan(ChecklistSpan(checked), pStart, paraEnd, Spannable.SPAN_PARAGRAPH)
+                    setChecklistSpan(editable, pStart, paraEnd, span.checked)
+                } else if (spanStart != pStart || editable.getSpanEnd(span) != paraEnd) {
+                    editable.setSpan(span, pStart, paraEnd, Spannable.SPAN_PARAGRAPH)
                 }
             }
         }

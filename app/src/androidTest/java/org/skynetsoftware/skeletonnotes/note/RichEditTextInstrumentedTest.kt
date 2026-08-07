@@ -66,8 +66,8 @@ class RichEditTextInstrumentedTest {
             .getSpans(0, editor.editable.length, StyleSpan::class.java)
             .filter { it.style == Typeface.BOLD }
 
-    private fun checklistSpans(editor: RichEditText): List<ChecklistSpan> =
-        editor.editable.getSpans(0, editor.editable.length, ChecklistSpan::class.java).toList()
+    private fun checklistSpans(editor: RichEditText): List<ChecklistItemSpan> =
+        editor.editable.getSpans(0, editor.editable.length, ChecklistItemSpan::class.java).toList()
 
     /** Sends a single [action] touch to the editor at ([x], [y]); both events share a down time. */
     private fun touch(
@@ -433,11 +433,111 @@ class RichEditTextInstrumentedTest {
             editor.setSelection(0)
             editor.toggleChecklist()
             editor.setSelection(editor.length())
-            editor.editable.insert(4, "\n") // Enter: arms an empty continuation line
+            editor.editable.insert(4, "\n") // Enter: creates an empty continuation item
             editor.editable.insert(5, "\n") // Enter on the empty item: ends the list
             spanCount = checklistSpans(editor).size
         }
         assertEquals("pressing Enter on an empty item leaves only the original item", 1, spanCount)
+    }
+
+    @Test
+    fun toggleChecklistOnEmptyNoteSurvivesTyping() {
+        val editor = buildEditor()
+        var emptyItemAtZero = false
+        var reportedOnEmpty = false
+        var spanRange = -1 to -1
+        var reportedAfterTyping = false
+        instrumentation.runOnMainSync {
+            var current: RichEditText.FormattingState? = null
+            editor.onFormattingStateChanged = { current = it }
+            editor.setSelection(0)
+            editor.toggleChecklist()
+            val span = checklistSpans(editor).singleOrNull()
+            emptyItemAtZero =
+                span != null &&
+                editor.editable.getSpanStart(span) == 0 &&
+                editor.editable.getSpanEnd(span) == 0
+            reportedOnEmpty = current?.checklist == true
+            editor.editable.replace(0, 0, "a")
+            val after = checklistSpans(editor).singleOrNull()
+            if (after != null) {
+                spanRange = editor.editable.getSpanStart(after) to editor.editable.getSpanEnd(after)
+            }
+            reportedAfterTyping = current?.checklist == true
+        }
+        assertTrue("toggling on an empty note creates a zero-length item at 0", emptyItemAtZero)
+        assertTrue("the empty item is reported to the toolbar", reportedOnEmpty)
+        assertEquals("typing expands the item over the typed text", 0 to 1, spanRange)
+        assertTrue("the item stays reported after typing", reportedAfterTyping)
+    }
+
+    @Test
+    fun enterAppliesChecklistToNewLineImmediately() {
+        val editor = buildEditor()
+        var spanCount = 0
+        var newItemRange = -1 to -1
+        instrumentation.runOnMainSync {
+            editor.setText("milk")
+            editor.setSelection(0)
+            editor.toggleChecklist()
+            editor.setSelection(editor.length())
+            editor.editable.insert(4, "\n")
+            val spans = checklistSpans(editor).sortedBy { editor.editable.getSpanStart(it) }
+            spanCount = spans.size
+            spans.lastOrNull()?.let {
+                newItemRange = editor.editable.getSpanStart(it) to editor.editable.getSpanEnd(it)
+            }
+        }
+        assertEquals("the new line becomes an item before anything is typed", 2, spanCount)
+        assertEquals("the new item is the empty last paragraph", 5 to 5, newItemRange)
+    }
+
+    @Test
+    fun imeBatchedNewlineContinuesList() {
+        val editor = buildEditor()
+        var starts = emptyList<Int>()
+        instrumentation.runOnMainSync {
+            editor.setText("item")
+            editor.setSelection(0)
+            editor.toggleChecklist()
+            editor.setSelection(editor.length())
+            // A soft keyboard commits Enter by replacing the composing region in one edit.
+            editor.editable.replace(0, 4, "item\n")
+            editor.editable.insert(5, "x")
+            starts = checklistSpans(editor).map { editor.editable.getSpanStart(it) }.sorted()
+        }
+        assertEquals("a batched IME newline must continue the list", listOf(0, 5), starts)
+    }
+
+    @Test
+    fun pasteMultilineIntoChecklistContinuesList() {
+        val editor = buildEditor()
+        var starts = emptyList<Int>()
+        instrumentation.runOnMainSync {
+            editor.setText("milk")
+            editor.setSelection(0)
+            editor.toggleChecklist()
+            editor.setSelection(editor.length())
+            editor.editable.insert(4, "\neggs\nbread")
+            starts = checklistSpans(editor).map { editor.editable.getSpanStart(it) }.sorted()
+        }
+        assertEquals("every pasted line becomes an item", listOf(0, 5, 10), starts)
+    }
+
+    @Test
+    fun batchedEnterOnEmptyChecklistItemStopsList() {
+        val editor = buildEditor()
+        var spanCount = -1
+        instrumentation.runOnMainSync {
+            editor.setText("milk")
+            editor.setSelection(0)
+            editor.toggleChecklist()
+            editor.setSelection(editor.length())
+            editor.editable.insert(4, "\n")
+            editor.editable.replace(5, 5, "\n") // IME-style Enter on the empty item
+            spanCount = checklistSpans(editor).size
+        }
+        assertEquals("an IME Enter on an empty item also ends the list", 1, spanCount)
     }
 
     @Test

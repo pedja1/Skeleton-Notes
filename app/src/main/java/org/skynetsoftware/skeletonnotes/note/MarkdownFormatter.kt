@@ -133,12 +133,16 @@ object MarkdownFormatter {
             )
         }
         for (checklistRange in checklists) {
-            builder.setSpan(
-                ChecklistSpan(checklistRange.checked),
-                checklistRange.start,
-                paragraphSpanEnd(builder, checklistRange.end),
-                Spannable.SPAN_PARAGRAPH,
-            )
+            val spanEnd = paragraphSpanEnd(builder, checklistRange.end)
+            // An empty trailing item is a zero-length span and must stay the non-rendering base
+            // class — see [ChecklistItemSpan] for the layout reason.
+            val span =
+                if (spanEnd > checklistRange.start) {
+                    ChecklistSpan(checklistRange.checked)
+                } else {
+                    ChecklistItemSpan(checklistRange.checked)
+                }
+            builder.setSpan(span, checklistRange.start, spanEnd, Spannable.SPAN_PARAGRAPH)
         }
         return builder
     }
@@ -197,7 +201,7 @@ object MarkdownFormatter {
         // Only a span that starts in this paragraph counts; the previous paragraph's SPAN_PARAGRAPH
         // can be returned at the boundary, which would wrongly mark an empty next line as a checklist.
         return spanned
-            .getSpans(start, queryEnd, ChecklistSpan::class.java)
+            .getSpans(start, queryEnd, ChecklistItemSpan::class.java)
             .firstOrNull { spanned.getSpanStart(it) >= start }
             ?.checked
     }

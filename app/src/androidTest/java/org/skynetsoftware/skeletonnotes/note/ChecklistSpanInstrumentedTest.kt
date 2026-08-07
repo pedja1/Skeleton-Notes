@@ -81,7 +81,7 @@ class ChecklistSpanInstrumentedTest {
     @Test
     fun leadingMarginReservesSpaceForCheckbox() {
         val span = ChecklistSpan(false)
-        val expected = ((ChecklistSpan.BOX_SIZE_DP + ChecklistSpan.GAP_DP) * density).toInt()
+        val expected = ((ChecklistItemSpan.BOX_SIZE_DP + ChecklistItemSpan.GAP_DP) * density).toInt()
         assertEquals(expected, span.getLeadingMargin(true))
         assertEquals(expected, span.getLeadingMargin(false))
     }

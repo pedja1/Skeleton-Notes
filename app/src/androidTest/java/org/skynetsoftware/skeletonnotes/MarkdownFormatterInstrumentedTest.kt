@@ -170,6 +170,13 @@ class MarkdownFormatterInstrumentedTest {
     }
 
     @Test
+    fun emptyTrailingChecklistItemRoundTrips() {
+        // An empty item (the editor's zero-length ChecklistSpan) serializes as a bare "- [ ] ".
+        val markdown = "- [ ] milk\n- [ ] "
+        assertEquals(markdown, roundTrip(markdown))
+    }
+
+    @Test
     fun documentWithEveryFeatureIsIdempotent() {
         val markdown =
             "# Title\n" +
