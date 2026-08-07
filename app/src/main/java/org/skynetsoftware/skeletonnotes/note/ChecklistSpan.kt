@@ -8,6 +8,7 @@ import android.graphics.RectF
 import android.text.Layout
 import android.text.style.LeadingMarginSpan
 import android.text.style.LineHeightSpan
+import android.text.style.UpdateLayout
 
 /**
  * A paragraph span that renders a tappable checkbox in the leading margin of a checklist item and
@@ -27,7 +28,11 @@ import android.text.style.LineHeightSpan
 class ChecklistSpan(
     var checked: Boolean,
 ) : LeadingMarginSpan,
-    LineHeightSpan {
+    LineHeightSpan,
+    // Marks the span as layout-affecting so DynamicLayout reflows when it is added/removed/re-set.
+    // Without this, [RichEditText]'s watcher mutating spans after a text change leaves the layout
+    // with mid-edit line metrics, and checklist row spacing visibly jumps while editing.
+    UpdateLayout {
     private val density = Resources.getSystem().displayMetrics.density
     private val boxSize = BOX_SIZE_DP * density
     private val gap = GAP_DP * density
