@@ -1,7 +1,6 @@
 package org.skynetsoftware.skeletonnotes.note
 
 import android.content.Context
-import android.graphics.Canvas
 import android.graphics.Typeface
 import android.text.Editable
 import android.text.Spannable
@@ -34,7 +33,8 @@ import kotlin.math.min
  * Formatting is represented with the same spans the rest of the app uses (see [MarkdownFormatter]):
  * bold/italic as [StyleSpan], strikethrough/underline as [StrikethroughSpan]/[UnderlineSpan], H1/H2
  * as a paragraph-wide [RelativeSizeSpan] plus bold [StyleSpan], and checklist items as a
- * [ChecklistItemSpan] (the rendering [ChecklistSpan] subclass on non-empty paragraphs).
+ * [ChecklistSpan] (an empty item keeps [ChecklistSpan.EMPTY_ITEM_PLACEHOLDER] in its paragraph
+ * so the span renders and the cursor sits after the checkbox).
  */
 @Suppress("TooManyFunctions") // A cohesive rich-text widget; its span helpers read best kept together.
 class RichEditText
@@ -92,12 +92,13 @@ class RichEditText
         private data class ChecklistItemSnapshot(
             val paragraphStart: Int,
             val checked: Boolean,
-            val span: ChecklistItemSpan,
+            val span: ChecklistSpan,
+            val wasPlaceholderOnly: Boolean,
         )
 
         private val checkboxRegionWidthPx =
-            (ChecklistItemSpan.BOX_SIZE_DP + ChecklistItemSpan.GAP_DP) * resources.displayMetrics.density
-        private var armedChecklistSpan: ChecklistItemSpan? = null
+            (ChecklistSpan.BOX_SIZE_DP + ChecklistSpan.GAP_DP) * resources.displayMetrics.density
+        private var armedChecklistSpan: ChecklistSpan? = null
 
         init {
             addTextChangedListener(ComposeWatcher())
@@ -160,8 +161,15 @@ class RichEditText
             if (existing != null) {
                 editable.removeSpan(existing)
             } else {
-                setChecklistSpan(editable, pStart, paragraphSpanEnd(editable, pEnd), checked = false)
+                editable.setSpan(
+                    ChecklistSpan(false),
+                    pStart,
+                    paragraphSpanEnd(editable, pEnd),
+                    Spannable.SPAN_PARAGRAPH,
+                )
             }
+            reconcileEmptyItemPlaceholders(editable)
+            normalizeChecklistSpans(editable)
             applyingInternally = false
             emitState()
             invalidate()
@@ -205,33 +213,6 @@ class RichEditText
                 MotionEvent.ACTION_CANCEL -> armedChecklistSpan = null
             }
             return super.onTouchEvent(event)
-        }
-
-        /**
-         * Paints the checkbox of every empty checklist item. The framework can't: paragraph spans of
-         * a zero-length line are invisible to [android.text.Layout.getParagraphSpans], and on an
-         * empty buffer the hint layout is drawn instead of the text layout. The span still carries
-         * the item (state, serialization), so only its checkbox needs drawing here.
-         */
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val editable = text ?: return
-            val currentLayout = layout ?: return
-            editable.getSpans(0, editable.length, ChecklistItemSpan::class.java).forEach { span ->
-                val start = editable.getSpanStart(span)
-                if (start != editable.getSpanEnd(span)) return@forEach
-                val line = currentLayout.getLineForOffset(start)
-                val dir = currentLayout.getParagraphDirection(line)
-                val x = if (dir >= 0) totalPaddingLeft else width - totalPaddingRight
-                paint.color = currentTextColor
-                span.drawCheckbox(
-                    canvas,
-                    paint,
-                    x.toFloat(),
-                    dir,
-                    (currentLayout.getLineBaseline(line) + totalPaddingTop).toFloat(),
-                )
-            }
         }
 
         /**
@@ -420,12 +401,12 @@ class RichEditText
         private fun checklistSpanAtTouch(
             x: Float,
             y: Float,
-        ): ChecklistItemSpan? {
+        ): ChecklistSpan? {
             if (x > totalPaddingLeft + checkboxRegionWidthPx) return null
             val editable = text ?: return null
             val currentLayout = layout ?: return null
             val verticalInLayout = y - totalPaddingTop + scrollY
-            return editable.getSpans(0, editable.length, ChecklistItemSpan::class.java).firstOrNull { span ->
+            return editable.getSpans(0, editable.length, ChecklistSpan::class.java).firstOrNull { span ->
                 val line = currentLayout.getLineForOffset(editable.getSpanStart(span))
                 verticalInLayout >= currentLayout.getLineTop(line) &&
                     verticalInLayout <= currentLayout.getLineBottom(line)
@@ -591,12 +572,14 @@ class RichEditText
                 if (!ready || applyingInternally || s !is Spanned) return
                 removedCount += count
                 checklistSnapshot =
-                    s.getSpans(0, s.length, ChecklistItemSpan::class.java).map { span ->
+                    s.getSpans(0, s.length, ChecklistSpan::class.java).map { span ->
                         val spanStart = s.getSpanStart(span)
+                        val (pStart, pEnd) = paragraphRange(spanStart, spanStart)
                         ChecklistItemSnapshot(
-                            paragraphStart = paragraphRange(spanStart, spanStart).first,
+                            paragraphStart = pStart,
                             checked = span.checked,
                             span = span,
+                            wasPlaceholderOnly = isPlaceholderOnly(s, pStart, pEnd),
                         )
                     }
             }
@@ -660,9 +643,76 @@ class RichEditText
                     if (s[i] == '\n') handleChecklistNewline(s, i)
                 }
             }
+            dismissEmptiedItems(s, snapshot)
+            reconcileEmptyItemPlaceholders(s)
             normalizeChecklistSpans(s)
-            if (inserted > 0 && end > start) applyAutoDetectedLinks(s, start, end)
+            if (inserted > 0 && end > start) applyAutoDetectedLinks(s, start, end.coerceAtMost(s.length))
         }
+
+        /**
+         * Removes items whose zero-width placeholder the user just deleted: an item that was
+         * placeholder-only before this change and whose paragraph is now truly empty was dismissed
+         * (e.g. backspace on an empty item), so it must not have its placeholder re-added.
+         */
+        private fun dismissEmptiedItems(
+            editable: Editable,
+            snapshot: List<ChecklistItemSnapshot>,
+        ) {
+            for (item in snapshot) {
+                if (!item.wasPlaceholderOnly) continue
+                val spanStart = editable.getSpanStart(item.span)
+                if (spanStart < 0) continue
+                val collapsed = spanStart == editable.getSpanEnd(item.span)
+                val (pStart, pEnd) = paragraphRange(spanStart, spanStart)
+                if (collapsed || pStart == pEnd) editable.removeSpan(item.span)
+            }
+        }
+
+        /**
+         * Maintains the zero-width placeholder invariant: every empty *trailing* checklist paragraph
+         * holds exactly one [ChecklistSpan.EMPTY_ITEM_PLACEHOLDER] (so the span renders and the
+         * cursor sits after the checkbox), and no placeholder exists anywhere else — not in
+         * paragraphs with real text, not in non-checklist paragraphs, and not in middle empty items
+         * (their span covers the '\n' and renders natively). Runs with [applyingInternally] set, so
+         * its own text edits don't re-enter the watcher; the selection shifts with the edits, which
+         * is what places the cursor after a freshly created empty item's checkbox.
+         */
+        private fun reconcileEmptyItemPlaceholders(editable: Editable) {
+            stripStrayPlaceholders(editable)
+            editable.getSpans(0, editable.length, ChecklistSpan::class.java).forEach { span ->
+                val spanStart = editable.getSpanStart(span)
+                if (spanStart < 0) return@forEach
+                val (pStart, pEnd) = paragraphRange(spanStart, spanStart)
+                if (pStart == pEnd && pEnd == editable.length) {
+                    editable.insert(pStart, ChecklistSpan.EMPTY_ITEM_PLACEHOLDER.toString())
+                    editable.setSpan(span, pStart, pStart + 1, Spannable.SPAN_PARAGRAPH)
+                }
+            }
+        }
+
+        /** Deletes every placeholder that is not the sole content of a trailing checklist paragraph. */
+        private fun stripStrayPlaceholders(editable: Editable) {
+            var i = 0
+            while (i < editable.length) {
+                if (editable[i] != ChecklistSpan.EMPTY_ITEM_PLACEHOLDER) {
+                    i++
+                    continue
+                }
+                val (pStart, pEnd) = paragraphRange(i, i)
+                val keep =
+                    isPlaceholderOnly(editable, pStart, pEnd) &&
+                        pEnd == editable.length &&
+                        checklistSpanStartingIn(editable, pStart, pEnd) != null
+                if (keep) i++ else editable.delete(i, i + 1)
+            }
+        }
+
+        /** True when the paragraph [pStart]..[pEnd] contains exactly one zero-width placeholder. */
+        private fun isPlaceholderOnly(
+            text: CharSequence,
+            pStart: Int,
+            pEnd: Int,
+        ): Boolean = pEnd - pStart == 1 && text[pStart] == ChecklistSpan.EMPTY_ITEM_PLACEHOLDER
 
         /**
          * Handles a just-typed newline at [newlineIndex] for checklist continuation. If the line that
@@ -680,8 +730,8 @@ class RichEditText
             // Only a span that starts on the previous line counts; the line before it can bleed a
             // SPAN_PARAGRAPH across the boundary, and removing that would wrongly clear another item.
             val prevChecklist = checklistSpanStartingIn(editable, prevLineStart, newlineIndex) ?: return
-            if (newlineIndex == prevLineStart) {
-                // Enter on an empty item ends the list.
+            if (newlineIndex == prevLineStart || isPlaceholderOnly(editable, prevLineStart, newlineIndex)) {
+                // Enter on an empty item ends the list (its stray placeholder is stripped later).
                 editable.removeSpan(prevChecklist)
                 return
             }
@@ -736,52 +786,41 @@ class RichEditText
         ) {
             val (pStart, pEnd) = paragraphRange(at, at)
             if (checklistSpanStartingIn(editable, pStart, pEnd) == null) {
-                setChecklistSpan(editable, pStart, paragraphSpanEnd(editable, pEnd), checked)
+                editable.setSpan(
+                    ChecklistSpan(checked),
+                    pStart,
+                    paragraphSpanEnd(editable, pEnd),
+                    Spannable.SPAN_PARAGRAPH,
+                )
             }
         }
 
         /**
-         * Marks [start]..[end] as a checklist item, picking the class by emptiness: a zero-length
-         * item (empty trailing paragraph) gets the non-rendering [ChecklistItemSpan] base — see its
-         * docs for why it must not carry a paragraph style — and any other item the rendering
-         * [ChecklistSpan].
-         */
-        private fun setChecklistSpan(
-            editable: Editable,
-            start: Int,
-            end: Int,
-            checked: Boolean,
-        ) {
-            val span = if (end > start) ChecklistSpan(checked) else ChecklistItemSpan(checked)
-            editable.setSpan(span, start, end, Spannable.SPAN_PARAGRAPH)
-        }
-
-        /**
          * The checklist span that starts in the paragraph [pStart]..[pEnd], or null. Filtering by start
-         * offset ignores a previous paragraph's [ChecklistItemSpan] that a boundary query can return.
+         * offset ignores a previous paragraph's [ChecklistSpan] that a boundary query can return.
          */
         private fun checklistSpanStartingIn(
             editable: Editable,
             pStart: Int,
             pEnd: Int,
-        ): ChecklistItemSpan? =
+        ): ChecklistSpan? =
             editable
                 .getSpans(
                     pStart,
                     maxOf((pStart + 1).coerceAtMost(editable.length), pEnd),
-                    ChecklistItemSpan::class.java,
+                    ChecklistSpan::class.java,
                 ).firstOrNull { editable.getSpanStart(it) >= pStart }
 
         /**
-         * Snaps every checklist span to exactly one paragraph and drops duplicates. A zero-length
-         * span on an empty trailing paragraph is the canonical representation of an empty checklist
-         * item (serialized as a bare `- [ ] ` by [MarkdownFormatter]) and is painted by [onDraw];
-         * it must be the non-rendering [ChecklistItemSpan] base, so the classes are swapped here
-         * whenever a paragraph's emptiness changed.
+         * Snaps every checklist span to exactly one paragraph and drops duplicates. Runs after
+         * [reconcileEmptyItemPlaceholders], so every surviving item paragraph has content (real text,
+         * a placeholder, or its '\n') and the snapped spans are never zero-length. Spans keep their
+         * identity (re-set, not recreated) so a mid-edit reference — e.g. [armedChecklistSpan] —
+         * stays valid.
          */
         private fun normalizeChecklistSpans(editable: Editable) {
             val seenParagraphStarts = HashSet<Int>()
-            editable.getSpans(0, editable.length, ChecklistItemSpan::class.java).forEach { span ->
+            editable.getSpans(0, editable.length, ChecklistSpan::class.java).forEach { span ->
                 val spanStart = editable.getSpanStart(span)
                 if (spanStart < 0) return@forEach
                 val (pStart, pEnd) = paragraphRange(spanStart, spanStart)
@@ -790,10 +829,7 @@ class RichEditText
                     editable.removeSpan(span)
                     return@forEach
                 }
-                if ((span is ChecklistSpan) != (paraEnd > pStart)) {
-                    editable.removeSpan(span)
-                    setChecklistSpan(editable, pStart, paraEnd, span.checked)
-                } else if (spanStart != pStart || editable.getSpanEnd(span) != paraEnd) {
+                if (spanStart != pStart || editable.getSpanEnd(span) != paraEnd) {
                     editable.setSpan(span, pStart, paraEnd, Spannable.SPAN_PARAGRAPH)
                 }
             }

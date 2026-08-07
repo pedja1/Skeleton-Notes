@@ -133,16 +133,19 @@ object MarkdownFormatter {
             )
         }
         for (checklistRange in checklists) {
-            val spanEnd = paragraphSpanEnd(builder, checklistRange.end)
-            // An empty trailing item is a zero-length span and must stay the non-rendering base
-            // class — see [ChecklistItemSpan] for the layout reason.
-            val span =
-                if (spanEnd > checklistRange.start) {
-                    ChecklistSpan(checklistRange.checked)
-                } else {
-                    ChecklistItemSpan(checklistRange.checked)
-                }
-            builder.setSpan(span, checklistRange.start, spanEnd, Spannable.SPAN_PARAGRAPH)
+            var spanEnd = paragraphSpanEnd(builder, checklistRange.end)
+            if (spanEnd == checklistRange.start) {
+                // A bare "- [ ] " on the last line: give the empty item its zero-width placeholder
+                // so the span is never zero-length — see [ChecklistSpan] for the layout reason.
+                builder.append(ChecklistSpan.EMPTY_ITEM_PLACEHOLDER)
+                spanEnd = builder.length
+            }
+            builder.setSpan(
+                ChecklistSpan(checklistRange.checked),
+                checklistRange.start,
+                spanEnd,
+                Spannable.SPAN_PARAGRAPH,
+            )
         }
         return builder
     }
@@ -175,7 +178,12 @@ object MarkdownFormatter {
         val checked = checklistCheckedFor(spanned, start, end)
         if (checked != null) {
             val prefix = if (checked) "- [x] " else "- [ ] "
-            return if (start == end) prefix else prefix + serializeInline(spanned, start, end, isHeading = false)
+            if (start == end) return prefix
+            // An empty item's zero-width placeholder is an editor artifact, not content.
+            val inline =
+                serializeInline(spanned, start, end, isHeading = false)
+                    .filterNot { it == ChecklistSpan.EMPTY_ITEM_PLACEHOLDER }
+            return prefix + inline
         }
         val level = headingLevelFor(spanned, start, end)
         val prefix =
@@ -201,7 +209,7 @@ object MarkdownFormatter {
         // Only a span that starts in this paragraph counts; the previous paragraph's SPAN_PARAGRAPH
         // can be returned at the boundary, which would wrongly mark an empty next line as a checklist.
         return spanned
-            .getSpans(start, queryEnd, ChecklistItemSpan::class.java)
+            .getSpans(start, queryEnd, ChecklistSpan::class.java)
             .firstOrNull { spanned.getSpanStart(it) >= start }
             ?.checked
     }
